@@ -46,9 +46,15 @@ Open `http://localhost:5173` — Vite proxies `/api` to Flask.
 ## Deploy on Render
 
 1. Push this repo to GitHub.
-2. In Render: **New → Blueprint** and select `render.yaml`.
-3. Render creates a **PostgreSQL** database and a **Docker** web service.
-4. Set nothing else if using the blueprint; secrets are auto-generated.
+2. In Render: **New → Blueprint** → connect `card-pairs-game`.
+3. **Branch:** `master` (not `main`).
+4. **Blueprint path:** `render.yaml` (repo root).
+5. Review the preview — you should see **1 web service** and **1 Postgres database**, then click **Deploy Blueprint**.
+
+If the dashboard says **“No resources managed by this Blueprint”**:
+
+- Open the Blueprint → **Manual Sync** (or fix **Settings → Branch** = `master` and **Blueprint Path** = `render.yaml`).
+- Ensure the latest commit with `render.yaml` is on the linked branch.
 
 The Docker image builds the React app and serves it from Flask at `/`.
 

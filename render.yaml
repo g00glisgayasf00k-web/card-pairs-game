@@ -1,7 +1,11 @@
-# Render Blueprint — deploy from Dashboard: New > Blueprint
+# https://render.com/docs/blueprint-spec
+version: "1"
+
 databases:
   - name: poker-pairs-db
     plan: free
+    region: oregon
+    postgresMajorVersion: "16"
     databaseName: poker_pairs
     user: poker_pairs
 
@@ -10,7 +14,11 @@ services:
     name: poker-pairs
     runtime: docker
     plan: free
+    region: oregon
+    branch: master
+    dockerfilePath: ./Dockerfile
     healthCheckPath: /api/health
+    autoDeploy: true
     envVars:
       - key: DATABASE_URL
         fromDatabase:
@@ -22,5 +30,3 @@ services:
         generateValue: true
       - key: STATIC_FOLDER
         value: /app/static
-      - key: PYTHON_VERSION
-        value: "3.12.0"

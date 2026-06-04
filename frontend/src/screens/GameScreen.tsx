@@ -9,7 +9,7 @@ import {
   type FullHandResult,
   type HandLabel,
 } from "../lib/pokerHands";
-import { comboLabel, comboMultiplier, getLevelConfig, levelRequirementsMet, MAX_LEVEL } from "../lib/levels";
+import { campaignLeaderboardPoints, comboLabel, comboMultiplier, getLevelConfig, levelRequirementsMet, MAX_LEVEL } from "../lib/levels";
 import {
   clearProgress,
   defaultProgress,
@@ -33,7 +33,6 @@ interface FloatScore {
 
 interface RunState {
   level: number;
-  totalScore: number;
   levelScore: number;
   levelHands: number;
   handsCleared: number;
@@ -60,7 +59,6 @@ function initRunState(): RunState {
   if (saved) {
     return {
       level: saved.level,
-      totalScore: saved.totalScore,
       levelScore: saved.levelScore,
       levelHands: saved.levelHands,
       handsCleared: saved.handsCleared,
@@ -73,7 +71,7 @@ function initRunState(): RunState {
 
 export function GameScreen({ username, onMenu }: Props) {
   const [run, setRun] = useState<RunState>(initRunState);
-  const { level, totalScore, levelScore, levelHands, handsCleared, bestHand, streak } = run;
+  const { level, levelScore, levelHands, handsCleared, bestHand, streak } = run;
 
   const [phase, setPhase] = useState<Phase>("playing");
   const [completedLevel, setCompletedLevel] = useState<number | null>(null);
@@ -87,7 +85,7 @@ export function GameScreen({ username, onMenu }: Props) {
   const floatId = useRef(0);
   const levelScoreRef = useRef(levelScore);
   const levelHandsRef = useRef(levelHands);
-  const totalScoreRef = useRef(totalScore);
+  const levelRef = useRef(level);
   const handsClearedRef = useRef(handsCleared);
   const bestHandRef = useRef(bestHand);
   const advancingRef = useRef(false);
@@ -96,7 +94,7 @@ export function GameScreen({ username, onMenu }: Props) {
 
   levelScoreRef.current = levelScore;
   levelHandsRef.current = levelHands;
-  totalScoreRef.current = totalScore;
+  levelRef.current = level;
   handsClearedRef.current = handsCleared;
   bestHandRef.current = bestHand;
 
@@ -104,16 +102,13 @@ export function GameScreen({ username, onMenu }: Props) {
   const combo = comboMultiplier(streak);
   const comboMsg = comboLabel(streak);
   const levelProgress = Math.min(1, levelScore / cfg.targetPoints);
-  const handsProgress = Math.min(1, levelHands / cfg.minHands);
-  const nextCfg = getLevelConfig(level + 1);
   const pointsMet = levelScore >= cfg.targetPoints;
-  const handsMet = levelHands >= cfg.minHands;
+  const nextCfg = getLevelConfig(level + 1);
   const completedCfg = completedLevel ? getLevelConfig(completedLevel) : null;
 
   const persistRun = useCallback((next: RunState) => {
     saveProgress({
       level: next.level,
-      totalScore: next.totalScore,
       levelScore: next.levelScore,
       levelHands: next.levelHands,
       handsCleared: next.handsCleared,
@@ -195,7 +190,6 @@ export function GameScreen({ username, onMenu }: Props) {
             : prev.bestHand;
         bestHandRef.current = nextBest;
         handsClearedRef.current = prev.handsCleared + 1;
-        totalScoreRef.current = prev.totalScore + comboPts;
         return {
           ...prev,
           streak: newStreak,
@@ -203,7 +197,6 @@ export function GameScreen({ username, onMenu }: Props) {
           levelHands: nextHands,
           levelScore: nextScore,
           bestHand: nextBest,
-          totalScore: prev.totalScore + comboPts,
         };
       });
       tryAdvanceLevel(nextScore, nextHands);
@@ -216,39 +209,34 @@ export function GameScreen({ username, onMenu }: Props) {
     (pts: number) => {
       const nextScore = levelScoreRef.current + pts;
       levelScoreRef.current = nextScore;
-      setRun((prev) => {
-        totalScoreRef.current = prev.totalScore + pts;
-        return {
-          ...prev,
-          levelScore: nextScore,
-          totalScore: prev.totalScore + pts,
-        };
-      });
+      setRun((prev) => ({
+        ...prev,
+        levelScore: nextScore,
+      }));
       tryAdvanceLevel(nextScore, levelHandsRef.current);
       spawnFloat(`+${pts.toLocaleString()}`);
     },
     [tryAdvanceLevel, spawnFloat]
   );
 
-  const handleExit = () => {
-    if (totalScoreRef.current > 0) {
-      submitScore({
-        points: totalScoreRef.current,
-        hands_cleared: handsClearedRef.current,
-        best_hand: bestHandRef.current,
-        username,
-      }).catch(() => {});
-    }
-    onMenu();
-  };
-
-  const finishCampaign = () => {
+  const submitRunScore = () => {
+    const pts = campaignLeaderboardPoints(levelRef.current, levelScoreRef.current);
+    if (handsClearedRef.current === 0 && pts === 0) return;
     submitScore({
-      points: totalScoreRef.current,
+      points: pts,
       hands_cleared: handsClearedRef.current,
       best_hand: bestHandRef.current,
       username,
     }).catch(() => {});
+  };
+
+  const handleExit = () => {
+    submitRunScore();
+    onMenu();
+  };
+
+  const finishCampaign = () => {
+    submitRunScore();
     clearProgress();
     onMenu();
   };
@@ -265,9 +253,9 @@ export function GameScreen({ username, onMenu }: Props) {
               <span className="level-badge__num">{level}/{MAX_LEVEL}</span>
             </div>
 
-            <div className="score-chip" title="Total score">
+            <div className="score-chip" title={`Level goal: ${cfg.targetPoints.toLocaleString()} pts`}>
               <span className="score-chip__icon">💰</span>
-              <span className="score-chip__value">{totalScore.toLocaleString()}</span>
+              <span className="score-chip__value">{levelScore.toLocaleString()}</span>
             </div>
 
             <div className="rank-chip" title={cfg.label}>
@@ -285,14 +273,8 @@ export function GameScreen({ username, onMenu }: Props) {
             </span>
           </div>
 
-          <div className="hands-track">
-            <div
-              className={`hands-fill${handsMet ? " hands-fill--done" : ""}`}
-              style={{ width: `${handsProgress * 100}%` }}
-            />
-            <span className="hands-label">
-              🃏 {levelHands} / {cfg.minHands} hands
-            </span>
+          <div className="hands-track hands-track--stat">
+            <span className="hands-label">🃏 {levelHands} hands this level</span>
           </div>
 
           <div className="stat-chips">
@@ -414,7 +396,7 @@ export function GameScreen({ username, onMenu }: Props) {
             <div className="levelup-perks">
               <div className="perk">
                 <span className="perk-icon">💰</span>
-                <span>{totalScore.toLocaleString()} total pts</span>
+                <span>{campaignLeaderboardPoints(level, levelScore).toLocaleString()} campaign pts</span>
               </div>
               <div className="perk">
                 <span className="perk-icon">🃏</span>

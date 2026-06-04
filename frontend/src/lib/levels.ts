@@ -77,13 +77,13 @@ export function getLevelConfig(level: number): LevelConfig {
   return LEVEL_CONFIGS[n - 1]!;
 }
 
-/** True when both point and hand quotas are met for the current level. */
+/** True when the level point target is reached. */
 export function levelRequirementsMet(
   levelScore: number,
-  levelHands: number,
+  _levelHands: number,
   cfg: LevelConfig
 ): boolean {
-  return levelScore >= cfg.targetPoints && levelHands >= cfg.minHands;
+  return levelScore >= cfg.targetPoints;
 }
 
 export function comboMultiplier(streak: number): number {
@@ -100,4 +100,13 @@ export function comboLabel(streak: number): string | null {
   if (streak < 6) return "Combo ×2";
   if (streak < 9) return "Combo ×2.5";
   return "Combo ×3 🔥";
+}
+
+/** Leaderboard total from completed level targets + current level progress (not shown in HUD). */
+export function campaignLeaderboardPoints(level: number, levelScore: number): number {
+  let pts = levelScore;
+  for (let l = 1; l < level; l++) {
+    pts += getLevelConfig(l).targetPoints;
+  }
+  return pts;
 }

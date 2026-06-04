@@ -287,6 +287,72 @@ export function straightMustStartAtEnd(cards: Card[]): boolean {
   return ends.has(cards[0]!.rank) && ends.has(cards[cards.length - 1]!.rank);
 }
 
+/** Exact card counts required for each hand (others allow variable path length). */
+const EXACT_HAND_SIZE: Partial<Record<HandLabel, number>> = {
+  straight: 5,
+  flush: 5,
+  full_house: 5,
+  straight_flush: 5,
+  royal_flush: 5,
+};
+
+/**
+ * Pick the valid hand path when touch input overshoots (e.g. 6th cell on release).
+ * Only clears cells that belong to the resolved hand.
+ */
+export function resolveHandFromPath(
+  path: { row: number; col: number }[],
+  getCard: (p: { row: number; col: number }) => Card | null | undefined
+): { path: { row: number; col: number }[]; result: FullHandResult } | null {
+  if (path.length < 2) return null;
+
+  const candidates: { row: number; col: number }[][] = [];
+  const seen = new Set<string>();
+  const add = (p: { row: number; col: number }[]) => {
+    const key = p.map((c) => `${c.row},${c.col}`).join("|");
+    if (p.length >= 2 && !seen.has(key)) {
+      seen.add(key);
+      candidates.push(p);
+    }
+  };
+
+  add(path);
+  if (path.length > 2) add(path.slice(0, -1));
+  if (path.length > 5) add(path.slice(0, 5));
+
+  for (const p of candidates) {
+    if (!pathIsAdjacent(p)) continue;
+    const cards: Card[] = [];
+    for (const cell of p) {
+      const card = getCard(cell);
+      if (!card) {
+        cards.length = 0;
+        break;
+      }
+      cards.push(card);
+    }
+    if (cards.length !== p.length) continue;
+
+    const result = evaluateHandFull(cards);
+    if (!result || !straightMustStartAtEnd(cards)) continue;
+
+    const exact = EXACT_HAND_SIZE[result.hand];
+    if (exact !== undefined && p.length > exact) {
+      const trimmed = p.slice(0, exact);
+      if (!pathIsAdjacent(trimmed)) continue;
+      const trimmedCards = trimmed.map((c) => getCard(c)!);
+      const trimmedResult = evaluateHandFull(trimmedCards);
+      if (trimmedResult && straightMustStartAtEnd(trimmedCards)) {
+        return { path: trimmed, result: trimmedResult };
+      }
+      continue;
+    }
+
+    return { path: p, result };
+  }
+  return null;
+}
+
 export const HAND_RANK_ORDER: Record<HandLabel, number> = {
   pair: 1, two_pair: 2, three_of_a_kind: 3, straight: 4,
   flush: 5, full_house: 6, four_of_a_kind: 7, straight_flush: 8, royal_flush: 9,

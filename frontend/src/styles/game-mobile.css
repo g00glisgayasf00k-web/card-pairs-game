@@ -249,6 +249,24 @@
   box-shadow: 0 0 12px rgba(125, 255, 186, 0.5);
 }
 
+.hands-track--stat {
+  height: auto;
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  overflow: visible;
+  text-align: center;
+}
+
+.hands-track--stat .hands-label {
+  position: static;
+  transform: none;
+  display: block;
+  font-size: 0.62rem;
+  opacity: 0.75;
+  padding: 0;
+}
+
 .xp-fill::after {
   content: "";
   position: absolute;

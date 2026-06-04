@@ -2,12 +2,11 @@ import { HAND_RANK_ORDER, type HandLabel } from "./pokerHands";
 import { MAX_LEVEL } from "./levels";
 
 const STORAGE_KEY = "royalMatchProgress";
-const VERSION = 1;
+const VERSION = 2;
 
 export interface SavedProgress {
   v: typeof VERSION;
   level: number;
-  totalScore: number;
   levelScore: number;
   levelHands: number;
   handsCleared: number;
@@ -23,10 +22,9 @@ function isHandLabel(v: unknown): v is HandLabel {
 function parseProgress(raw: string | null): SavedProgress | null {
   if (!raw) return null;
   try {
-    const data = JSON.parse(raw) as Partial<SavedProgress>;
-    if (data.v !== VERSION) return null;
+    const data = JSON.parse(raw) as Partial<SavedProgress> & { totalScore?: number };
+    if (data.v !== VERSION && data.v !== 1) return null;
     if (typeof data.level !== "number" || data.level < 1 || data.level > MAX_LEVEL) return null;
-    if (typeof data.totalScore !== "number" || data.totalScore < 0) return null;
     if (typeof data.levelScore !== "number" || data.levelScore < 0) return null;
     if (typeof data.levelHands !== "number" || data.levelHands < 0) return null;
     if (typeof data.handsCleared !== "number" || data.handsCleared < 0) return null;
@@ -35,7 +33,6 @@ function parseProgress(raw: string | null): SavedProgress | null {
     return {
       v: VERSION,
       level: Math.floor(data.level),
-      totalScore: Math.floor(data.totalScore),
       levelScore: Math.floor(data.levelScore),
       levelHands: Math.floor(data.levelHands),
       handsCleared: Math.floor(data.handsCleared),
@@ -68,7 +65,6 @@ export function clearProgress(): void {
 export function defaultProgress(): Omit<SavedProgress, "v" | "updatedAt"> {
   return {
     level: 1,
-    totalScore: 0,
     levelScore: 0,
     levelHands: 0,
     handsCleared: 0,

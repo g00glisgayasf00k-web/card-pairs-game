@@ -13,6 +13,7 @@ import {
   HAND_DISPLAY,
   pathIsAdjacent,
   randomCard,
+  resolveHandFromPath,
   specialsEarnedForHand,
   straightMustStartAtEnd,
   type Card,
@@ -161,6 +162,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
     const [busy, setBusy] = useState(false);
     const fitRef = useRef<HTMLDivElement>(null);
     const gridRef = useRef<HTMLDivElement>(null);
+    const finishingSwipe = useRef(false);
     const [gridFit, setGridFit] = useState<{ width: number; height: number } | null>(null);
 
     useEffect(() => {
@@ -191,7 +193,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
       };
     }, [embedded]);
 
-    const { path, clear, onPointerDown, onPointerMove, onPointerUp } =
+    const { path, pathRef, clear, onPointerDown, onPointerMove, onPointerUp } =
       useSwipePath(ROWS, COLS);
 
     const pathKey = (r: number, c: number) => `${r},${c}`;
@@ -333,11 +335,16 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
 
     // ── Main swipe handler ────────────────────────────────────────────────────
     const finishSwipe = useCallback(async () => {
-      if (locked || busy) { clear(); return; }
+      if (finishingSwipe.current || locked || busy) {
+        clear();
+        return;
+      }
+
+      const swipePath = pathRef.current;
 
       // Single tap
-      if (path.length === 1) {
-        const { row, col } = path[0]!;
+      if (swipePath.length === 1) {
+        const { row, col } = swipePath[0]!;
         const cell = board[row]?.[col];
         if (cell?.special === "bomb") { await activateBomb(row, col); return; }
         if (cell?.special === "star") { await activateStar(row, col, cell.rank); return; }
@@ -345,64 +352,77 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
         return;
       }
 
-      if (path.length < 2) { clear(); return; }
-      if (!pathIsAdjacent(path)) { setMessage("Cards must be touching"); clear(); return; }
+      if (swipePath.length < 2) { clear(); return; }
 
-      const cards: Card[] = [];
-      for (const p of path) {
-        const cell = board[p.row]?.[p.col];
-        if (!cell) { clear(); return; }
-        cards.push(cell);
-      }
-
-      const result = evaluateHandFull(cards);
-      if (!result) { setMessage("Not a valid poker hand"); clear(); return; }
-      if (!straightMustStartAtEnd(cards)) {
-        setMessage("Straight: start on the 10 or Ace end");
+      const resolved = resolveHandFromPath(swipePath, (p) => board[p.row]?.[p.col]);
+      if (!resolved) {
+        if (!pathIsAdjacent(swipePath)) {
+          setMessage("Cards must be touching");
+        } else {
+          const cards = swipePath
+            .map((p) => board[p.row]?.[p.col])
+            .filter((c): c is Card => !!c);
+          const maybe = cards.length === swipePath.length ? evaluateHandFull(cards) : null;
+          if (maybe?.hand === "straight" && !straightMustStartAtEnd(cards)) {
+            setMessage("Straight: start on the 10 or Ace end");
+          } else {
+            setMessage("Not a valid poker hand");
+          }
+        }
         clear();
         return;
       }
 
+      const { path: validPath, result } = resolved;
+
+      finishingSwipe.current = true;
       setBusy(true);
 
-      const handKeys = new Set(path.map((p) => pathKey(p.row, p.col)));
-      const allCleared = handKeys; // bombs no longer blast during swipes
+      const handKeys = new Set(validPath.map((p) => pathKey(p.row, p.col)));
+      const allCleared = handKeys;
 
       const finalPts = Math.round(result.totalPoints * comboMultiplier);
       let toast = `${HAND_DISPLAY[result.hand]}! +${finalPts}`;
       if (result.hasJoker)       toast += " 🃏";
       if (comboMultiplier > 1)   toast += ` (×${comboMultiplier} combo)`;
 
-      const order = new Map(path.map((p, i) => [pathKey(p.row, p.col), i]));
+      const order = new Map(validPath.map((p, i) => [pathKey(p.row, p.col), i]));
       setPopping(handKeys);
       setPopOrder(order);
 
       const earned = specialsEarnedForHand(result.hand);
 
       const boardSnapshot = board;
-      await delay(waitForPop(path.length));
+      try {
+        await delay(waitForPop(validPath.length));
 
-      const gravity = applyGravity(boardSnapshot, allCleared, earned, path);
-      setBoard(gravity.newBoard);
-      setDropMap(gravity.dropMap);
-      setNewKeys(gravity.newKeys);
-      setPopping(new Set());
-      setPopOrder(new Map());
-      setMessage(toast);
+        const gravity = applyGravity(boardSnapshot, allCleared, earned, validPath);
+        setBoard(gravity.newBoard);
+        setDropMap(gravity.dropMap);
+        setNewKeys(gravity.newKeys);
+        setPopping(new Set());
+        setPopOrder(new Map());
+        setMessage(toast);
 
-      onHand(result);
+        onHand(result);
 
-      await delay(waitForSettle());
-      setDropMap(new Map());
-      setNewKeys(new Set());
-      clear();
-      setBusy(false);
+        await delay(waitForSettle());
+        setDropMap(new Map());
+        setNewKeys(new Set());
+      } finally {
+        finishingSwipe.current = false;
+        clear();
+        setBusy(false);
+      }
     }, [
-      busy, path, board, clear, comboMultiplier, locked,
+      busy, board, clear, comboMultiplier, locked, pathRef,
       onHand, activateBomb, activateStar,
     ]);
 
-    const handlePointerUp = () => { onPointerUp(); void finishSwipe(); };
+    const handlePointerUp = () => {
+      onPointerUp();
+      void finishSwipe();
+    };
 
     const gridStyle: CSSProperties = {
       gridTemplateColumns: `repeat(${COLS}, 1fr)`,
@@ -423,7 +443,6 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
         onPointerMove={(e) => onPointerMove(e, gridRef.current)}
         onPointerUp={handlePointerUp}
         onPointerCancel={handlePointerUp}
-        onLostPointerCapture={handlePointerUp}
       >
         {board.map((row, r) =>
           row.map((cell, c) => {

@@ -7,6 +7,8 @@ export interface CellPos {
 
 export function useSwipePath(rows: number, cols: number) {
   const [path, setPath] = useState<CellPos[]>([]);
+  /** Synchronous path — use on pointer up before React re-renders */
+  const pathRef = useRef<CellPos[]>([]);
   const dragging = useRef(false);
 
   const key = (r: number, c: number) => `${r},${c}`;
@@ -22,13 +24,14 @@ export function useSwipePath(rows: number, cols: number) {
         const k = key(row, col);
         const seen = new Set(prev.map((p) => key(p.row, p.col)));
         if (seen.has(k)) {
-          // Backtrack: pop back to this cell if it's the previous one
           if (prev.length >= 2) {
             const last = prev[prev.length - 1]!;
             const secondLast = prev[prev.length - 2]!;
             if (last.row === row && last.col === col) return prev;
             if (secondLast.row === row && secondLast.col === col) {
-              return prev.slice(0, -1);
+              const next = prev.slice(0, -1);
+              pathRef.current = next;
+              return next;
             }
           }
           return prev;
@@ -36,7 +39,9 @@ export function useSwipePath(rows: number, cols: number) {
         if (prev.length > 0 && !isAdjacent(prev[prev.length - 1]!, pos)) {
           return prev;
         }
-        return [...prev, pos];
+        const next = [...prev, pos];
+        pathRef.current = next;
+        return next;
       });
     },
     [rows, cols]
@@ -44,15 +49,19 @@ export function useSwipePath(rows: number, cols: number) {
 
   const start = useCallback(() => {
     dragging.current = true;
+    pathRef.current = [];
     setPath([]);
   }, []);
 
   const end = useCallback(() => {
     dragging.current = false;
-    return path;
-  }, [path]);
+    return pathRef.current;
+  }, []);
 
-  const clear = useCallback(() => setPath([]), []);
+  const clear = useCallback(() => {
+    pathRef.current = [];
+    setPath([]);
+  }, []);
 
   const cellFromPoint = useCallback(
     (
@@ -74,7 +83,7 @@ export function useSwipePath(rows: number, cols: number) {
 
   const onPointerDown = useCallback(
     (e: React.PointerEvent, gridRef: HTMLElement | null) => {
-      (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       start();
       const cell = cellFromPoint(e.clientX, e.clientY, gridRef);
       if (cell) addCell(cell.row, cell.col);
@@ -97,7 +106,7 @@ export function useSwipePath(rows: number, cols: number) {
 
   return {
     path,
-    setPath,
+    pathRef,
     clear,
     end,
     onPointerDown,

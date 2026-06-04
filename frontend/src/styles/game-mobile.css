@@ -489,13 +489,12 @@
 .board-stage {
   flex: 1 1 0;
   display: flex;
-  align-items: center;
+  align-items: stretch;
   justify-content: center;
   position: relative;
   min-height: 0;
   overflow: hidden;
   padding: 0;
-  container-type: size;
 }
 
 .board-stage__glow {
@@ -510,10 +509,14 @@
 .board-stage__frame {
   position: relative;
   z-index: 1;
+  flex: 1 1 0;
   width: 100%;
   max-height: 100%;
   min-height: 0;
-  padding: 0.35rem;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 0.25rem;
   border-radius: 20px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, transparent 30%),
@@ -526,27 +529,52 @@
     0 0 40px rgba(26, 107, 69, 0.25);
 }
 
-/* Embedded board panel tweaks */
+/* Embedded board — flex fill + JS fit inside .board-fit */
 .game-panel--embedded {
+  flex: 1 1 0;
   width: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.board-fit {
+  flex: 1 1 0;
+  min-height: 0;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
 }
 
 .game-panel--embedded .grid {
-  width: min(100cqi, calc(100cqh * 5 / 7));
-  max-width: 100%;
+  width: 100%;
+  max-width: none;
   max-height: 100%;
   aspect-ratio: 5 / 7;
   height: auto;
   margin: 0 auto;
+  flex-shrink: 0;
+  box-sizing: border-box;
   border-radius: 12px;
   border: 1px solid rgba(245, 208, 96, 0.3);
   box-shadow:
     inset 0 0 24px rgba(0, 0, 0, 0.5),
-    0 4px 16px rgba(0, 0, 0, 0.35);
+    0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.game-panel--embedded .grid[data-sized] {
+  aspect-ratio: unset;
+  width: auto;
+  height: auto;
 }
 
 .game-panel--embedded .cell {
   aspect-ratio: unset;
+  min-height: 0;
+  min-width: 0;
 }
 
 .toast-area--compact {
@@ -1331,5 +1359,88 @@
   font-weight: 800;
   color: var(--mg-gold);
   font-family: "Crimson Pro", Georgia, serif;
+}
+
+/* =============================================================================
+   PORTRAIT-ONLY — landscape blocker (phones / small tablets)
+   ============================================================================= */
+
+.portrait-gate {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding:
+    max(1.25rem, env(safe-area-inset-top))
+    1.25rem
+    max(1.25rem, env(safe-area-inset-bottom));
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 30%, rgba(125, 255, 186, 0.12) 0%, transparent 55%),
+    rgba(5, 26, 16, 0.94);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  touch-action: none;
+}
+
+.portrait-gate__card {
+  max-width: 20rem;
+  text-align: center;
+  padding: 1.75rem 1.5rem;
+  border-radius: var(--mg-radius);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 40%),
+    linear-gradient(165deg, #145a38 0%, var(--mg-mid) 50%, var(--mg-deep) 100%);
+  border: 2px solid rgba(245, 208, 96, 0.4);
+  box-shadow: var(--mg-shadow), 0 0 40px rgba(125, 255, 186, 0.12);
+}
+
+.portrait-gate__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.portrait-gate__phone {
+  font-size: 2.5rem;
+  line-height: 1;
+  animation: portrait-wiggle 2s ease-in-out infinite;
+}
+
+.portrait-gate__arrow {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--mg-gold);
+  line-height: 1;
+  animation: portrait-spin-hint 2s ease-in-out infinite;
+}
+
+@keyframes portrait-wiggle {
+  0%, 100% { transform: rotate(-12deg); }
+  50%      { transform: rotate(12deg); }
+}
+
+@keyframes portrait-spin-hint {
+  0%, 100% { transform: rotate(0deg); opacity: 0.85; }
+  50%      { transform: rotate(-90deg); opacity: 1; }
+}
+
+.portrait-gate__title {
+  margin: 0 0 0.65rem;
+  font-family: "Crimson Pro", Georgia, serif;
+  font-size: 1.35rem;
+  font-weight: 800;
+  color: var(--mg-gold);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
+.portrait-gate__text {
+  margin: 0;
+  font-size: 0.9rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.82);
 }
 

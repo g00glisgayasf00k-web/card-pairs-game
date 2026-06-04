@@ -2,6 +2,7 @@ import {
   CSSProperties,
   forwardRef,
   useCallback,
+  useEffect,
   useImperativeHandle,
   useRef,
   useState,
@@ -26,6 +27,28 @@ const ROWS = 8;
 const COLS = 8;
 const BOMB_PTS_PER_CARD = 50;
 const STAR_PTS_PER_CARD = 75;
+
+/** Match .grid gap/padding in CSS */
+const GRID_GAP = 3;
+const GRID_PAD = 5;
+/** Card width ÷ height */
+const CELL_ASPECT = 5 / 7;
+/** Room for border + outer glow so nothing clips */
+const GRID_VISUAL_INSET = 14;
+
+function computeGridFit(availW: number, availH: number): { width: number; height: number } | null {
+  const chromeW = 2 * GRID_PAD + (COLS - 1) * GRID_GAP;
+  const chromeH = 2 * GRID_PAD + (ROWS - 1) * GRID_GAP;
+  const w = Math.max(0, availW - GRID_VISUAL_INSET);
+  const h = Math.max(0, availH - GRID_VISUAL_INSET);
+  const cellW = Math.min((w - chromeW) / COLS, ((h - chromeH) / ROWS) * CELL_ASPECT);
+  if (cellW <= 0) return null;
+  const cellH = cellW / CELL_ASPECT;
+  return {
+    width: Math.floor(cellW * COLS + chromeW),
+    height: Math.floor(cellH * ROWS + chromeH),
+  };
+}
 
 export interface GameBoardHandle {
   shuffle: () => void;
@@ -111,7 +134,37 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
     const [dropMap, setDropMap] = useState<Map<string, number>>(new Map());
     const [newKeys, setNewKeys] = useState<Set<string>>(new Set());
     const [busy, setBusy] = useState(false);
+    const fitRef = useRef<HTMLDivElement>(null);
     const gridRef = useRef<HTMLDivElement>(null);
+    const [gridFit, setGridFit] = useState<{ width: number; height: number } | null>(null);
+
+    useEffect(() => {
+      if (!embedded) return;
+      const el = fitRef.current;
+      if (!el) return;
+
+      const measure = () => {
+        const { width, height } = el.getBoundingClientRect();
+        const next = computeGridFit(width, height);
+        setGridFit((prev) => {
+          if (!next) return prev;
+          if (prev?.width === next.width && prev?.height === next.height) return prev;
+          return next;
+        });
+      };
+
+      measure();
+      const ro = new ResizeObserver(measure);
+      ro.observe(el);
+      window.addEventListener("resize", measure);
+      const vv = window.visualViewport;
+      vv?.addEventListener("resize", measure);
+      return () => {
+        ro.disconnect();
+        window.removeEventListener("resize", measure);
+        vv?.removeEventListener("resize", measure);
+      };
+    }, [embedded]);
 
     const { path, clear, onPointerDown, onPointerMove, onPointerUp } =
       useSwipePath(ROWS, COLS);
@@ -307,64 +360,80 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
 
     const handlePointerUp = () => { onPointerUp(); void finishSwipe(); };
 
+    const gridStyle: CSSProperties = {
+      gridTemplateColumns: `repeat(${COLS}, 1fr)`,
+      gridTemplateRows: `repeat(${ROWS}, 1fr)`,
+      ...(embedded && gridFit
+        ? { width: gridFit.width, height: gridFit.height, maxWidth: "100%", maxHeight: "100%" }
+        : {}),
+    };
+
+    const grid = (
+      <div
+        ref={gridRef}
+        className="grid"
+        data-sized={embedded && gridFit ? "" : undefined}
+        style={gridStyle}
+        onPointerDown={(e) => onPointerDown(e, gridRef.current)}
+        onPointerMove={(e) => onPointerMove(e, gridRef.current)}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        onLostPointerCapture={handlePointerUp}
+      >
+        {board.map((row, r) =>
+          row.map((cell, c) => {
+            const key = pathKey(r, c);
+            const drop = dropMap.get(key) ?? 0;
+            const isNew = newKeys.has(key);
+            const isTappable = cell?.special === "bomb" || cell?.special === "star";
+
+            return (
+              <div key={`${r}-${c}`} className="cell" data-row={r} data-col={c}>
+                {cell && (
+                  <div
+                    data-row={r}
+                    data-col={c}
+                    className={[
+                      drop > 0           ? "card-dropping" : "",
+                      isNew              ? "card-new"      : "",
+                      blasting.has(key)  ? "card-blasting" : "",
+                      isTappable         ? "card-tappable" : "",
+                    ].filter(Boolean).join(" ")}
+                    style={
+                      drop > 0
+                        ? ({ "--drop-n": drop } as CSSProperties)
+                        : isNew
+                          ? ({ "--new-row": r } as CSSProperties)
+                          : undefined
+                    }
+                  >
+                    <PlayingCard
+                      card={cell}
+                      selected={inPath(r, c)}
+                      popping={popping.has(key)}
+                    />
+                  </div>
+                )}
+              </div>
+            );
+          })
+        )}
+      </div>
+    );
+
     return (
       <div className={`game-panel${embedded ? " game-panel--embedded" : ""}`}>
         <div className={`toast-area${embedded ? " toast-area--compact" : ""}`}>
           {message && <p className="toast" key={message}>{message}</p>}
         </div>
 
-        <div
-          ref={gridRef}
-          className="grid"
-          style={{
-            gridTemplateColumns: `repeat(${COLS}, 1fr)`,
-            gridTemplateRows: `repeat(${ROWS}, 1fr)`,
-          }}
-          onPointerDown={(e) => onPointerDown(e, gridRef.current)}
-          onPointerMove={(e) => onPointerMove(e, gridRef.current)}
-          onPointerUp={handlePointerUp}
-          onPointerCancel={handlePointerUp}
-          onLostPointerCapture={handlePointerUp}
-        >
-          {board.map((row, r) =>
-            row.map((cell, c) => {
-              const key = pathKey(r, c);
-              const drop = dropMap.get(key) ?? 0;
-              const isNew = newKeys.has(key);
-              const isTappable = cell?.special === "bomb" || cell?.special === "star";
-
-              return (
-                <div key={`${r}-${c}`} className="cell" data-row={r} data-col={c}>
-                  {cell && (
-                    <div
-                      data-row={r}
-                      data-col={c}
-                      className={[
-                        drop > 0           ? "card-dropping" : "",
-                        isNew              ? "card-new"      : "",
-                        blasting.has(key)  ? "card-blasting" : "",
-                        isTappable         ? "card-tappable" : "",
-                      ].filter(Boolean).join(" ")}
-                      style={
-                        drop > 0
-                          ? ({ "--drop-n": drop } as CSSProperties)
-                          : isNew
-                            ? ({ "--new-row": r } as CSSProperties)
-                            : undefined
-                      }
-                    >
-                      <PlayingCard
-                        card={cell}
-                        selected={inPath(r, c)}
-                        popping={popping.has(key)}
-                      />
-                    </div>
-                  )}
-                </div>
-              );
-            })
-          )}
-        </div>
+        {embedded ? (
+          <div className="board-fit" ref={fitRef}>
+            {grid}
+          </div>
+        ) : (
+          grid
+        )}
       </div>
     );
   }

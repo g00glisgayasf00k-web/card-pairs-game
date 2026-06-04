@@ -36,6 +36,28 @@ const CELL_ASPECT = 5 / 7;
 /** Room for border + outer glow so nothing clips */
 const GRID_VISUAL_INSET = 14;
 
+/** Keep in sync with CSS animation durations (game-mobile / index.css) */
+const ANIM = {
+  pop: 260,
+  popStagger: 32,
+  blast: 280,
+  drop: 300,
+  rain: 300,
+  rainStagger: 18,
+  settlePad: 24,
+} as const;
+
+const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+
+function waitForPop(count: number) {
+  const n = Math.max(1, count);
+  return ANIM.pop + (n - 1) * ANIM.popStagger + ANIM.settlePad;
+}
+
+function waitForSettle() {
+  return ANIM.drop + (ROWS - 1) * ANIM.rainStagger + ANIM.settlePad;
+}
+
 function computeGridFit(availW: number, availH: number): { width: number; height: number } | null {
   const chromeW = 2 * GRID_PAD + (COLS - 1) * GRID_GAP;
   const chromeH = 2 * GRID_PAD + (ROWS - 1) * GRID_GAP;
@@ -130,6 +152,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
     const [board, setBoard] = useState<(Card | null)[][]>(() => createBoard(ROWS, COLS));
     const [message, setMessage] = useState<string | null>(null);
     const [popping, setPopping] = useState<Set<string>>(new Set());
+    const [popOrder, setPopOrder] = useState<Map<string, number>>(new Map());
     const [blasting, setBlasting] = useState<Set<string>>(new Set());
     const [dropMap, setDropMap] = useState<Map<string, number>>(new Map());
     const [newKeys, setNewKeys] = useState<Set<string>>(new Set());
@@ -194,22 +217,27 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
         cols: Set<number>,
         toastMsg: string,
         pts: number,
-        isHand: FullHandResult | null
+        isHand: FullHandResult | null,
+        popCount: number,
+        hasBlast = false
       ) => {
         setMessage(toastMsg);
-        await new Promise((r) => setTimeout(r, 400));
+        await delay(
+          Math.max(waitForPop(popCount), hasBlast ? ANIM.blast + ANIM.settlePad : 0)
+        );
 
         const gravity = applyGravity(currentBoard, allCleared, earnedSpecials, []);
         setBoard(gravity.newBoard);
         setDropMap(gravity.dropMap);
         setNewKeys(gravity.newKeys);
         setPopping(new Set());
+        setPopOrder(new Map());
         setBlasting(new Set());
 
         if (isHand) onHand(isHand);
         else onActivation(pts);
 
-        await new Promise((r) => setTimeout(r, 420));
+        await delay(waitForSettle());
         setDropMap(new Map());
         setNewKeys(new Set());
         clear();
@@ -238,7 +266,13 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
         }
 
         const pts = cleared.size * BOMB_PTS_PER_CARD;
+        const blastOrder = new Map<string, number>();
+        blast.forEach((k) => {
+          const [rr, cc] = k.split(",").map(Number) as [number, number];
+          blastOrder.set(k, Math.abs(rr - r) + Math.abs(cc - c));
+        });
         setPopping(new Set([bombKey]));
+        setPopOrder(new Map([[bombKey, 0], ...blastOrder]));
         setBlasting(blast);
 
         await commitClear(
@@ -248,7 +282,9 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
           new Set([c]),
           `💣 BOOM! ${cleared.size} cards cleared! +${pts}`,
           pts,
-          null
+          null,
+          cleared.size,
+          true
         );
       },
       [board, commitClear]
@@ -260,14 +296,16 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
         setBusy(true);
         const cleared = new Set<string>();
         const poppingSet = new Set<string>();
+        const order = new Map<string, number>();
 
-        // Clear the star itself + every card on the board with the same rank
         for (let rr = 0; rr < ROWS; rr++) {
           for (let cc = 0; cc < COLS; cc++) {
             const cell = board[rr]?.[cc];
             if (cell && (cell.rank === rank || (rr === r && cc === c))) {
-              cleared.add(`${rr},${cc}`);
-              poppingSet.add(`${rr},${cc}`);
+              const k = `${rr},${cc}`;
+              cleared.add(k);
+              poppingSet.add(k);
+              order.set(k, Math.abs(rr - r) + Math.abs(cc - c));
             }
           }
         }
@@ -275,6 +313,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
         const count = cleared.size;
         const pts = count * STAR_PTS_PER_CARD;
         setPopping(poppingSet);
+        setPopOrder(order);
 
         await commitClear(
           board,
@@ -283,7 +322,8 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
           new Set([c]),
           `⭐ Cleared all ${count}× ${rank}s! +${pts}`,
           pts,
-          null
+          null,
+          count
         );
       },
       [board, commitClear]
@@ -331,24 +371,26 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
       if (result.hasJoker)       toast += " 🃏";
       if (comboMultiplier > 1)   toast += ` (×${comboMultiplier} combo)`;
 
+      const order = new Map(path.map((p, i) => [pathKey(p.row, p.col), i]));
       setPopping(handKeys);
+      setPopOrder(order);
 
       const earned = specialsEarnedForHand(result.hand);
 
-      // Use a locally captured board snapshot before gravity runs
       const boardSnapshot = board;
-      await new Promise((r) => setTimeout(r, 380));
+      await delay(waitForPop(path.length));
 
       const gravity = applyGravity(boardSnapshot, allCleared, earned, path);
       setBoard(gravity.newBoard);
       setDropMap(gravity.dropMap);
       setNewKeys(gravity.newKeys);
       setPopping(new Set());
+      setPopOrder(new Map());
       setMessage(toast);
 
       onHand(result);
 
-      await new Promise((r) => setTimeout(r, 420));
+      await delay(waitForSettle());
       setDropMap(new Map());
       setNewKeys(new Set());
       clear();
@@ -386,6 +428,16 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
             const drop = dropMap.get(key) ?? 0;
             const isNew = newKeys.has(key);
             const isTappable = cell?.special === "bomb" || cell?.special === "star";
+            const isPopping = popping.has(key);
+            const isBlasting = blasting.has(key);
+            const cardStyle: CSSProperties | undefined =
+              drop > 0
+                ? { "--drop-n": drop }
+                : isNew
+                  ? { "--new-row": r }
+                  : isPopping || isBlasting
+                    ? { "--pop-order": popOrder.get(key) ?? 0 }
+                    : undefined;
 
             return (
               <div key={`${r}-${c}`} className="cell" data-row={r} data-col={c}>
@@ -396,21 +448,16 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
                     className={[
                       drop > 0           ? "card-dropping" : "",
                       isNew              ? "card-new"      : "",
-                      blasting.has(key)  ? "card-blasting" : "",
+                      isBlasting         ? "card-blasting" : "",
+                      isPopping          ? "card-clearing" : "",
                       isTappable         ? "card-tappable" : "",
                     ].filter(Boolean).join(" ")}
-                    style={
-                      drop > 0
-                        ? ({ "--drop-n": drop } as CSSProperties)
-                        : isNew
-                          ? ({ "--new-row": r } as CSSProperties)
-                          : undefined
-                    }
+                    style={cardStyle}
                   >
                     <PlayingCard
                       card={cell}
-                      selected={inPath(r, c)}
-                      popping={popping.has(key)}
+                      selected={inPath(r, c) && !isPopping && !isBlasting}
+                      popping={isPopping}
                     />
                   </div>
                 )}

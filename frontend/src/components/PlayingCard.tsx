@@ -27,8 +27,8 @@ export function PlayingCard({ card, selected, popping }: Props) {
         "playing-card",
         `suit-${card.suit}`,
         sp ? SPECIAL_CLASS[sp] : "",
-        selected ? "selected" : "",
-        popping  ? "pop"      : "",
+        selected && !popping ? "selected" : "",
+        popping ? "pop" : "",
       ].filter(Boolean).join(" ")}
       aria-label={`${card.rank} of ${card.suit}${sp ? ` (${sp})` : ""}`}
     >

@@ -521,20 +521,17 @@ header h1 {
 }
 
 .playing-card.pop {
-  animation: pop-out 0.38s ease-in forwards;
+  animation: pop-out 0.28s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  will-change: transform, opacity;
 }
 
 @keyframes pop-out {
   0% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  40% {
-    transform: scale(1.15);
+    transform: scale(1) translateZ(0);
     opacity: 1;
   }
   100% {
-    transform: scale(0);
+    transform: scale(0.85) translateZ(0);
     opacity: 0;
   }
 }
@@ -1330,32 +1327,33 @@ section h2 {
 
 /* Existing card that fell down N cells */
 .card-dropping {
-  animation: card-drop 0.38s cubic-bezier(0.215, 0.61, 0.355, 1) both;
+  animation: card-drop 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+  will-change: transform;
 }
 
 @keyframes card-drop {
-  from { transform: translateY(calc(-1 * var(--drop-n, 1) * 107%)); }
-  to   { transform: translateY(0); }
+  from { transform: translate3d(0, calc(-1 * var(--drop-n, 1) * 105%), 0); }
+  to   { transform: translate3d(0, 0, 0); }
 }
 
 /* New card raining in from the top */
 .card-new {
-  animation: card-rain 0.42s cubic-bezier(0.215, 0.61, 0.355, 1) both;
-  animation-delay: calc(var(--new-row, 0) * 0.03s);
+  animation: card-rain 0.3s cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--new-row, 0) * 18ms);
+  will-change: transform, opacity;
 }
 
 @keyframes card-rain {
   from {
-    transform: translateY(calc(-1 * (var(--new-row, 0) + 1) * 107%));
-    opacity: 0;
+    transform: translate3d(0, calc(-1 * (var(--new-row, 0) + 1) * 105%), 0);
+    opacity: 0.35;
   }
-  30% { opacity: 1; }
-  to  { transform: translateY(0); opacity: 1; }
+  to  { transform: translate3d(0, 0, 0); opacity: 1; }
 }
 
-/* Blast (bomb clear) */
+/* Blast (bomb clear) — wrapper; card animates inside on mobile */
 .card-blasting {
-  animation: card-blast 0.38s ease-out both;
+  pointer-events: none;
 }
 
 /* Tappable special cards — finger-cursor + scale-on-hover hint */
@@ -1371,11 +1369,15 @@ section h2 {
   transition: transform 0.07s ease;
 }
 
+.card-blasting .playing-card {
+  animation: card-blast 0.28s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation-delay: calc(var(--pop-order, 0) * 32ms);
+}
+
 @keyframes card-blast {
-  0%   { transform: scale(1);    opacity: 1; background: #fff; }
-  25%  { transform: scale(1.2);  background: #ff6b00; }
-  60%  { transform: scale(0.8);  opacity: 0.6; }
-  100% { transform: scale(0);    opacity: 0; }
+  0%   { transform: scale(1) translateZ(0);    opacity: 1; filter: brightness(1); }
+  40%  { transform: scale(1.05) translateZ(0); opacity: 1; filter: brightness(1.2); }
+  100% { transform: scale(0.82) translateZ(0); opacity: 0; }
 }
 
 /* ── Special cards ── */

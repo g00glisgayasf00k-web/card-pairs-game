@@ -3,7 +3,7 @@ version: "1"
 
 services:
   - type: web
-    name: poker-pairs
+    name: royal-match-poker
     runtime: docker
     plan: free
     region: oregon

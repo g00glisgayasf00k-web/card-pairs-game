@@ -9,9 +9,9 @@ export default defineConfig({
       registerType: "autoUpdate",
       includeAssets: ["favicon.svg"],
       manifest: {
-        name: "Poker Pairs",
-        short_name: "PokerPairs",
-        description: "Swipe adjacent cards to make poker hands",
+        name: "Royal Match Poker",
+        short_name: "Royal Match",
+        description: "Swipe adjacent cards to make poker hands and clear the board",
         theme_color: "#0d4a2e",
         background_color: "#0a3522",
         display: "standalone",

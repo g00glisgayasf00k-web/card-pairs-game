@@ -47,9 +47,16 @@ export async function submitScore(payload: {
   points: number;
   hands_cleared: number;
   best_hand: string;
+  username?: string | null;
 }) {
-  return request<{ saved: boolean; id?: number }>("/api/scores/submit", {
+  const username = payload.username ?? localStorage.getItem("username");
+  return request<{ saved: boolean; id?: number; message?: string }>("/api/scores/submit", {
     method: "POST",
-    body: JSON.stringify(payload),
+    body: JSON.stringify({
+      points: payload.points,
+      hands_cleared: payload.hands_cleared,
+      best_hand: payload.best_hand,
+      username: username?.trim() || undefined,
+    }),
   });
 }

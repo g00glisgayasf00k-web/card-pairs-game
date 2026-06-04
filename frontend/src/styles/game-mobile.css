@@ -15,11 +15,19 @@
   --mg-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
 }
 
+.app.app--game {
+  padding: 0;
+  padding-bottom: 0;
+}
+
 /* ── App wrapper when in game mode ── */
 .app--game {
   max-width: none;
   width: 100%;
-  min-height: 100dvh;
+  height: 100dvh;
+  max-height: 100dvh;
+  min-height: 0;
+  overflow: hidden;
   padding: 0;
   margin: 0;
   border-radius: 0;
@@ -36,7 +44,9 @@
   display: flex;
   justify-content: center;
   align-items: stretch;
-  min-height: 100dvh;
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
   padding: 0;
   background: transparent;
 }
@@ -47,13 +57,16 @@
   flex-direction: column;
   width: 100%;
   max-width: var(--mg-shell-w);
-  min-height: 100dvh;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
   margin: 0 auto;
+  overflow: hidden;
   padding:
-    max(0.5rem, env(safe-area-inset-top))
-    0.65rem
-    max(0.65rem, env(safe-area-inset-bottom));
-  gap: 0.55rem;
+    max(0.35rem, env(safe-area-inset-top))
+    0.5rem
+    max(0.35rem, env(safe-area-inset-bottom));
+  gap: 0.4rem;
 }
 
 /* Hide legacy desktop layout pieces */
@@ -474,13 +487,15 @@
    ============================================================================= */
 
 .board-stage {
-  flex: 1;
+  flex: 1 1 0;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   min-height: 0;
-  padding: 0.15rem 0;
+  overflow: hidden;
+  padding: 0;
+  container-type: size;
 }
 
 .board-stage__glow {
@@ -496,7 +511,9 @@
   position: relative;
   z-index: 1;
   width: 100%;
-  padding: 0.5rem;
+  max-height: 100%;
+  min-height: 0;
+  padding: 0.35rem;
   border-radius: 20px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, transparent 30%),
@@ -515,13 +532,21 @@
 }
 
 .game-panel--embedded .grid {
+  width: min(100cqi, calc(100cqh * 5 / 7));
   max-width: 100%;
-  margin: 0;
+  max-height: 100%;
+  aspect-ratio: 5 / 7;
+  height: auto;
+  margin: 0 auto;
   border-radius: 12px;
   border: 1px solid rgba(245, 208, 96, 0.3);
   box-shadow:
     inset 0 0 24px rgba(0, 0, 0, 0.5),
     0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.game-panel--embedded .cell {
+  aspect-ratio: unset;
 }
 
 .toast-area--compact {
@@ -591,7 +616,9 @@
   flex-shrink: 0;
   display: flex;
   gap: 0.35rem;
-  padding: 0.5rem 0.15rem 0.25rem;
+  padding:
+    0.35rem 0.15rem
+    max(0.35rem, env(safe-area-inset-bottom));
 }
 
 .action-btn {
@@ -759,6 +786,31 @@
 .game-screen .game-over-modal {
   border: 2px solid rgba(245, 208, 96, 0.4);
   box-shadow: var(--mg-shadow), 0 0 40px rgba(245, 208, 96, 0.15);
+}
+
+@media (max-height: 740px) {
+  .mobile-shell:not(.mobile-shell--home) {
+    gap: 0.3rem;
+    padding-top: max(0.25rem, env(safe-area-inset-top));
+  }
+
+  .game-hud {
+    padding: 0.45rem 0.55rem 0.4rem;
+    gap: 0.3rem;
+  }
+
+  .xp-track,
+  .hands-track {
+    min-height: 1.15rem;
+  }
+
+  .action-btn {
+    padding: 0.38rem 0.15rem 0.32rem;
+  }
+
+  .action-btn__icon {
+    font-size: 1.15rem;
+  }
 }
 
 /* Desktop: phone frame effect */
@@ -1133,6 +1185,13 @@
   margin: 0.5rem 0 0;
   font-size: 0.78rem;
   color: #ff8a8a;
+  text-align: center;
+}
+
+.home-name-hint {
+  margin: 0.45rem 0 0;
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.45);
   text-align: center;
 }
 

@@ -10,15 +10,15 @@ export default function App() {
     localStorage.getItem("username")
   );
 
-  const onAuth = (u: string, token: string) => {
+  const onSetName = (u: string) => {
     localStorage.setItem("username", u);
-    localStorage.setItem("token", token);
+    localStorage.removeItem("token");
     setUsername(u);
   };
 
-  const onLogout = () => {
-    localStorage.removeItem("token");
+  const onClearName = () => {
     localStorage.removeItem("username");
+    localStorage.removeItem("token");
     setUsername(null);
   };
 
@@ -34,8 +34,8 @@ export default function App() {
     <div className="app app--home">
       <OnboardingScreen
         username={username}
-        onAuth={onAuth}
-        onLogout={onLogout}
+        onSetName={onSetName}
+        onClearName={onClearName}
         onPlay={() => setScreen("game")}
       />
     </div>

@@ -1,5 +1,4 @@
 import { useState, type FormEvent } from "react";
-import { login, register } from "../lib/api";
 import { Leaderboard } from "../components/Leaderboard";
 import { HAND_DISPLAY, HAND_SCORE_LIST, type HandLabel } from "../lib/pokerHands";
 
@@ -7,41 +6,34 @@ const HANDS = HAND_SCORE_LIST.map(({ hand, points }) => [hand, points] as [HandL
 
 interface Props {
   username: string | null;
-  onAuth: (username: string, token: string) => void;
-  onLogout: () => void;
+  onSetName: (username: string) => void;
+  onClearName: () => void;
   onPlay: () => void;
 }
 
-export function OnboardingScreen({ username, onAuth, onLogout, onPlay }: Props) {
-  const [authMode, setAuthMode] = useState<"login" | "register">("login");
-  const [user, setUser] = useState("");
-  const [pass, setPass] = useState("");
-  const [authError, setAuthError] = useState<string | null>(null);
-  const [authLoading, setAuthLoading] = useState(false);
+export function OnboardingScreen({ username, onSetName, onClearName, onPlay }: Props) {
+  const [nameInput, setNameInput] = useState(username ?? "");
+  const [nameError, setNameError] = useState<string | null>(null);
   const [section, setSection] = useState<"leaderboard" | "rules" | null>(null);
 
-  const submitAuth = async (e: FormEvent) => {
+  const saveName = (e: FormEvent) => {
     e.preventDefault();
-    setAuthError(null);
-    setAuthLoading(true);
-    try {
-      const fn = authMode === "login" ? login : register;
-      const res = await fn(user.trim(), pass);
-      localStorage.setItem("token", res.token);
-      onAuth(res.username, res.token);
-      setPass("");
-      setUser("");
-    } catch (err) {
-      setAuthError(err instanceof Error ? err.message : "Failed");
-    } finally {
-      setAuthLoading(false);
+    const trimmed = nameInput.trim();
+    if (trimmed.length < 2) {
+      setNameError("Name must be at least 2 characters");
+      return;
     }
+    if (trimmed.length > 32) {
+      setNameError("Name must be 32 characters or less");
+      return;
+    }
+    setNameError(null);
+    onSetName(trimmed);
   };
 
   return (
     <div className="home-screen">
       <div className="mobile-shell mobile-shell--home">
-        {/* ── Hero banner ── */}
         <header className="home-hero">
           <div className="home-hero__shine" aria-hidden />
           <div className="home-suits" aria-hidden>
@@ -50,17 +42,15 @@ export function OnboardingScreen({ username, onAuth, onLogout, onPlay }: Props) 
             <span className="suit-diamonds">♦</span>
             <span className="suit-clubs">♣</span>
           </div>
-          <h1 className="home-title">Poker Pairs</h1>
+          <h1 className="home-title">Royal Match Poker</h1>
           <p className="home-tagline">Swipe hands · Clear the board · Level up</p>
         </header>
 
-        {/* ── Play CTA ── */}
         <button type="button" className="home-play-btn" onClick={onPlay}>
           <span className="home-play-btn__icon">🎴</span>
           <span className="home-play-btn__label">Play</span>
         </button>
 
-        {/* ── Feature chips ── */}
         <div className="home-features">
           <div className="home-feature-chip">
             <span>🃏</span>
@@ -76,69 +66,54 @@ export function OnboardingScreen({ username, onAuth, onLogout, onPlay }: Props) 
           </div>
         </div>
 
-        {/* ── Auth / profile ── */}
         <div className="home-panel home-panel--auth">
+          <div className="home-panel__header">
+            <span className="home-panel__icon">👤</span>
+            <span>Your name for the leaderboard</span>
+          </div>
           {username ? (
             <div className="home-profile">
               <div className="home-profile__badge">
                 <span className="home-profile__avatar">👤</span>
                 <div className="home-profile__info">
-                  <span className="home-profile__label">Signed in</span>
+                  <span className="home-profile__label">Playing as</span>
                   <strong className="home-profile__name">{username}</strong>
                 </div>
               </div>
-              <button type="button" className="home-btn-ghost" onClick={onLogout}>
-                Log out
+              <button
+                type="button"
+                className="home-btn-ghost"
+                onClick={() => {
+                  onClearName();
+                  setNameInput("");
+                }}
+              >
+                Change name
               </button>
             </div>
           ) : (
-            <>
-              <div className="home-panel__header">
-                <span className="home-panel__icon">🏆</span>
-                <span>Save scores to the leaderboard</span>
+            <form className="home-auth-form" onSubmit={saveName}>
+              <div className="home-auth-fields">
+                <input
+                  placeholder="Enter your name"
+                  value={nameInput}
+                  onChange={(e) => {
+                    setNameInput(e.target.value);
+                    setNameError(null);
+                  }}
+                  autoComplete="nickname"
+                  maxLength={32}
+                />
+                <button type="submit" className="home-btn-submit">
+                  Save name
+                </button>
               </div>
-              <form className="home-auth-form" onSubmit={submitAuth}>
-                <div className="home-auth-tabs">
-                  <button
-                    type="button"
-                    className={authMode === "login" ? "active" : ""}
-                    onClick={() => { setAuthMode("login"); setAuthError(null); }}
-                  >
-                    Log in
-                  </button>
-                  <button
-                    type="button"
-                    className={authMode === "register" ? "active" : ""}
-                    onClick={() => { setAuthMode("register"); setAuthError(null); }}
-                  >
-                    Register
-                  </button>
-                </div>
-                <div className="home-auth-fields">
-                  <input
-                    placeholder="Username"
-                    value={user}
-                    onChange={(e) => setUser(e.target.value)}
-                    autoComplete="username"
-                  />
-                  <input
-                    type="password"
-                    placeholder="Password"
-                    value={pass}
-                    onChange={(e) => setPass(e.target.value)}
-                    autoComplete={authMode === "login" ? "current-password" : "new-password"}
-                  />
-                  <button type="submit" className="home-btn-submit" disabled={authLoading}>
-                    {authLoading ? "…" : authMode === "login" ? "Log in" : "Create account"}
-                  </button>
-                </div>
-                {authError && <p className="home-error">{authError}</p>}
-              </form>
-            </>
+              {nameError && <p className="home-error">{nameError}</p>}
+              <p className="home-name-hint">Optional — scores save when you exit a run.</p>
+            </form>
           )}
         </div>
 
-        {/* ── Expandable panels ── */}
         <div className="home-panels">
           <div className="home-panel-group">
             <button

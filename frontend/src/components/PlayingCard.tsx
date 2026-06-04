@@ -33,22 +33,13 @@ export function PlayingCard({ card, selected, popping }: Props) {
       aria-label={`${card.rank} of ${card.suit}${sp ? ` (${sp})` : ""}`}
     >
       <div className="card-face">
-        {/* Top-left corner — rank dominant, suit below */}
         <div className="corner corner-tl">
           <span className="c-rank">{card.rank}</span>
-          <span className="c-suit">{suit}</span>
         </div>
 
-        {/* Centre — suit pip (hidden for specials, replaced by icon) */}
         {!sp && (
           <div className="center-pip" aria-hidden>{suit}</div>
         )}
-
-        {/* Bottom-right corner (rotated 180°) */}
-        <div className="corner corner-br" aria-hidden>
-          <span className="c-rank">{card.rank}</span>
-          <span className="c-suit">{suit}</span>
-        </div>
 
         {/* Special card — big centred icon */}
         {sp && (

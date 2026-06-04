@@ -143,6 +143,7 @@ export function GameScreen({ username, onMenu }: Props) {
         points: totalScoreRef.current,
         hands_cleared: handsClearedRef.current,
         best_hand: bestHandRef.current,
+        username,
       }).catch(() => {});
     }
     onMenu();
@@ -339,6 +340,7 @@ export function GameScreen({ username, onMenu }: Props) {
                   points: totalScoreRef.current,
                   hands_cleared: handsClearedRef.current,
                   best_hand: bestHandRef.current,
+                  username,
                 }).catch(() => {});
                 handleExit();
               }}

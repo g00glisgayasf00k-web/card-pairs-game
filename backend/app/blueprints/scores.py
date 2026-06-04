@@ -1,7 +1,10 @@
+import secrets
+
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required, verify_jwt_in_request
 from sqlalchemy import desc
 
+from app.blueprints.auth import _hash_password
 from app.models import Score, User, db
 scores_bp = Blueprint("scores", __name__)
 
@@ -74,7 +77,16 @@ def submit_score():
         pass
 
     if user_id is None:
-        return jsonify({"saved": False, "message": "Login to save scores"}), 200
+        username = (data.get("username") or "").strip()
+        if len(username) < 2 or len(username) > 32:
+            return jsonify({"saved": False, "message": "Enter your name (2–32 chars) to save"}), 200
+        user = User.query.filter_by(username=username).first()
+        if not user:
+            guest_secret = secrets.token_urlsafe(32)
+            user = User(username=username, password_hash=_hash_password(guest_secret))
+            db.session.add(user)
+            db.session.flush()
+        user_id = user.id
 
     score = Score(
         user_id=user_id,

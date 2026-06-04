@@ -427,12 +427,6 @@ header h1 {
   left: 2px;
 }
 
-.corner-br {
-  bottom: 1px;
-  right: 2px;
-  transform: rotate(180deg);
-}
-
 /* Rank — the key legibility item */
 .c-rank {
   display: block;
@@ -441,14 +435,6 @@ header h1 {
   line-height: 1;
   letter-spacing: -0.03em;
   font-variant-numeric: tabular-nums;
-}
-
-/* Suit below rank in corner */
-.c-suit {
-  display: block;
-  font-size: clamp(0.65rem, 3.2vw, 0.82rem);
-  line-height: 1;
-  margin-top: -1px;
 }
 
 /* Centre suit pip */

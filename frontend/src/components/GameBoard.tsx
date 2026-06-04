@@ -82,6 +82,8 @@ interface Props {
   onActivation: (pts: number) => void;
   /** Hide internal HUD — parent renders mobile shell */
   embedded?: boolean;
+  /** Block input during level transitions */
+  locked?: boolean;
 }
 
 // ── Gravity ───────────────────────────────────────────────────────────────────
@@ -148,7 +150,7 @@ function fisherYatesShuffle<T>(arr: T[]): T[] {
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export const GameBoard = forwardRef<GameBoardHandle, Props>(
-  function GameBoard({ comboMultiplier, onHand, onActivation, embedded }, ref) {
+  function GameBoard({ comboMultiplier, onHand, onActivation, embedded, locked = false }, ref) {
     const [board, setBoard] = useState<(Card | null)[][]>(() => createBoard(ROWS, COLS));
     const [message, setMessage] = useState<string | null>(null);
     const [popping, setPopping] = useState<Set<string>>(new Set());
@@ -197,7 +199,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
 
     useImperativeHandle(ref, () => ({
       shuffle: () => {
-        if (busy) return;
+        if (busy || locked) return;
         setBoard((prev) => {
           const flat = prev.flat().filter(Boolean) as Card[];
           const shuffled = fisherYatesShuffle(flat);
@@ -206,7 +208,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
           );
         });
       },
-    }));
+    }), [busy, locked]);
 
     // ── Shared gravity commit ─────────────────────────────────────────────────
     const commitClear = useCallback(
@@ -331,7 +333,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
 
     // ── Main swipe handler ────────────────────────────────────────────────────
     const finishSwipe = useCallback(async () => {
-      if (busy) { clear(); return; }
+      if (locked || busy) { clear(); return; }
 
       // Single tap
       if (path.length === 1) {
@@ -396,7 +398,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
       clear();
       setBusy(false);
     }, [
-      busy, path, board, clear, comboMultiplier,
+      busy, path, board, clear, comboMultiplier, locked,
       onHand, activateBomb, activateStar,
     ]);
 
@@ -415,6 +417,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
         ref={gridRef}
         className="grid"
         data-sized={embedded && gridFit ? "" : undefined}
+        data-locked={locked ? "" : undefined}
         style={gridStyle}
         onPointerDown={(e) => onPointerDown(e, gridRef.current)}
         onPointerMove={(e) => onPointerMove(e, gridRef.current)}

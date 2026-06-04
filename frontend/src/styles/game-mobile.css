@@ -892,6 +892,53 @@
   box-shadow: var(--mg-shadow), 0 0 40px rgba(245, 208, 96, 0.15);
 }
 
+.round-complete-modal .btn.ghost {
+  width: 100%;
+  margin-top: 0.35rem;
+  color: var(--mg-gold);
+  border-color: rgba(245, 208, 96, 0.45);
+}
+
+.round-complete-hint {
+  margin: 0.85rem 0 0.25rem;
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.72);
+  animation: round-complete-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes round-complete-pulse {
+  0%, 100% { opacity: 0.65; }
+  50%      { opacity: 1; }
+}
+
+.board-stage--locked {
+  pointer-events: none;
+}
+
+.grid[data-locked] {
+  pointer-events: none;
+}
+
+.home-start-over {
+  display: block;
+  width: 100%;
+  margin: -0.15rem 0 0;
+  padding: 0.35rem 0.5rem;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.55);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.home-start-over:active {
+  color: rgba(255, 255, 255, 0.85);
+}
+
 @media (max-height: 740px) {
   .mobile-shell:not(.mobile-shell--home) {
     gap: 0.3rem;

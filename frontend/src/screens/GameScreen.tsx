@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { submitScore } from "../lib/api";
 import {
   HAND_DISPLAY,
@@ -10,6 +10,12 @@ import {
   type HandLabel,
 } from "../lib/pokerHands";
 import { comboLabel, comboMultiplier, getLevelConfig, levelRequirementsMet, MAX_LEVEL } from "../lib/levels";
+import {
+  clearProgress,
+  defaultProgress,
+  loadProgress,
+  saveProgress,
+} from "../lib/progress";
 import { GameBoard, type GameBoardHandle } from "../components/GameBoard";
 import { SpecialArt } from "../components/SpecialArt";
 
@@ -18,11 +24,21 @@ interface Props {
   onMenu: () => void;
 }
 
-type Phase = "playing" | "leveling_up" | "campaign_complete";
+type Phase = "playing" | "round_complete" | "campaign_complete";
 
 interface FloatScore {
   id: number;
   text: string;
+}
+
+interface RunState {
+  level: number;
+  totalScore: number;
+  levelScore: number;
+  levelHands: number;
+  handsCleared: number;
+  bestHand: HandLabel;
+  streak: number;
 }
 
 const HAND_BADGE: Record<HandLabel, string> = {
@@ -37,27 +53,52 @@ const HAND_BADGE: Record<HandLabel, string> = {
   royal_flush: "👑",
 };
 
+const ROUND_COMPLETE_MS = 2200;
+
+function initRunState(): RunState {
+  const saved = loadProgress();
+  if (saved) {
+    return {
+      level: saved.level,
+      totalScore: saved.totalScore,
+      levelScore: saved.levelScore,
+      levelHands: saved.levelHands,
+      handsCleared: saved.handsCleared,
+      bestHand: saved.bestHand,
+      streak: saved.streak,
+    };
+  }
+  return defaultProgress();
+}
+
 export function GameScreen({ username, onMenu }: Props) {
-  const [level, setLevel] = useState(1);
-  const [totalScore, setTotalScore] = useState(0);
-  const [levelScore, setLevelScore] = useState(0);
-  const [levelHands, setLevelHands] = useState(0);
-  const [handsCleared, setHandsCleared] = useState(0);
-  const [bestHand, setBestHand] = useState<HandLabel>("pair");
-  const [streak, setStreak] = useState(0);
+  const [run, setRun] = useState<RunState>(initRunState);
+  const { level, totalScore, levelScore, levelHands, handsCleared, bestHand, streak } = run;
+
   const [phase, setPhase] = useState<Phase>("playing");
+  const [completedLevel, setCompletedLevel] = useState<number | null>(null);
+  const [completedStats, setCompletedStats] = useState<{ score: number; hands: number } | null>(
+    null
+  );
   const [showScores, setShowScores] = useState(false);
   const [showSpecials, setShowSpecials] = useState(false);
   const [boardKey, setBoardKey] = useState(0);
   const [floatScores, setFloatScores] = useState<FloatScore[]>([]);
   const floatId = useRef(0);
-  const levelScoreRef = useRef(0);
-  const levelHandsRef = useRef(0);
-  const totalScoreRef = useRef(0);
-  const handsClearedRef = useRef(0);
-  const bestHandRef = useRef<HandLabel>("pair");
+  const levelScoreRef = useRef(levelScore);
+  const levelHandsRef = useRef(levelHands);
+  const totalScoreRef = useRef(totalScore);
+  const handsClearedRef = useRef(handsCleared);
+  const bestHandRef = useRef(bestHand);
+  const advancingRef = useRef(false);
 
   const boardRef = useRef<GameBoardHandle>(null);
+
+  levelScoreRef.current = levelScore;
+  levelHandsRef.current = levelHands;
+  totalScoreRef.current = totalScore;
+  handsClearedRef.current = handsCleared;
+  bestHandRef.current = bestHand;
 
   const cfg = getLevelConfig(level);
   const combo = comboMultiplier(streak);
@@ -67,16 +108,67 @@ export function GameScreen({ username, onMenu }: Props) {
   const nextCfg = getLevelConfig(level + 1);
   const pointsMet = levelScore >= cfg.targetPoints;
   const handsMet = levelHands >= cfg.minHands;
+  const completedCfg = completedLevel ? getLevelConfig(completedLevel) : null;
+
+  const persistRun = useCallback((next: RunState) => {
+    saveProgress({
+      level: next.level,
+      totalScore: next.totalScore,
+      levelScore: next.levelScore,
+      levelHands: next.levelHands,
+      handsCleared: next.handsCleared,
+      bestHand: next.bestHand,
+      streak: next.streak,
+    });
+  }, []);
+
+  useEffect(() => {
+    persistRun(run);
+  }, [run, persistRun]);
+
+  const advanceLevel = useCallback(() => {
+    advancingRef.current = false;
+    setCompletedLevel(null);
+    setCompletedStats(null);
+    setRun((prev) => {
+      const next: RunState = {
+        ...prev,
+        level: prev.level + 1,
+        levelScore: 0,
+        levelHands: 0,
+        streak: 0,
+      };
+      levelScoreRef.current = 0;
+      levelHandsRef.current = 0;
+      return next;
+    });
+    setPhase("playing");
+    setBoardKey((k) => k + 1);
+  }, []);
+
+  useEffect(() => {
+    if (phase !== "round_complete") return;
+    const id = window.setTimeout(advanceLevel, ROUND_COMPLETE_MS);
+    return () => window.clearTimeout(id);
+  }, [phase, advanceLevel]);
 
   const tryAdvanceLevel = useCallback(
     (score: number, hands: number) => {
+      if (phase !== "playing" || advancingRef.current) return false;
       if (!levelRequirementsMet(score, hands, cfg)) return false;
-      setTimeout(() => {
-        setPhase(level >= MAX_LEVEL ? "campaign_complete" : "leveling_up");
-      }, 100);
+
+      advancingRef.current = true;
+      setCompletedLevel(level);
+      setCompletedStats({ score, hands });
+
+      if (level >= MAX_LEVEL) {
+        setPhase("campaign_complete");
+      } else {
+        setPhase("round_complete");
+      }
       return true;
     },
-    [cfg, level]
+    [cfg, level, phase]
   );
 
   const spawnFloat = useCallback((text: string) => {
@@ -96,24 +188,23 @@ export function GameScreen({ username, onMenu }: Props) {
       levelHandsRef.current = nextHands;
       levelScoreRef.current = nextScore;
 
-      setStreak(newStreak);
-      setHandsCleared((h) => {
-        const next = h + 1;
-        handsClearedRef.current = next;
-        return next;
-      });
-      setLevelHands(nextHands);
-      setLevelScore(nextScore);
-      setBestHand((b) => {
-        const next =
-          HAND_RANK_ORDER[result.hand] > HAND_RANK_ORDER[b] ? result.hand : b;
-        bestHandRef.current = next;
-        return next;
-      });
-      setTotalScore((ts) => {
-        const next = ts + comboPts;
-        totalScoreRef.current = next;
-        return next;
+      setRun((prev) => {
+        const nextBest =
+          HAND_RANK_ORDER[result.hand] > HAND_RANK_ORDER[prev.bestHand]
+            ? result.hand
+            : prev.bestHand;
+        bestHandRef.current = nextBest;
+        handsClearedRef.current = prev.handsCleared + 1;
+        totalScoreRef.current = prev.totalScore + comboPts;
+        return {
+          ...prev,
+          streak: newStreak,
+          handsCleared: prev.handsCleared + 1,
+          levelHands: nextHands,
+          levelScore: nextScore,
+          bestHand: nextBest,
+          totalScore: prev.totalScore + comboPts,
+        };
       });
       tryAdvanceLevel(nextScore, nextHands);
       spawnFloat(`+${comboPts.toLocaleString()}`);
@@ -125,12 +216,14 @@ export function GameScreen({ username, onMenu }: Props) {
     (pts: number) => {
       const nextScore = levelScoreRef.current + pts;
       levelScoreRef.current = nextScore;
-      setTotalScore((ts) => {
-        const next = ts + pts;
-        totalScoreRef.current = next;
-        return next;
+      setRun((prev) => {
+        totalScoreRef.current = prev.totalScore + pts;
+        return {
+          ...prev,
+          levelScore: nextScore,
+          totalScore: prev.totalScore + pts,
+        };
       });
-      setLevelScore(nextScore);
       tryAdvanceLevel(nextScore, levelHandsRef.current);
       spawnFloat(`+${pts.toLocaleString()}`);
     },
@@ -149,21 +242,22 @@ export function GameScreen({ username, onMenu }: Props) {
     onMenu();
   };
 
-  const advanceLevel = () => {
-    levelScoreRef.current = 0;
-    levelHandsRef.current = 0;
-    setLevel((l) => l + 1);
-    setLevelScore(0);
-    setLevelHands(0);
-    setStreak(0);
-    setPhase("playing");
-    setBoardKey((k) => k + 1);
+  const finishCampaign = () => {
+    submitScore({
+      points: totalScoreRef.current,
+      hands_cleared: handsClearedRef.current,
+      best_hand: bestHandRef.current,
+      username,
+    }).catch(() => {});
+    clearProgress();
+    onMenu();
   };
+
+  const boardLocked = phase !== "playing";
 
   return (
     <div className="game-screen">
       <div className="mobile-shell">
-        {/* ── TOP HUD ── */}
         <header className="game-hud">
           <div className="game-hud__row">
             <div className="level-badge" title={cfg.label}>
@@ -223,8 +317,7 @@ export function GameScreen({ username, onMenu }: Props) {
           </div>
         </header>
 
-        {/* ── BOARD STAGE ── */}
-        <main className="board-stage">
+        <main className={`board-stage${boardLocked ? " board-stage--locked" : ""}`}>
           <div className="board-stage__glow" aria-hidden />
           <div className="board-stage__frame">
             {floatScores.map((f) => (
@@ -236,6 +329,7 @@ export function GameScreen({ username, onMenu }: Props) {
               ref={boardRef}
               key={boardKey}
               embedded
+              locked={boardLocked}
               comboMultiplier={combo}
               onHand={handleHand}
               onActivation={handleActivation}
@@ -243,12 +337,12 @@ export function GameScreen({ username, onMenu }: Props) {
           </div>
         </main>
 
-        {/* ── BOTTOM ACTION BAR ── */}
         <nav className="action-bar">
           <button
             type="button"
             className="action-btn action-btn--shuffle"
             onClick={() => boardRef.current?.shuffle()}
+            disabled={boardLocked}
             title="Shuffle the board"
           >
             <span className="action-btn__icon">🔀</span>
@@ -283,35 +377,34 @@ export function GameScreen({ username, onMenu }: Props) {
         </nav>
       </div>
 
-      {/* ── Level-up overlay ── */}
-      {phase === "leveling_up" && level < MAX_LEVEL && (
-        <div className="modal-overlay levelup-overlay">
-          <div className="modal levelup-modal">
-            <div className="levelup-badge">LEVEL UP!</div>
-            <h2>Level {level + 1}</h2>
-            <p className="levelup-label">{nextCfg.label}</p>
+      {phase === "round_complete" && completedLevel !== null && completedCfg && (
+        <div className="modal-overlay levelup-overlay round-complete-overlay">
+          <div className="modal levelup-modal round-complete-modal">
+            <div className="levelup-badge round-complete-badge">ROUND COMPLETE!</div>
+            <h2>Level {completedLevel} cleared</h2>
+            <p className="levelup-label">{completedCfg.label}</p>
             <div className="levelup-perks">
               <div className="perk">
                 <span className="perk-icon">💰</span>
-                <span>{nextCfg.targetPoints.toLocaleString()} pts</span>
+                <span>{completedStats?.score.toLocaleString() ?? 0} pts this round</span>
               </div>
               <div className="perk">
                 <span className="perk-icon">🃏</span>
-                <span>{nextCfg.minHands} hands to clear</span>
+                <span>{completedStats?.hands ?? 0} hands cleared</span>
               </div>
               <div className="perk">
                 <span className="perk-icon">⭐</span>
-                <span>Earn 💣 ⭐ 🃏 on big hands</span>
+                <span>Up next: {nextCfg.label}</span>
               </div>
             </div>
-            <button type="button" className="btn" onClick={advanceLevel}>
-              Deal next level →
+            <p className="round-complete-hint">Starting level {level + 1}…</p>
+            <button type="button" className="btn ghost" onClick={advanceLevel}>
+              Continue now →
             </button>
           </div>
         </div>
       )}
 
-      {/* ── Campaign complete (beat level 100) ── */}
       {phase === "campaign_complete" && (
         <div className="modal-overlay levelup-overlay">
           <div className="modal levelup-modal">
@@ -332,26 +425,13 @@ export function GameScreen({ username, onMenu }: Props) {
                 <span>Best: {HAND_DISPLAY[bestHand]}</span>
               </div>
             </div>
-            <button
-              type="button"
-              className="btn"
-              onClick={() => {
-                submitScore({
-                  points: totalScoreRef.current,
-                  hands_cleared: handsClearedRef.current,
-                  best_hand: bestHandRef.current,
-                  username,
-                }).catch(() => {});
-                handleExit();
-              }}
-            >
+            <button type="button" className="btn" onClick={finishCampaign}>
               Finish →
             </button>
           </div>
         </div>
       )}
 
-      {/* ── Hand scores reference ── */}
       {showScores && (
         <div
           className="modal-overlay scores-overlay"
@@ -385,7 +465,6 @@ export function GameScreen({ username, onMenu }: Props) {
         </div>
       )}
 
-      {/* ── Power-ups guide ── */}
       {showSpecials && (
         <div
           className="modal-overlay scores-overlay"

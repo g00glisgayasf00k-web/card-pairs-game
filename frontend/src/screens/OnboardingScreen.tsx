@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { Leaderboard } from "../components/Leaderboard";
+import { clearProgress, loadProgress } from "../lib/progress";
 import { HAND_DISPLAY, HAND_SCORE_LIST, type HandLabel } from "../lib/pokerHands";
 
 const HANDS = HAND_SCORE_LIST.map(({ hand, points }) => [hand, points] as [HandLabel, number]);
@@ -15,6 +16,12 @@ export function OnboardingScreen({ username, onSetName, onClearName, onPlay }: P
   const [nameInput, setNameInput] = useState(username ?? "");
   const [nameError, setNameError] = useState<string | null>(null);
   const [section, setSection] = useState<"leaderboard" | "rules" | null>(null);
+  const saved = loadProgress();
+
+  const startFresh = () => {
+    clearProgress();
+    onPlay();
+  };
 
   const saveName = (e: FormEvent) => {
     e.preventDefault();
@@ -48,8 +55,16 @@ export function OnboardingScreen({ username, onSetName, onClearName, onPlay }: P
 
         <button type="button" className="home-play-btn" onClick={onPlay}>
           <span className="home-play-btn__icon">🎴</span>
-          <span className="home-play-btn__label">Play</span>
+          <span className="home-play-btn__label">
+            {saved ? `Continue — Level ${saved.level}` : "Play"}
+          </span>
         </button>
+
+        {saved && (
+          <button type="button" className="home-start-over" onClick={startFresh}>
+            Start over from level 1
+          </button>
+        )}
 
         <div className="home-features">
           <div className="home-feature-chip">

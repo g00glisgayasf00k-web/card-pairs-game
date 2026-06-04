@@ -16,7 +16,7 @@ A mobile-friendly web matching game: swipe **adjacent** playing cards to form po
 |-------|------|
 | Frontend | React + Vite, touch swipe, PWA |
 | Backend | Flask **blueprints** (`auth`, `game`, `scores`) |
-| DB | PostgreSQL on Render (SQLite locally) |
+| DB | SQLite (optional; no Postgres required for deploy) |
 | Deploy | Docker + `render.yaml` blueprint |
 
 ## Local development
@@ -49,7 +49,9 @@ Open `http://localhost:5173` — Vite proxies `/api` to Flask.
 2. In Render: **New → Blueprint** → connect `card-pairs-game`.
 3. **Branch:** `master` (not `main`).
 4. **Blueprint path:** `render.yaml` (repo root).
-5. Review the preview — you should see **1 web service** and **1 Postgres database**, then click **Deploy Blueprint**.
+5. Review the preview — you should see **1 web service**, then click **Deploy Blueprint**.
+
+No database is required for the current deploy (SQLite is used in-container for auth/scores if needed).
 
 If the dashboard says **“No resources managed by this Blueprint”**:
 

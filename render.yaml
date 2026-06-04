@@ -1,14 +1,6 @@
 # https://render.com/docs/blueprint-spec
 version: "1"
 
-databases:
-  - name: poker-pairs-db
-    plan: free
-    region: oregon
-    postgresMajorVersion: "16"
-    databaseName: poker_pairs
-    user: poker_pairs
-
 services:
   - type: web
     name: poker-pairs
@@ -21,9 +13,7 @@ services:
     autoDeploy: true
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
-          name: poker-pairs-db
-          property: connectionString
+        value: sqlite:////tmp/poker_pairs.db
       - key: SECRET_KEY
         generateValue: true
       - key: JWT_SECRET_KEY

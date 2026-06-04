@@ -1,204 +1,371 @@
-import { useCallback, useRef, useState } from "react";
+import {
+  CSSProperties,
+  forwardRef,
+  useCallback,
+  useImperativeHandle,
+  useRef,
+  useState,
+} from "react";
 import {
   createBoard,
-  evaluateHand,
+  evaluateHandFull,
   HAND_DISPLAY,
-  HAND_RANK_ORDER,
   pathIsAdjacent,
   randomCard,
+  specialsEarnedForHand,
   straightMustStartAtEnd,
   type Card,
-  type HandLabel,
+  type FullHandResult,
+  type Rank,
+  type SpecialType,
 } from "../lib/pokerHands";
 import { useSwipePath } from "../hooks/useSwipePath";
 import { PlayingCard } from "./PlayingCard";
 
-const ROWS = 6;
-const COLS = 6;
-const MOVES_START = 40;
+const ROWS = 8;
+const COLS = 8;
+const BOMB_PTS_PER_CARD = 50;
+const STAR_PTS_PER_CARD = 75;
 
-interface Props {
-  onScoreChange: (score: number, hands: number, best: HandLabel) => void;
-  onGameOver: (final: { score: number; hands: number; best: HandLabel }) => void;
+export interface GameBoardHandle {
+  shuffle: () => void;
 }
 
-export function GameBoard({ onScoreChange, onGameOver }: Props) {
-  const [board, setBoard] = useState<(Card | null)[][]>(() =>
-    createBoard(ROWS, COLS)
+interface Props {
+  comboMultiplier: number;
+  onHand: (result: FullHandResult) => void;
+  onActivation: (pts: number) => void;
+  /** Hide internal HUD — parent renders mobile shell */
+  embedded?: boolean;
+}
+
+// ── Gravity ───────────────────────────────────────────────────────────────────
+
+function applyGravity(
+  board: (Card | null)[][],
+  clearedKeys: Set<string>,
+  earned: SpecialType[],
+  spawnPath: { row: number; col: number }[]
+): { newBoard: (Card | null)[][]; dropMap: Map<string, number>; newKeys: Set<string> } {
+  const newBoard: (Card | null)[][] = Array.from({ length: ROWS }, () =>
+    Array<Card | null>(COLS).fill(null)
   );
-  const [score, setScore] = useState(0);
-  const [moves, setMoves] = useState(MOVES_START);
-  const [handsCleared, setHandsCleared] = useState(0);
-  const [bestHand, setBestHand] = useState<HandLabel>("pair");
-  const [message, setMessage] = useState<string | null>(null);
-  const [popping, setPopping] = useState<Set<string>>(new Set());
-  const [busy, setBusy] = useState(false);
-  const gridRef = useRef<HTMLDivElement>(null);
+  const dropMap = new Map<string, number>();
+  const newKeys = new Set<string>();
 
-  const { path, clear, onPointerDown, onPointerMove, onPointerUp } =
-    useSwipePath(ROWS, COLS);
-
-  const pathKey = (r: number, c: number) => `${r},${c}`;
-  const inPath = (r: number, c: number) =>
-    path.some((p) => p.row === r && p.col === c);
-
-  const finishSwipe = useCallback(async () => {
-    if (busy || path.length < 2) {
-      clear();
-      return;
+  for (let c = 0; c < COLS; c++) {
+    let write = ROWS - 1;
+    for (let r = ROWS - 1; r >= 0; r--) {
+      if (board[r]?.[c] && !clearedKeys.has(`${r},${c}`)) {
+        newBoard[write]![c] = board[r]![c];
+        const dropped = write - r;
+        if (dropped > 0) dropMap.set(`${write},${c}`, dropped);
+        write--;
+      }
     }
-    if (!pathIsAdjacent(path)) {
-      setMessage("Cards must be touching");
-      clear();
-      return;
+    for (let r = write; r >= 0; r--) {
+      newBoard[r]![c] = randomCard();
+      newKeys.add(`${r},${c}`);
     }
+  }
 
-    const cards: Card[] = [];
-    for (const p of path) {
-      const cell = board[p.row]?.[p.col];
-      if (!cell) {
+  if (earned.length > 0) {
+    const used = new Set<string>();
+    earned.forEach((sp, i) => {
+      // Spawn on swipe path cells — first reward on first card selected, then along the path
+      let key: string | undefined;
+      if (i < spawnPath.length) {
+        const { row, col } = spawnPath[i]!;
+        if (newBoard[row]?.[col]) key = `${row},${col}`;
+      }
+      if (!key || used.has(key)) {
+        key = [...newKeys].find((k) => !used.has(k));
+      }
+      if (!key) return;
+      used.add(key);
+      const [rr, cc] = key.split(",").map(Number) as [number, number];
+      newBoard[rr]![cc] = { ...newBoard[rr]![cc]!, special: sp };
+    });
+  }
+
+  return { newBoard, dropMap, newKeys };
+}
+
+function fisherYatesShuffle<T>(arr: T[]): T[] {
+  const a = [...arr];
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j]!, a[i]!];
+  }
+  return a;
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
+
+export const GameBoard = forwardRef<GameBoardHandle, Props>(
+  function GameBoard({ comboMultiplier, onHand, onActivation, embedded }, ref) {
+    const [board, setBoard] = useState<(Card | null)[][]>(() => createBoard(ROWS, COLS));
+    const [message, setMessage] = useState<string | null>(null);
+    const [popping, setPopping] = useState<Set<string>>(new Set());
+    const [blasting, setBlasting] = useState<Set<string>>(new Set());
+    const [dropMap, setDropMap] = useState<Map<string, number>>(new Map());
+    const [newKeys, setNewKeys] = useState<Set<string>>(new Set());
+    const [busy, setBusy] = useState(false);
+    const gridRef = useRef<HTMLDivElement>(null);
+
+    const { path, clear, onPointerDown, onPointerMove, onPointerUp } =
+      useSwipePath(ROWS, COLS);
+
+    const pathKey = (r: number, c: number) => `${r},${c}`;
+    const inPath = (r: number, c: number) => path.some((p) => p.row === r && p.col === c);
+
+    useImperativeHandle(ref, () => ({
+      shuffle: () => {
+        if (busy) return;
+        setBoard((prev) => {
+          const flat = prev.flat().filter(Boolean) as Card[];
+          const shuffled = fisherYatesShuffle(flat);
+          return Array.from({ length: ROWS }, (_, r) =>
+            Array.from({ length: COLS }, (_, c) => shuffled[r * COLS + c] ?? null)
+          );
+        });
+      },
+    }));
+
+    // ── Shared gravity commit ─────────────────────────────────────────────────
+    const commitClear = useCallback(
+      async (
+        currentBoard: (Card | null)[][],
+        allCleared: Set<string>,
+        earnedSpecials: SpecialType[],
+        cols: Set<number>,
+        toastMsg: string,
+        pts: number,
+        isHand: FullHandResult | null
+      ) => {
+        setMessage(toastMsg);
+        await new Promise((r) => setTimeout(r, 400));
+
+        const gravity = applyGravity(currentBoard, allCleared, earnedSpecials, []);
+        setBoard(gravity.newBoard);
+        setDropMap(gravity.dropMap);
+        setNewKeys(gravity.newKeys);
+        setPopping(new Set());
+        setBlasting(new Set());
+
+        if (isHand) onHand(isHand);
+        else onActivation(pts);
+
+        await new Promise((r) => setTimeout(r, 420));
+        setDropMap(new Map());
+        setNewKeys(new Set());
+        clear();
+        setBusy(false);
+      },
+      [onHand, onActivation, clear]
+    );
+
+    // ── 💣 Bomb tap ───────────────────────────────────────────────────────────
+    const activateBomb = useCallback(
+      async (r: number, c: number) => {
+        setBusy(true);
+        const bombKey = pathKey(r, c);
+        const cleared = new Set<string>([bombKey]);
+        const blast = new Set<string>();
+
+        for (let dr = -1; dr <= 1; dr++) {
+          for (let dc = -1; dc <= 1; dc++) {
+            if (dr === 0 && dc === 0) continue;
+            const nr = r + dr, nc = c + dc;
+            if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) {
+              cleared.add(`${nr},${nc}`);
+              blast.add(`${nr},${nc}`);
+            }
+          }
+        }
+
+        const pts = cleared.size * BOMB_PTS_PER_CARD;
+        setPopping(new Set([bombKey]));
+        setBlasting(blast);
+
+        await commitClear(
+          board,
+          cleared,
+          [],
+          new Set([c]),
+          `💣 BOOM! ${cleared.size} cards cleared! +${pts}`,
+          pts,
+          null
+        );
+      },
+      [board, commitClear]
+    );
+
+    // ── ⭐ Star tap ───────────────────────────────────────────────────────────
+    const activateStar = useCallback(
+      async (r: number, c: number, rank: Rank) => {
+        setBusy(true);
+        const cleared = new Set<string>();
+        const poppingSet = new Set<string>();
+
+        // Clear the star itself + every card on the board with the same rank
+        for (let rr = 0; rr < ROWS; rr++) {
+          for (let cc = 0; cc < COLS; cc++) {
+            const cell = board[rr]?.[cc];
+            if (cell && (cell.rank === rank || (rr === r && cc === c))) {
+              cleared.add(`${rr},${cc}`);
+              poppingSet.add(`${rr},${cc}`);
+            }
+          }
+        }
+
+        const count = cleared.size;
+        const pts = count * STAR_PTS_PER_CARD;
+        setPopping(poppingSet);
+
+        await commitClear(
+          board,
+          cleared,
+          [],
+          new Set([c]),
+          `⭐ Cleared all ${count}× ${rank}s! +${pts}`,
+          pts,
+          null
+        );
+      },
+      [board, commitClear]
+    );
+
+    // ── Main swipe handler ────────────────────────────────────────────────────
+    const finishSwipe = useCallback(async () => {
+      if (busy) { clear(); return; }
+
+      // Single tap
+      if (path.length === 1) {
+        const { row, col } = path[0]!;
+        const cell = board[row]?.[col];
+        if (cell?.special === "bomb") { await activateBomb(row, col); return; }
+        if (cell?.special === "star") { await activateStar(row, col, cell.rank); return; }
         clear();
         return;
       }
-      cards.push(cell);
-    }
 
-    const result = evaluateHand(cards);
-    if (!result) {
-      setMessage("Not a valid poker hand");
-      clear();
-      return;
-    }
-    if (!straightMustStartAtEnd(cards)) {
-      setMessage("Straight: start on the 10 or Ace end");
-      clear();
-      return;
-    }
+      if (path.length < 2) { clear(); return; }
+      if (!pathIsAdjacent(path)) { setMessage("Cards must be touching"); clear(); return; }
 
-    setBusy(true);
-    setMessage(`${HAND_DISPLAY[result.hand]}! +${result.points}`);
-    const popSet = new Set(path.map((p) => pathKey(p.row, p.col)));
-    setPopping(popSet);
-
-    await new Promise((r) => setTimeout(r, 380));
-
-    setBoard((prev) => {
-      const next = prev.map((row) => [...row]);
+      const cards: Card[] = [];
       for (const p of path) {
-        next[p.row]![p.col] = randomCard();
+        const cell = board[p.row]?.[p.col];
+        if (!cell) { clear(); return; }
+        cards.push(cell);
       }
-      return next;
-    });
 
-    const newScore = score + result.points;
-    const newHands = handsCleared + 1;
-    const newBest =
-      HAND_RANK_ORDER[result.hand] > HAND_RANK_ORDER[bestHand]
-        ? result.hand
-        : bestHand;
-    setScore(newScore);
-    setHandsCleared(newHands);
-    setBestHand(newBest);
-    onScoreChange(newScore, newHands, newBest);
-
-    setMoves((m) => {
-      const nm = m - 1;
-      if (nm <= 0) {
-        onGameOver({ score: newScore, hands: newHands, best: newBest });
+      const result = evaluateHandFull(cards);
+      if (!result) { setMessage("Not a valid poker hand"); clear(); return; }
+      if (!straightMustStartAtEnd(cards)) {
+        setMessage("Straight: start on the 10 or Ace end");
+        clear();
+        return;
       }
-      return nm;
-    });
-    setPopping(new Set());
-    clear();
-    setBusy(false);
-  }, [
-    busy,
-    path,
-    board,
-    clear,
-    score,
-    handsCleared,
-    bestHand,
-    onGameOver,
-    onScoreChange,
-  ]);
 
-  const handlePointerUp = () => {
-    onPointerUp();
-    void finishSwipe();
-  };
+      setBusy(true);
 
-  const reset = () => {
-    setBoard(createBoard(ROWS, COLS));
-    setScore(0);
-    setMoves(MOVES_START);
-    setHandsCleared(0);
-    setBestHand("pair");
-    setMessage(null);
-    clear();
-  };
+      const handKeys = new Set(path.map((p) => pathKey(p.row, p.col)));
+      const allCleared = handKeys; // bombs no longer blast during swipes
 
-  return (
-    <div className="game-panel">
-      <div className="hud">
-        <div>
-          <span className="label">Score</span>
-          <strong>{score}</strong>
+      const finalPts = Math.round(result.totalPoints * comboMultiplier);
+      let toast = `${HAND_DISPLAY[result.hand]}! +${finalPts}`;
+      if (result.hasJoker)       toast += " 🃏";
+      if (comboMultiplier > 1)   toast += ` (×${comboMultiplier} combo)`;
+
+      setPopping(handKeys);
+
+      const earned = specialsEarnedForHand(result.hand);
+
+      // Use a locally captured board snapshot before gravity runs
+      const boardSnapshot = board;
+      await new Promise((r) => setTimeout(r, 380));
+
+      const gravity = applyGravity(boardSnapshot, allCleared, earned, path);
+      setBoard(gravity.newBoard);
+      setDropMap(gravity.dropMap);
+      setNewKeys(gravity.newKeys);
+      setPopping(new Set());
+      setMessage(toast);
+
+      onHand(result);
+
+      await new Promise((r) => setTimeout(r, 420));
+      setDropMap(new Map());
+      setNewKeys(new Set());
+      clear();
+      setBusy(false);
+    }, [
+      busy, path, board, clear, comboMultiplier,
+      onHand, activateBomb, activateStar,
+    ]);
+
+    const handlePointerUp = () => { onPointerUp(); void finishSwipe(); };
+
+    return (
+      <div className={`game-panel${embedded ? " game-panel--embedded" : ""}`}>
+        <div className={`toast-area${embedded ? " toast-area--compact" : ""}`}>
+          {message && <p className="toast" key={message}>{message}</p>}
         </div>
-        <div>
-          <span className="label">Moves</span>
-          <strong>{moves}</strong>
-        </div>
-        <div>
-          <span className="label">Hands</span>
-          <strong>{handsCleared}</strong>
-        </div>
-      </div>
 
-      {message && <p className="toast">{message}</p>}
+        <div
+          ref={gridRef}
+          className="grid"
+          style={{
+            gridTemplateColumns: `repeat(${COLS}, 1fr)`,
+            gridTemplateRows: `repeat(${ROWS}, 1fr)`,
+          }}
+          onPointerDown={(e) => onPointerDown(e, gridRef.current)}
+          onPointerMove={(e) => onPointerMove(e, gridRef.current)}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          onLostPointerCapture={handlePointerUp}
+        >
+          {board.map((row, r) =>
+            row.map((cell, c) => {
+              const key = pathKey(r, c);
+              const drop = dropMap.get(key) ?? 0;
+              const isNew = newKeys.has(key);
+              const isTappable = cell?.special === "bomb" || cell?.special === "star";
 
-      <div
-        ref={gridRef}
-        className="grid"
-        style={{
-          gridTemplateColumns: `repeat(${COLS}, 1fr)`,
-          gridTemplateRows: `repeat(${ROWS}, 1fr)`,
-        }}
-        onPointerDown={(e) => onPointerDown(e, gridRef.current)}
-        onPointerMove={(e) => onPointerMove(e, gridRef.current)}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
-        onLostPointerCapture={handlePointerUp}
-      >
-        {board.map((row, r) =>
-          row.map((cell, c) => (
-            <div
-              key={`${r}-${c}`}
-              className="cell"
-              data-row={r}
-              data-col={c}
-            >
-              {cell && (
-                <div data-row={r} data-col={c}>
-                  <PlayingCard
-                    card={cell}
-                    selected={inPath(r, c)}
-                    popping={popping.has(pathKey(r, c))}
-                  />
+              return (
+                <div key={`${r}-${c}`} className="cell" data-row={r} data-col={c}>
+                  {cell && (
+                    <div
+                      data-row={r}
+                      data-col={c}
+                      className={[
+                        drop > 0           ? "card-dropping" : "",
+                        isNew              ? "card-new"      : "",
+                        blasting.has(key)  ? "card-blasting" : "",
+                        isTappable         ? "card-tappable" : "",
+                      ].filter(Boolean).join(" ")}
+                      style={
+                        drop > 0
+                          ? ({ "--drop-n": drop } as CSSProperties)
+                          : isNew
+                            ? ({ "--new-row": r } as CSSProperties)
+                            : undefined
+                      }
+                    >
+                      <PlayingCard
+                        card={cell}
+                        selected={inPath(r, c)}
+                        popping={popping.has(key)}
+                      />
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
-          ))
-        )}
+              );
+            })
+          )}
+        </div>
       </div>
-
-      <p className="hint">
-        Swipe adjacent cards. Pair = 2 alike. Straight = 5 in a row — start on
-        10 or Ace.
-      </p>
-      <button type="button" className="btn secondary" onClick={reset}>
-        New game
-      </button>
-    </div>
-  );
-}
+    );
+  }
+);

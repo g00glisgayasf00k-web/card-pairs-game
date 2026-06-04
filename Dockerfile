@@ -13,8 +13,8 @@ ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
 ENV STATIC_FOLDER=/app/static
 
-COPY backend/requirements.txt backend/requirements-prod.txt ./
-RUN pip install --no-cache-dir -r requirements.txt -r requirements-prod.txt
+COPY backend/requirements.txt ./
+RUN pip install --no-cache-dir -r requirements.txt
 
 COPY backend/ ./
 COPY --from=frontend-build /app/frontend/dist /app/static

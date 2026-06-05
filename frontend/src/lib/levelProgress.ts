@@ -1,4 +1,5 @@
 import { MAX_LEVEL } from "./levels";
+import { STAGES_PER_WORLD, toGlobalLevel } from "./levelMap";
 import { defaultProgress, loadProgress, saveProgress, type SavedProgress } from "./progress";
 import type { LevelNodeState } from "./levelMap";
 
@@ -88,4 +89,27 @@ export function shouldResumeSavedRun(globalLevel: number, saved: SavedProgress |
     globalLevel === saved.level &&
     (saved.levelScore > 0 || saved.levelHands > 0 || saved.streak > 0)
   );
+}
+
+export function getLevelStars(globalLevel: number): number {
+  if (!getCompletedLevels().includes(globalLevel)) return 0;
+  return 3;
+}
+
+export function countTotalStars(): number {
+  return getCompletedLevels().length * 3;
+}
+
+export function isWorldUnlocked(world: number): boolean {
+  if (world <= 1) return true;
+  return getHighestUnlocked() >= toGlobalLevel(world, 1);
+}
+
+export function worldForLevel(globalLevel: number): number {
+  return Math.ceil(globalLevel / 10);
+}
+
+/** Stars needed to unlock the next world (all 10 stages in prior world). */
+export function starsToUnlockWorld(world: number): number {
+  return world <= 1 ? 0 : STAGES_PER_WORLD * 3;
 }

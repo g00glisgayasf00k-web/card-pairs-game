@@ -13,6 +13,8 @@ export interface LevelConfig {
   challenges: HandChallenge[];
   /** Typical swipes needed to finish (base scores, no combo luck). */
   estimatedMoves: number;
+  /** Max hands allowed — derived from target + challenges with combo buffer. */
+  moveLimit: number;
 }
 
 export type HandCounts = Partial<Record<HandLabel, number>>;
@@ -101,6 +103,32 @@ export function computeEstimatedMoves(
   return Math.max(moves, 1);
 }
 
+/**
+ * Move budget for the level — tight but achievable.
+ * Starts from the theoretical minimum, then adds grace for combos and imperfect paths.
+ */
+export function computeMoveLimit(
+  targetPoints: number,
+  challenges: HandChallenge[],
+  level: number
+): number {
+  const base = computeEstimatedMoves(targetPoints, challenges);
+  const tierIdx = Math.floor((level - 1) / 10);
+  // ~42% grace + small flat buffer; later worlds get slightly more breathing room
+  const grace = Math.ceil(base * 0.42) + 3 + tierIdx;
+  const limit = base + grace;
+  const floor = base + 2;
+  return Math.max(floor, limit);
+}
+
+export function movesRemaining(moveLimit: number, handsUsed: number): number {
+  return Math.max(0, moveLimit - handsUsed);
+}
+
+export function outOfMoves(moveLimit: number, handsUsed: number): boolean {
+  return handsUsed >= moveLimit;
+}
+
 /** Dynamic estimate from current progress (uses your actual pts/swipe pace when available). */
 export function estimateRemainingSwipes(
   cfg: LevelConfig,
@@ -185,6 +213,7 @@ function buildLevelConfig(level: number): LevelConfig {
       targetPoints: data.targetPoints,
       challenges,
       estimatedMoves: computeEstimatedMoves(data.targetPoints, challenges),
+      moveLimit: computeMoveLimit(data.targetPoints, challenges, level),
     };
   }
 
@@ -197,6 +226,7 @@ function buildLevelConfig(level: number): LevelConfig {
     targetPoints,
     challenges,
     estimatedMoves: computeEstimatedMoves(targetPoints, challenges),
+    moveLimit: computeMoveLimit(targetPoints, challenges, level),
   };
 }
 

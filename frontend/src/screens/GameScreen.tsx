@@ -9,7 +9,7 @@ import {
   type FullHandResult,
   type HandLabel,
 } from "../lib/pokerHands";
-import { campaignLeaderboardPoints, comboLabel, comboMultiplier, estimateRemainingSwipes, formatChallenge, getLevelConfig, levelRequirementsMet, MAX_LEVEL, type HandCounts } from "../lib/levels";
+import { campaignLeaderboardPoints, comboLabel, comboMultiplier, estimateRemainingSwipes, formatChallenge, getLevelConfig, levelRequirementsMet, movesRemaining, MAX_LEVEL, outOfMoves, type HandCounts } from "../lib/levels";
 import {
   clearProgress,
   defaultProgress,
@@ -39,7 +39,7 @@ interface Props {
   onMenu: () => void;
 }
 
-type Phase = "playing" | "round_complete" | "campaign_complete";
+type Phase = "playing" | "round_complete" | "campaign_complete" | "moves_failed";
 
 interface RunState {
   level: number;
@@ -151,6 +151,9 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
   const nextCfg = getLevelConfig(level + 1);
 
   const remainingSwipes = estimateRemainingSwipes(cfg, levelScore, levelHandCounts, levelHands);
+  const movesLeft = movesRemaining(cfg.moveLimit, levelHands);
+  const movesLow = movesLeft <= 3 && movesLeft > 0;
+  const movesCritical = movesLeft === 0;
   const challengesComplete = cfg.challenges.every(
     (c) => (levelHandCounts[c.hand] ?? 0) >= c.minCount
   );
@@ -211,6 +214,28 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
     setPhase("playing");
     setBoardKey((k) => k + 1);
   }, []);
+
+  const retryLevel = useCallback(() => {
+    advancingRef.current = false;
+    setRun((prev) => ({
+      ...prev,
+      levelScore: 0,
+      levelHands: 0,
+      levelHandCounts: {},
+      streak: 0,
+      tutorialStep:
+        level === 1
+          ? tutorialStep < TUTORIAL_FREE_STEP
+            ? 0
+            : TUTORIAL_FREE_STEP
+          : prev.tutorialStep,
+    }));
+    levelScoreRef.current = 0;
+    levelHandsRef.current = 0;
+    levelHandCountsRef.current = {};
+    setPhase("playing");
+    setBoardKey((k) => k + 1);
+  }, [level, tutorialStep]);
 
   useEffect(() => {
     if (phase !== "round_complete") return;
@@ -284,8 +309,14 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
         };
       });
       tryAdvanceLevel(nextScore, nextHandCounts, nextHands);
+      if (
+        !levelRequirementsMet(nextScore, nextHandCounts, cfg) &&
+        outOfMoves(cfg.moveLimit, nextHands)
+      ) {
+        setPhase("moves_failed");
+      }
     },
-    [streak, tryAdvanceLevel]
+    [streak, tryAdvanceLevel, cfg]
   );
 
   const handleActivation = useCallback(
@@ -324,6 +355,8 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
   };
 
   const boardLocked = phase !== "playing";
+
+  const movesUsedRatio = Math.min(1, levelHands / cfg.moveLimit);
 
   return (
     <div className="game-screen">
@@ -371,8 +404,17 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
             </div>
           )}
 
-          <div className="hands-track hands-track--stat">
-            <span className="hands-label">🃏 {levelHands} hands this level</span>
+          <div
+            className={`moves-track${movesLow ? " moves-track--low" : ""}${movesCritical ? " moves-track--critical" : ""}`}
+            title={`${movesLeft} of ${cfg.moveLimit} hands remaining`}
+          >
+            <div
+              className={`moves-fill${movesCritical ? " moves-fill--critical" : movesLow ? " moves-fill--low" : ""}`}
+              style={{ width: `${movesUsedRatio * 100}%` }}
+            />
+            <span className="moves-label">
+              🎯 {movesLeft} / {cfg.moveLimit} moves
+            </span>
           </div>
 
           <div className="stat-chips">
@@ -504,6 +546,34 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
         </div>
       )}
 
+      {phase === "moves_failed" && (
+        <div className="modal-overlay levelup-overlay">
+          <div className="modal levelup-modal moves-failed-modal">
+            <div className="levelup-badge moves-failed-badge">OUT OF MOVES!</div>
+            <h2>Level {formatLevelId(level)}</h2>
+            <p className="levelup-label">
+              You used all {cfg.moveLimit} hands before reaching the goal.
+            </p>
+            <div className="levelup-perks">
+              <div className="perk">
+                <span className="perk-icon">💰</span>
+                <span>{levelScore.toLocaleString()} / {cfg.targetPoints.toLocaleString()} pts</span>
+              </div>
+              <div className="perk">
+                <span className="perk-icon">🎯</span>
+                <span>{levelHands} / {cfg.moveLimit} moves used</span>
+              </div>
+            </div>
+            <button type="button" className="btn" onClick={retryLevel}>
+              Try again
+            </button>
+            <button type="button" className="btn ghost" onClick={onMenu}>
+              Back to levels
+            </button>
+          </div>
+        </div>
+      )}
+
       {phase === "campaign_complete" && (
         <div className="modal-overlay levelup-overlay">
           <div className="modal levelup-modal">
@@ -545,6 +615,19 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
           >
             <h2 id="challenges-title">Level goals</h2>
             <p className="scores-note">{cfg.label} — reach the point target and complete every challenge.</p>
+
+            <div className="challenges-modal__points">
+              <span className="challenges-modal__points-label">Moves</span>
+              <span className="challenges-modal__points-val">
+                {movesLeft} / {cfg.moveLimit} remaining
+              </span>
+              <div className="challenges-modal__bar">
+                <div
+                  className={`challenges-modal__bar-fill challenges-modal__bar-fill--moves${movesLow ? " challenges-modal__bar-fill--low" : ""}`}
+                  style={{ width: `${movesUsedRatio * 100}%` }}
+                />
+              </div>
+            </div>
 
             <div className="challenges-modal__points">
               <span className="challenges-modal__points-label">Points</span>

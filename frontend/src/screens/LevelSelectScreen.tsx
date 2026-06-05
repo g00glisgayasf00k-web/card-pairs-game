@@ -12,8 +12,8 @@ import {
 import {
   buildWorldMapPoints,
   mapViewBoxHeight,
+  pathThrough,
   progressIndexInWorld,
-  smoothPathThrough,
 } from "../lib/mapLayout";
 import {
   countCompleted,
@@ -111,13 +111,10 @@ function WorldMapPath({
   progressIndex: number;
   viewHeight: number;
 }) {
-  const fullPath = smoothPathThrough(points);
-  const litCount = Math.max(1, progressIndex + 1);
+  const fullPath = pathThrough(points);
+  const litCount = progressIndex >= 0 ? progressIndex + 1 : 0;
   const litPoints = points.slice(0, Math.min(litCount, points.length));
-  const progressPath = smoothPathThrough(litPoints);
-  const gradId = "mapPathGrad";
-  const progressGradId = "mapPathProgress";
-  const railGradId = "mapPathRail";
+  const progressPath = litPoints.length >= 2 ? pathThrough(litPoints) : "";
 
   return (
     <svg
@@ -126,69 +123,8 @@ function WorldMapPath({
       preserveAspectRatio="xMidYMin meet"
       aria-hidden
     >
-      <defs>
-        <linearGradient id={gradId} x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#1a4d32" />
-          <stop offset="50%" stopColor="#0f3322" />
-          <stop offset="100%" stopColor="#1a4d32" />
-        </linearGradient>
-        <linearGradient id={progressGradId} x1="0%" y1="0%" x2="0%" y2="100%">
-          <stop offset="0%" stopColor="#86efac" />
-          <stop offset="45%" stopColor="#4ade80" />
-          <stop offset="100%" stopColor="#22c55e" />
-        </linearGradient>
-        <linearGradient id={railGradId} x1="0%" y1="0%" x2="100%" y2="0%">
-          <stop offset="0%" stopColor="#8a6914" stopOpacity="0.3" />
-          <stop offset="20%" stopColor="#ffe566" stopOpacity="0.95" />
-          <stop offset="50%" stopColor="#f5d060" stopOpacity="1" />
-          <stop offset="80%" stopColor="#ffe566" stopOpacity="0.95" />
-          <stop offset="100%" stopColor="#8a6914" stopOpacity="0.3" />
-        </linearGradient>
-        <filter id="mapPathGlow" x="-20%" y="-10%" width="140%" height="120%">
-          <feGaussianBlur stdDeviation="1.8" result="blur" />
-          <feMerge>
-            <feMergeNode in="blur" />
-            <feMergeNode in="SourceGraphic" />
-          </feMerge>
-        </filter>
-      </defs>
-
-      {/* Outer shadow track */}
-      <path className="map-path map-path--shadow" d={fullPath} />
-
-      {/* Felt base */}
-      <path className="map-path map-path--base" d={fullPath} stroke={`url(#${gradId})`} />
-
-      {/* Gold rail edges */}
-      <path className="map-path map-path--rail" d={fullPath} stroke={`url(#${railGradId})`} />
-
-      {/* Progress fill */}
-      {progressIndex >= 0 && (
-        <path
-          className="map-path map-path--progress"
-          d={progressPath}
-          stroke={`url(#${progressGradId})`}
-          filter="url(#mapPathGlow)"
-        />
-      )}
-
-      {/* Centre highlight */}
-      <path className="map-path map-path--shine" d={fullPath} />
-
-      {/* Node dots along the route */}
-      {points.map((pt, i) => {
-        const lit = progressIndex >= i;
-        const isCurrent = progressIndex === i;
-        return (
-          <circle
-            key={`dot-${i}`}
-            className={`map-path-dot${lit ? " map-path-dot--lit" : ""}${isCurrent ? " map-path-dot--current" : ""}`}
-            cx={pt.x}
-            cy={pt.y}
-            r={isCurrent ? 2.2 : 1.5}
-          />
-        );
-      })}
+      <path className="map-path map-path--track" d={fullPath} />
+      {progressPath && <path className="map-path map-path--active" d={progressPath} />}
     </svg>
   );
 }

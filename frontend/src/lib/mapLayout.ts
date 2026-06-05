@@ -28,17 +28,12 @@ export function buildWorldMapPoints(stageCount: number = STAGES_PER_WORLD): MapP
   }));
 }
 
-/** Smooth cubic curve through every stage node. */
-export function smoothPathThrough(points: MapPoint[]): string {
+/** Straight segments through stage nodes — round joins keep corners soft. */
+export function pathThrough(points: MapPoint[]): string {
   if (points.length === 0) return "";
-  if (points.length === 1) return `M ${points[0]!.x} ${points[0]!.y}`;
-
   let d = `M ${points[0]!.x} ${points[0]!.y}`;
   for (let i = 1; i < points.length; i++) {
-    const p0 = points[i - 1]!;
-    const p1 = points[i]!;
-    const midY = (p0.y + p1.y) / 2;
-    d += ` C ${p0.x} ${midY}, ${p1.x} ${midY}, ${p1.x} ${p1.y}`;
+    d += ` L ${points[i]!.x} ${points[i]!.y}`;
   }
   return d;
 }

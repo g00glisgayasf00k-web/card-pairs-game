@@ -200,6 +200,7 @@ export function evaluateHand(
   else if (n === 2 && freq[0] === 2)                  hand = "pair";
   else return null;
 
+  if (HAND_CARD_COUNT[hand] !== n) return null;
   return { hand, points: HAND_SCORES[hand] };
 }
 
@@ -232,7 +233,13 @@ function evaluateHandWithWilds(
           : { rank: c.rank, suit: c.suit }
       );
       const result = evaluateHand(filled);
-      if (result && (!best || result.points > best.points)) best = result;
+      if (
+        result &&
+        HAND_CARD_COUNT[result.hand] === n &&
+        (!best || result.points > best.points)
+      ) {
+        best = result;
+      }
     }
     return best;
   }
@@ -251,7 +258,13 @@ function evaluateHandWithWilds(
           return { rank: c.rank, suit: c.suit };
         });
         const result = evaluateHand(filled);
-        if (result && (!best || result.points > best.points)) best = result;
+        if (
+          result &&
+          HAND_CARD_COUNT[result.hand] === n &&
+          (!best || result.points > best.points)
+        ) {
+          best = result;
+        }
       }
     }
     return best;
@@ -311,9 +324,31 @@ export function straightMustStartAtEnd(cards: Card[]): boolean {
   return ends.has(cards[0]!.rank) && ends.has(cards[cards.length - 1]!.rank);
 }
 
+function tryPathHand(
+  path: { row: number; col: number }[],
+  getCard: (p: { row: number; col: number }) => Card | null | undefined
+): { path: { row: number; col: number }[]; result: FullHandResult } | null {
+  if (path.length < 2 || !pathIsAdjacent(path)) return null;
+
+  const cards: Card[] = [];
+  for (const cell of path) {
+    const card = getCard(cell);
+    if (!card) return null;
+    cards.push(card);
+  }
+
+  const result = evaluateHandFull(cards);
+  if (!result || !straightMustStartAtEnd(cards)) return null;
+  if (path.length !== HAND_CARD_COUNT[result.hand]) return null;
+
+  return { path, result };
+}
+
 /**
- * Resolve a swipe path to a valid hand. Trims trailing touch overshoot only.
- * Cleared cells always match the exact hand size (pair = 2, flush = 5, etc.).
+ * Resolve a swipe path to a valid hand.
+ * Trims up to 3 trailing touch overshoot cells.
+ * Without a joker: use the full path when valid, otherwise the shortest trimmed match.
+ * With a joker: shortest valid path (avoids upgrading to a larger hand via wild substitution).
  */
 export function resolveHandFromPath(
   path: { row: number; col: number }[],
@@ -322,28 +357,41 @@ export function resolveHandFromPath(
   if (path.length < 2 || !pathIsAdjacent(path)) return null;
 
   const maxTrim = Math.min(3, path.length - 2);
+  const candidates: {
+    path: { row: number; col: number }[];
+    result: FullHandResult;
+    trim: number;
+  }[] = [];
+
   for (let trim = 0; trim <= maxTrim; trim++) {
-    const p = path.slice(0, path.length - trim);
-    if (p.length < 2) continue;
-
-    const cards: Card[] = [];
-    for (const cell of p) {
-      const card = getCard(cell);
-      if (!card) {
-        cards.length = 0;
-        break;
-      }
-      cards.push(card);
-    }
-    if (cards.length !== p.length) continue;
-
-    const result = evaluateHandFull(cards);
-    if (!result || !straightMustStartAtEnd(cards)) continue;
-    if (p.length !== HAND_CARD_COUNT[result.hand]) continue;
-
-    return { path: p, result };
+    const candidate = tryPathHand(path.slice(0, path.length - trim), getCard);
+    if (candidate) candidates.push({ ...candidate, trim });
   }
-  return null;
+
+  if (candidates.length === 0) return null;
+
+  const pathHasJoker = path.some((cell) => getCard(cell)?.special === "joker");
+
+  if (pathHasJoker) {
+    candidates.sort(
+      (a, b) =>
+        a.path.length - b.path.length ||
+        b.result.totalPoints - a.result.totalPoints
+    );
+    const best = candidates[0]!;
+    return { path: best.path, result: best.result };
+  }
+
+  const exact = candidates.find((c) => c.trim === 0);
+  if (exact) return { path: exact.path, result: exact.result };
+
+  candidates.sort(
+    (a, b) =>
+      a.path.length - b.path.length ||
+      b.result.totalPoints - a.result.totalPoints
+  );
+  const best = candidates[0]!;
+  return { path: best.path, result: best.result };
 }
 
 export const HAND_RANK_ORDER: Record<HandLabel, number> = {

@@ -1,11 +1,13 @@
 import { useState } from "react";
 import { OnboardingScreen } from "./screens/OnboardingScreen";
+import { LevelSelectScreen } from "./screens/LevelSelectScreen";
 import { GameScreen } from "./screens/GameScreen";
 
-type Screen = "onboard" | "game";
+type Screen = "onboard" | "levels" | "game";
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("onboard");
+  const [playLevel, setPlayLevel] = useState<number | undefined>(undefined);
   const [username, setUsername] = useState<string | null>(() =>
     localStorage.getItem("username")
   );
@@ -22,10 +24,33 @@ export default function App() {
     setUsername(null);
   };
 
+  const startLevel = (globalLevel: number) => {
+    setPlayLevel(globalLevel);
+    setScreen("game");
+  };
+
   if (screen === "game") {
     return (
       <div className="app app--game">
-        <GameScreen username={username} onMenu={() => setScreen("onboard")} />
+        <GameScreen
+          username={username}
+          startLevel={playLevel}
+          onMenu={() => {
+            setPlayLevel(undefined);
+            setScreen("levels");
+          }}
+        />
+      </div>
+    );
+  }
+
+  if (screen === "levels") {
+    return (
+      <div className="app app--levels">
+        <LevelSelectScreen
+          onBack={() => setScreen("onboard")}
+          onSelectLevel={startLevel}
+        />
       </div>
     );
   }
@@ -36,7 +61,7 @@ export default function App() {
         username={username}
         onSetName={onSetName}
         onClearName={onClearName}
-        onPlay={() => setScreen("game")}
+        onPlay={() => setScreen("levels")}
       />
     </div>
   );

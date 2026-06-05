@@ -54,9 +54,11 @@ export function OnboardingScreen({ username, onSetName, onClearName, onPlay }: P
         </header>
 
         <button type="button" className="home-play-btn" onClick={onPlay}>
-          <span className="home-play-btn__icon">🎴</span>
+          <span className="home-play-btn__icon">🗺️</span>
           <span className="home-play-btn__label">
-            {saved ? `Continue — Level ${saved.level}` : "Play"}
+            {saved
+              ? `Levels — ${(saved.completedLevels ?? []).length} / 100`
+              : "Choose Level"}
           </span>
         </button>
 

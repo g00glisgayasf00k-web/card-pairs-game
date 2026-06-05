@@ -16,8 +16,6 @@ import {
   loadProgress,
   saveProgress,
 } from "../lib/progress";
-import { GameBoard, type GameBoardHandle } from "../components/GameBoard";
-import { SpecialArt } from "../components/SpecialArt";
 import {
   getLevel1SeedBoard,
   getTutorialStepConfig,
@@ -25,9 +23,19 @@ import {
   TUTORIAL_FREE_STEP,
   tutorialFreePlayMessage,
 } from "../lib/tutorialLevel1";
+import { SpecialArt } from "../components/SpecialArt";
+import {
+  buildFreshRunForLevel,
+  markLevelComplete,
+  shouldResumeSavedRun,
+} from "../lib/levelProgress";
+import { formatLevelId } from "../lib/levelMap";
+import { GameBoard, type GameBoardHandle } from "../components/GameBoard";
 
 interface Props {
   username: string | null;
+  /** Global level from map (e.g. 1-3 → 3). Omit to resume saved campaign. */
+  startLevel?: number;
   onMenu: () => void;
 }
 
@@ -58,9 +66,26 @@ const HAND_BADGE: Record<HandLabel, string> = {
 
 const ROUND_COMPLETE_MS = 2200;
 
-function initRunState(): RunState {
+function initRunState(startLevel?: number): RunState {
   const saved = loadProgress();
-  if (saved) {
+
+  if (startLevel === undefined) {
+    if (saved) {
+      return {
+        level: saved.level,
+        levelScore: saved.levelScore,
+        levelHands: saved.levelHands,
+        levelHandCounts: saved.levelHandCounts ?? {},
+        handsCleared: saved.handsCleared,
+        bestHand: saved.bestHand,
+        streak: saved.streak,
+        tutorialStep: saved.tutorialStep ?? 0,
+      };
+    }
+    return defaultProgress() as RunState;
+  }
+
+  if (saved && shouldResumeSavedRun(startLevel, saved)) {
     return {
       level: saved.level,
       levelScore: saved.levelScore,
@@ -72,11 +97,24 @@ function initRunState(): RunState {
       tutorialStep: saved.tutorialStep ?? 0,
     };
   }
-  return defaultProgress();
+
+  const fresh = buildFreshRunForLevel(startLevel, saved);
+  return {
+    ...fresh,
+    handsCleared: saved?.handsCleared ?? 0,
+    bestHand: saved?.bestHand ?? "pair",
+  };
 }
 
-export function GameScreen({ username, onMenu }: Props) {
-  const [run, setRun] = useState<RunState>(initRunState);
+export function GameScreen({ username, startLevel, onMenu }: Props) {
+  const savedSnapshot = useRef(loadProgress());
+  const isReplaySession = useRef(
+    startLevel !== undefined &&
+      ((savedSnapshot.current?.completedLevels.includes(startLevel) ?? false) ||
+        startLevel < (savedSnapshot.current?.highestUnlocked ?? 1))
+  );
+
+  const [run, setRun] = useState<RunState>(() => initRunState(startLevel));
   const { level, levelScore, levelHands, levelHandCounts, handsCleared, bestHand, streak, tutorialStep } = run;
 
   const [phase, setPhase] = useState<Phase>("playing");
@@ -130,15 +168,20 @@ export function GameScreen({ username, onMenu }: Props) {
   const completedCfg = completedLevel ? getLevelConfig(completedLevel) : null;
 
   const persistRun = useCallback((next: RunState) => {
+    const saved = loadProgress() ?? defaultProgress();
+    const onFrontier = next.level === saved.highestUnlocked;
+
     saveProgress({
-      level: next.level,
-      levelScore: next.levelScore,
-      levelHands: next.levelHands,
-      levelHandCounts: next.levelHandCounts,
+      highestUnlocked: saved.highestUnlocked,
+      completedLevels: saved.completedLevels,
+      level: onFrontier ? next.level : saved.level,
+      levelScore: onFrontier ? next.levelScore : saved.levelScore,
+      levelHands: onFrontier ? next.levelHands : saved.levelHands,
+      levelHandCounts: onFrontier ? next.levelHandCounts : saved.levelHandCounts,
       handsCleared: next.handsCleared,
       bestHand: next.bestHand,
-      streak: next.streak,
-      tutorialStep: next.tutorialStep,
+      streak: onFrontier ? next.streak : saved.streak,
+      tutorialStep: next.level === 1 ? next.tutorialStep : saved.tutorialStep,
     });
   }, []);
 
@@ -171,9 +214,13 @@ export function GameScreen({ username, onMenu }: Props) {
 
   useEffect(() => {
     if (phase !== "round_complete") return;
+    if (isReplaySession.current) {
+      const id = window.setTimeout(onMenu, ROUND_COMPLETE_MS);
+      return () => window.clearTimeout(id);
+    }
     const id = window.setTimeout(advanceLevel, ROUND_COMPLETE_MS);
     return () => window.clearTimeout(id);
-  }, [phase, advanceLevel]);
+  }, [phase, advanceLevel, onMenu]);
 
   const tryAdvanceLevel = useCallback(
     (score: number, handCounts: HandCounts, hands: number) => {
@@ -182,6 +229,8 @@ export function GameScreen({ username, onMenu }: Props) {
       if (!levelRequirementsMet(score, handCounts, cfg)) return false;
 
       advancingRef.current = true;
+      markLevelComplete(level);
+      savedSnapshot.current = loadProgress();
       setCompletedLevel(level);
       setCompletedStats({ score, hands });
 
@@ -292,7 +341,7 @@ export function GameScreen({ username, onMenu }: Props) {
             </div>
 
             <div className="rank-chip" title={cfg.label}>
-              <span className="rank-chip__label">{cfg.label}</span>
+              <span className="rank-chip__label">{formatLevelId(level)}</span>
             </div>
           </div>
 

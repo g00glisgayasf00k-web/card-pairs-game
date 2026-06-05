@@ -154,29 +154,3 @@ def path_is_adjacent(cells: Sequence[tuple[int, int]]) -> bool:
         if abs(r0 - r1) + abs(c0 - c1) != 1:
             return False
     return True
-
-
-def straight_must_start_at_end(
-    cards: Sequence[dict], cells: Sequence[tuple[int, int]]
-) -> bool:
-    """
-    For a 5-card straight, swipe must start at the low or high end of the run.
-    User example: 10-J-Q-K-A must start on 10 or A.
-    """
-    if len(cards) != 5:
-        return True
-
-    values = sorted(RANK_VALUES[c["rank"]] for c in cards)
-    unique = sorted(set(values))
-    if unique == [2, 3, 4, 5, 14]:
-        low_rank, high_rank = "5", "A"  # wheel ends on 5 and starts at A
-    elif unique[-1] - unique[0] == 4 and len(unique) == 5:
-        inv = {v: k for k, v in RANK_VALUES.items()}
-        low_rank, high_rank = inv[unique[0]], inv[unique[-1]]
-    else:
-        return True
-
-    start_rank = cards[0]["rank"]
-    end_rank = cards[-1]["rank"]
-    ends = {low_rank, high_rank}
-    return start_rank in ends and end_rank in ends

@@ -396,19 +396,34 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
     <div className="game-screen">
       <div className="mobile-shell">
         <header className="game-hud">
+          <div
+            className={`moves-banner${movesLow ? " moves-banner--low" : ""}${movesCritical || phase === "moves_failed" ? " moves-banner--critical" : ""}`}
+            role="status"
+            aria-live="polite"
+            title={`${movesLeft} of ${effectiveMoveLimit} hands remaining`}
+          >
+            <div className="moves-banner__head">
+              <span className="moves-banner__label">Moves left</span>
+              <span className="moves-banner__count">{movesLeft}</span>
+              <span className="moves-banner__limit">/ {effectiveMoveLimit}</span>
+            </div>
+            <div className="moves-banner__track">
+              <div
+                className="moves-banner__fill"
+                style={{ width: `${Math.max(0, (movesLeft / effectiveMoveLimit) * 100)}%` }}
+              />
+            </div>
+          </div>
+
           <div className="game-hud__row">
             <div className="level-badge" title={cfg.label}>
               <span className="level-badge__icon">⭐</span>
               <span className="level-badge__num">{level}/{MAX_LEVEL}</span>
             </div>
 
-            <div
-              className={`moves-chip${movesLow ? " moves-chip--low" : ""}${movesCritical ? " moves-chip--critical" : ""}`}
-              title={`${movesLeft} of ${effectiveMoveLimit} hands remaining`}
-            >
-              <span className="moves-chip__icon">🎯</span>
-              <span className="moves-chip__val">{movesLeft}</span>
-              <span className="moves-chip__label">moves</span>
+            <div className="score-chip score-chip--compact" title={`Goal: ${cfg.targetPoints.toLocaleString()} pts`}>
+              <span className="score-chip__icon">💰</span>
+              <span className="score-chip__value">{levelScore.toLocaleString()}</span>
             </div>
 
             <div className="credits-chip" title="In-game credits — buy extra moves when you run out">
@@ -482,6 +497,16 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
         </main>
 
         <nav className="action-bar">
+          <button
+            type="button"
+            className="action-btn action-btn--restart"
+            onClick={retryLevel}
+            disabled={boardLocked || tutorialActive}
+            title={tutorialActive ? "Finish the lesson first" : "Restart this level"}
+          >
+            <span className="action-btn__icon">↺</span>
+            <span className="action-btn__label">Restart</span>
+          </button>
           <button
             type="button"
             className="action-btn action-btn--shuffle"
@@ -596,11 +621,11 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
 
       {phase === "moves_failed" && (
         <div className="modal-overlay levelup-overlay">
-          <div className="modal levelup-modal moves-failed-modal">
-            <div className="levelup-badge moves-failed-badge">OUT OF MOVES!</div>
-            <h2>Level {formatLevelId(level)}</h2>
+          <div className="modal levelup-modal moves-failed-modal game-over-modal">
+            <div className="levelup-badge moves-failed-badge game-over-badge">GAME OVER</div>
+            <h2>Out of moves</h2>
             <p className="levelup-label">
-              You used all {effectiveMoveLimit} hands before reaching the goal.
+              Level {formatLevelId(level)} — you used all {effectiveMoveLimit} hands.
             </p>
             <div className="levelup-perks">
               <div className="perk">
@@ -609,13 +634,16 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
               </div>
               <div className="perk">
                 <span className="perk-icon">🎯</span>
-                <span>{levelHands} / {effectiveMoveLimit} moves used</span>
+                <span>0 moves left</span>
               </div>
               <div className="perk">
                 <span className="perk-icon">💎</span>
                 <span>{credits} credits · {movesPackLabel()}</span>
               </div>
             </div>
+            <button type="button" className="btn btn-restart-level" onClick={retryLevel}>
+              Restart level
+            </button>
             <button
               type="button"
               className="btn btn-buy-moves"
@@ -625,11 +653,8 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
               Buy {MOVES_PACK_SIZE} moves ({MOVES_PACK_COST} 💎)
             </button>
             {!canBuyMoves && (
-              <p className="moves-failed-hint">Not enough credits — restart or return to the map.</p>
+              <p className="moves-failed-hint">Not enough credits to buy more moves.</p>
             )}
-            <button type="button" className="btn ghost" onClick={retryLevel}>
-              Restart level
-            </button>
             <button type="button" className="btn ghost" onClick={onMenu}>
               Back to levels
             </button>

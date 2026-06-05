@@ -291,26 +291,6 @@ export function pathIsAdjacent(cells: { row: number; col: number }[]): boolean {
   return true;
 }
 
-export function straightMustStartAtEnd(cards: Card[]): boolean {
-  // Joker (wild) in path → skip direction rule
-  if (cards.some((c) => c.special === "joker")) return true;
-  if (cards.length !== 5) return true;
-
-  const values = cards.map((c) => RANK_VALUES[c.rank]).sort((a, b) => a - b);
-  const unique = [...new Set(values)].sort((a, b) => a - b);
-  let low: Rank, high: Rank;
-  if (unique.join() === "2,3,4,5,14") {
-    low = "5"; high = "A";
-  } else if (unique.length === 5 && unique[4]! - unique[0]! === 4) {
-    low  = Object.entries(RANK_VALUES).find(([, v]) => v === unique[0])![0] as Rank;
-    high = Object.entries(RANK_VALUES).find(([, v]) => v === unique[4])![0] as Rank;
-  } else {
-    return true;
-  }
-  const ends = new Set([low, high]);
-  return ends.has(cards[0]!.rank) && ends.has(cards[cards.length - 1]!.rank);
-}
-
 function tryPathHand(
   path: { row: number; col: number }[],
   getCard: (p: { row: number; col: number }) => Card | null | undefined
@@ -325,7 +305,7 @@ function tryPathHand(
   }
 
   const result = evaluateHandFull(cards);
-  if (!result || !straightMustStartAtEnd(cards)) return null;
+  if (!result) return null;
 
   return { path, result };
 }

@@ -5,7 +5,6 @@ from flask import Blueprint, jsonify, request
 from app.services.poker_hands import (
     evaluate_hand,
     path_is_adjacent,
-    straight_must_start_at_end,
 )
 
 game_bp = Blueprint("game", __name__)
@@ -68,14 +67,6 @@ def validate_swipe():
     hand_rank, points, label = evaluate_hand(cards)
     if hand_rank is None:
         return jsonify({"valid": False, "error": "Not a poker hand"}), 200
-
-    if not straight_must_start_at_end(cards, cells):
-        return jsonify(
-            {
-                "valid": False,
-                "error": "Straight must start on the 10 or Ace (low/high end)",
-            }
-        ), 200
 
     return jsonify(
         {

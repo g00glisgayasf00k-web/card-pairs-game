@@ -9,14 +9,12 @@ import {
 } from "react";
 import {
   createBoard,
-  evaluateHandFull,
   HAND_DISPLAY,
   pathIsAdjacent,
   POKER_HAND_SIZE,
   randomCard,
   resolveHandFromPath,
   specialsEarnedForHand,
-  straightMustStartAtEnd,
   type Card,
   type FullHandResult,
   type HandLabel,
@@ -423,17 +421,8 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
           if (embedded) showToast(`Use exactly ${POKER_HAND_SIZE} cards (lift finger sooner)`, true);
           else setMessage(`Use exactly ${POKER_HAND_SIZE} cards — lift finger sooner`);
         } else {
-          const cards = swipePath
-            .map((p) => board[p.row]?.[p.col])
-            .filter((c): c is Card => !!c);
-          const maybe = cards.length === POKER_HAND_SIZE ? evaluateHandFull(cards) : null;
-          if (maybe?.hand === "straight" && !straightMustStartAtEnd(cards)) {
-            if (embedded) showToast("Straight: start on the 10 or Ace end", true);
-            else setMessage("Straight: start on the 10 or Ace end");
-          } else {
-            if (embedded) showToast("Not a valid 5-card poker hand", true);
-            else setMessage("Not a valid 5-card poker hand");
-          }
+          if (embedded) showToast("Not a valid 5-card poker hand", true);
+          else setMessage("Not a valid 5-card poker hand");
         }
         clear();
         return;

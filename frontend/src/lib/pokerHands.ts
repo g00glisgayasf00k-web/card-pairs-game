@@ -144,8 +144,20 @@ function rankCounts(cards: { rank: Rank }[]): Map<number, number> {
   return m;
 }
 
-function isFlush(cards: { suit: Suit }[]): boolean {
-  return cards.length >= 5 && new Set(cards.map((c) => c.suit)).size === 1;
+export const HAND_CARD_COUNT: Record<HandLabel, number> = {
+  pair: 2,
+  two_pair: 4,
+  three_of_a_kind: 3,
+  straight: 5,
+  flush: 5,
+  full_house: 5,
+  four_of_a_kind: 4,
+  straight_flush: 5,
+  royal_flush: 5,
+};
+
+function isFlush5(cards: { suit: Suit }[]): boolean {
+  return cards.length === 5 && new Set(cards.map((c) => c.suit)).size === 1;
 }
 
 function straightValues(values: number[]): boolean {
@@ -161,7 +173,7 @@ function isStraight(cards: { rank: Rank }[]): boolean {
 }
 
 function isRoyal(cards: { rank: Rank; suit: Suit }[]): boolean {
-  if (cards.length !== 5 || !isFlush(cards)) return false;
+  if (cards.length !== 5 || !isFlush5(cards)) return false;
   const vals = new Set(cards.map((c) => RANK_VALUES[c.rank]));
   return vals.size === 5 && [...vals].every((v) => ROYAL.has(v)) && isStraight(cards);
 }
@@ -173,17 +185,17 @@ export function evaluateHand(
   const counts = rankCounts(cards);
   const freq = [...counts.values()].sort((a, b) => b - a);
   const n = cards.length;
-  const flush = n >= 5 && isFlush(cards);
+  const flush = isFlush5(cards);
   const straight = n === 5 && isStraight(cards);
 
   let hand: HandLabel | null = null;
   if (n === 5 && isRoyal(cards))                     hand = "royal_flush";
   else if (n === 5 && straight && flush)              hand = "straight_flush";
-  else if (freq[0] === 4)                             hand = "four_of_a_kind";
+  else if (n === 4 && freq[0] === 4)                 hand = "four_of_a_kind";
   else if (n === 5 && freq[0] === 3 && freq[1] === 2) hand = "full_house";
   else if (n === 5 && flush)                          hand = "flush";
   else if (n === 5 && straight)                       hand = "straight";
-  else if (freq[0] === 3)                             hand = "three_of_a_kind";
+  else if (n === 3 && freq[0] === 3)                 hand = "three_of_a_kind";
   else if (n === 4 && freq[0] === 2 && freq[1] === 2) hand = "two_pair";
   else if (n === 2 && freq[0] === 2)                  hand = "pair";
   else return null;
@@ -211,12 +223,15 @@ function evaluateHandWithWilds(
     return { hand: "royal_flush", points: HAND_SCORES.royal_flush };
   }
 
-  const base = normals.map((c) => ({ rank: c.rank, suit: c.suit }));
-
   if (wc === 1) {
     let best: { hand: HandLabel; points: number } | null = null;
     for (const sub of ALL_CARDS) {
-      const result = evaluateHand([...base, sub]);
+      const filled = cards.map((c) =>
+        c.special === "joker"
+          ? { rank: sub.rank, suit: sub.suit }
+          : { rank: c.rank, suit: c.suit }
+      );
+      const result = evaluateHand(filled);
       if (result && (!best || result.points > best.points)) best = result;
     }
     return best;
@@ -226,7 +241,16 @@ function evaluateHandWithWilds(
     let best: { hand: HandLabel; points: number } | null = null;
     for (const s1 of ALL_CARDS) {
       for (const s2 of ALL_CARDS) {
-        const result = evaluateHand([...base, s1, s2]);
+        let j = 0;
+        const filled = cards.map((c) => {
+          if (c.special === "joker") {
+            const sub = j === 0 ? s1 : s2;
+            j++;
+            return { rank: sub.rank, suit: sub.suit };
+          }
+          return { rank: c.rank, suit: c.suit };
+        });
+        const result = evaluateHand(filled);
         if (result && (!best || result.points > best.points)) best = result;
       }
     }
@@ -287,41 +311,21 @@ export function straightMustStartAtEnd(cards: Card[]): boolean {
   return ends.has(cards[0]!.rank) && ends.has(cards[cards.length - 1]!.rank);
 }
 
-/** Exact card counts required for each hand (others allow variable path length). */
-const EXACT_HAND_SIZE: Partial<Record<HandLabel, number>> = {
-  straight: 5,
-  flush: 5,
-  full_house: 5,
-  straight_flush: 5,
-  royal_flush: 5,
-};
-
 /**
- * Pick the valid hand path when touch input overshoots (e.g. 6th cell on release).
- * Only clears cells that belong to the resolved hand.
+ * Resolve a swipe path to a valid hand. Trims trailing touch overshoot only.
+ * Cleared cells always match the exact hand size (pair = 2, flush = 5, etc.).
  */
 export function resolveHandFromPath(
   path: { row: number; col: number }[],
   getCard: (p: { row: number; col: number }) => Card | null | undefined
 ): { path: { row: number; col: number }[]; result: FullHandResult } | null {
-  if (path.length < 2) return null;
+  if (path.length < 2 || !pathIsAdjacent(path)) return null;
 
-  const candidates: { row: number; col: number }[][] = [];
-  const seen = new Set<string>();
-  const add = (p: { row: number; col: number }[]) => {
-    const key = p.map((c) => `${c.row},${c.col}`).join("|");
-    if (p.length >= 2 && !seen.has(key)) {
-      seen.add(key);
-      candidates.push(p);
-    }
-  };
+  const maxTrim = Math.min(3, path.length - 2);
+  for (let trim = 0; trim <= maxTrim; trim++) {
+    const p = path.slice(0, path.length - trim);
+    if (p.length < 2) continue;
 
-  add(path);
-  if (path.length > 2) add(path.slice(0, -1));
-  if (path.length > 5) add(path.slice(0, 5));
-
-  for (const p of candidates) {
-    if (!pathIsAdjacent(p)) continue;
     const cards: Card[] = [];
     for (const cell of p) {
       const card = getCard(cell);
@@ -335,18 +339,7 @@ export function resolveHandFromPath(
 
     const result = evaluateHandFull(cards);
     if (!result || !straightMustStartAtEnd(cards)) continue;
-
-    const exact = EXACT_HAND_SIZE[result.hand];
-    if (exact !== undefined && p.length > exact) {
-      const trimmed = p.slice(0, exact);
-      if (!pathIsAdjacent(trimmed)) continue;
-      const trimmedCards = trimmed.map((c) => getCard(c)!);
-      const trimmedResult = evaluateHandFull(trimmedCards);
-      if (trimmedResult && straightMustStartAtEnd(trimmedCards)) {
-        return { path: trimmed, result: trimmedResult };
-      }
-      continue;
-    }
+    if (p.length !== HAND_CARD_COUNT[result.hand]) continue;
 
     return { path: p, result };
   }

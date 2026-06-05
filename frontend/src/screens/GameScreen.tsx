@@ -9,7 +9,7 @@ import {
   type FullHandResult,
   type HandLabel,
 } from "../lib/pokerHands";
-import { campaignLeaderboardPoints, comboLabel, comboMultiplier, getLevelConfig, levelRequirementsMet, MAX_LEVEL } from "../lib/levels";
+import { campaignLeaderboardPoints, comboLabel, comboMultiplier, estimateRemainingSwipes, formatChallenge, getLevelConfig, levelRequirementsMet, MAX_LEVEL, type HandCounts } from "../lib/levels";
 import {
   clearProgress,
   defaultProgress,
@@ -18,6 +18,13 @@ import {
 } from "../lib/progress";
 import { GameBoard, type GameBoardHandle } from "../components/GameBoard";
 import { SpecialArt } from "../components/SpecialArt";
+import {
+  getLevel1SeedBoard,
+  getTutorialStepConfig,
+  isLevel1TutorialActive,
+  TUTORIAL_FREE_STEP,
+  tutorialFreePlayMessage,
+} from "../lib/tutorialLevel1";
 
 interface Props {
   username: string | null;
@@ -35,9 +42,11 @@ interface RunState {
   level: number;
   levelScore: number;
   levelHands: number;
+  levelHandCounts: HandCounts;
   handsCleared: number;
   bestHand: HandLabel;
   streak: number;
+  tutorialStep: number;
 }
 
 const HAND_BADGE: Record<HandLabel, string> = {
@@ -61,9 +70,11 @@ function initRunState(): RunState {
       level: saved.level,
       levelScore: saved.levelScore,
       levelHands: saved.levelHands,
+      levelHandCounts: saved.levelHandCounts ?? {},
       handsCleared: saved.handsCleared,
       bestHand: saved.bestHand,
       streak: saved.streak,
+      tutorialStep: saved.tutorialStep ?? 0,
     };
   }
   return defaultProgress();
@@ -71,7 +82,7 @@ function initRunState(): RunState {
 
 export function GameScreen({ username, onMenu }: Props) {
   const [run, setRun] = useState<RunState>(initRunState);
-  const { level, levelScore, levelHands, handsCleared, bestHand, streak } = run;
+  const { level, levelScore, levelHands, levelHandCounts, handsCleared, bestHand, streak, tutorialStep } = run;
 
   const [phase, setPhase] = useState<Phase>("playing");
   const [completedLevel, setCompletedLevel] = useState<number | null>(null);
@@ -85,18 +96,20 @@ export function GameScreen({ username, onMenu }: Props) {
   const floatId = useRef(0);
   const levelScoreRef = useRef(levelScore);
   const levelHandsRef = useRef(levelHands);
-  const levelRef = useRef(level);
+  const levelHandCountsRef = useRef<HandCounts>(levelHandCounts);
   const handsClearedRef = useRef(handsCleared);
   const bestHandRef = useRef(bestHand);
+  const levelRef = useRef(level);
   const advancingRef = useRef(false);
 
   const boardRef = useRef<GameBoardHandle>(null);
 
   levelScoreRef.current = levelScore;
   levelHandsRef.current = levelHands;
-  levelRef.current = level;
+  levelHandCountsRef.current = levelHandCounts;
   handsClearedRef.current = handsCleared;
   bestHandRef.current = bestHand;
+  levelRef.current = level;
 
   const cfg = getLevelConfig(level);
   const combo = comboMultiplier(streak);
@@ -104,6 +117,17 @@ export function GameScreen({ username, onMenu }: Props) {
   const levelProgress = Math.min(1, levelScore / cfg.targetPoints);
   const pointsMet = levelScore >= cfg.targetPoints;
   const nextCfg = getLevelConfig(level + 1);
+
+  const remainingSwipes = estimateRemainingSwipes(cfg, levelScore, levelHandCounts, levelHands);
+  const challengesComplete = cfg.challenges.every(
+    (c) => (levelHandCounts[c.hand] ?? 0) >= c.minCount
+  );
+
+  const tutorialActive = isLevel1TutorialActive(level, tutorialStep);
+  const tutorialConfig = tutorialActive ? getTutorialStepConfig(tutorialStep) : null;
+  const level1SeedBoard = level === 1 ? getLevel1SeedBoard(tutorialStep) : undefined;
+  const tutorialFreePlay = level === 1 && tutorialStep >= TUTORIAL_FREE_STEP;
+
   const completedCfg = completedLevel ? getLevelConfig(completedLevel) : null;
 
   const persistRun = useCallback((next: RunState) => {
@@ -111,9 +135,11 @@ export function GameScreen({ username, onMenu }: Props) {
       level: next.level,
       levelScore: next.levelScore,
       levelHands: next.levelHands,
+      levelHandCounts: next.levelHandCounts,
       handsCleared: next.handsCleared,
       bestHand: next.bestHand,
       streak: next.streak,
+      tutorialStep: next.tutorialStep,
     });
   }, []);
 
@@ -131,10 +157,13 @@ export function GameScreen({ username, onMenu }: Props) {
         level: prev.level + 1,
         levelScore: 0,
         levelHands: 0,
+        levelHandCounts: {},
         streak: 0,
+        tutorialStep: 0,
       };
       levelScoreRef.current = 0;
       levelHandsRef.current = 0;
+      levelHandCountsRef.current = {};
       return next;
     });
     setPhase("playing");
@@ -148,9 +177,10 @@ export function GameScreen({ username, onMenu }: Props) {
   }, [phase, advanceLevel]);
 
   const tryAdvanceLevel = useCallback(
-    (score: number, hands: number) => {
+    (score: number, handCounts: HandCounts, hands: number) => {
       if (phase !== "playing" || advancingRef.current) return false;
-      if (!levelRequirementsMet(score, hands, cfg)) return false;
+      if (level === 1 && tutorialStep < TUTORIAL_FREE_STEP) return false;
+      if (!levelRequirementsMet(score, handCounts, cfg)) return false;
 
       advancingRef.current = true;
       setCompletedLevel(level);
@@ -163,8 +193,16 @@ export function GameScreen({ username, onMenu }: Props) {
       }
       return true;
     },
-    [cfg, level, phase]
+    [cfg, level, phase, tutorialStep]
   );
+
+  const handleTutorialStepComplete = useCallback(() => {
+    setRun((prev) => ({
+      ...prev,
+      tutorialStep: Math.min(TUTORIAL_FREE_STEP, prev.tutorialStep + 1),
+    }));
+    setBoardKey((k) => k + 1);
+  }, []);
 
   const spawnFloat = useCallback((text: string) => {
     const id = ++floatId.current;
@@ -180,8 +218,13 @@ export function GameScreen({ username, onMenu }: Props) {
       const comboPts = Math.round(result.totalPoints * comboMultiplier(newStreak));
       const nextHands = levelHandsRef.current + 1;
       const nextScore = levelScoreRef.current + comboPts;
+      const nextHandCounts: HandCounts = {
+        ...levelHandCountsRef.current,
+        [result.hand]: (levelHandCountsRef.current[result.hand] ?? 0) + 1,
+      };
       levelHandsRef.current = nextHands;
       levelScoreRef.current = nextScore;
+      levelHandCountsRef.current = nextHandCounts;
 
       setRun((prev) => {
         const nextBest =
@@ -196,10 +239,11 @@ export function GameScreen({ username, onMenu }: Props) {
           handsCleared: prev.handsCleared + 1,
           levelHands: nextHands,
           levelScore: nextScore,
+          levelHandCounts: nextHandCounts,
           bestHand: nextBest,
         };
       });
-      tryAdvanceLevel(nextScore, nextHands);
+      tryAdvanceLevel(nextScore, nextHandCounts, nextHands);
       spawnFloat(`+${comboPts.toLocaleString()}`);
     },
     [streak, tryAdvanceLevel, spawnFloat]
@@ -213,7 +257,7 @@ export function GameScreen({ username, onMenu }: Props) {
         ...prev,
         levelScore: nextScore,
       }));
-      tryAdvanceLevel(nextScore, levelHandsRef.current);
+      tryAdvanceLevel(nextScore, levelHandCountsRef.current, levelHandsRef.current);
       spawnFloat(`+${pts.toLocaleString()}`);
     },
     [tryAdvanceLevel, spawnFloat]
@@ -265,13 +309,64 @@ export function GameScreen({ username, onMenu }: Props) {
 
           <div className="xp-track">
             <div
-              className={`xp-fill${pointsMet ? " xp-fill--done" : ""}`}
+              className={`xp-fill${pointsMet && (tutorialFreePlay || level > 1) ? " xp-fill--done" : ""}`}
               style={{ width: `${levelProgress * 100}%` }}
             />
             <span className="xp-label">
               💰 {levelScore.toLocaleString()} / {cfg.targetPoints.toLocaleString()}
             </span>
           </div>
+
+          {(tutorialActive || tutorialFreePlay) && (
+            <div className={`tutorial-banner${tutorialFreePlay ? " tutorial-banner--free" : ""}`}>
+              <span className="tutorial-banner__tag">
+                {tutorialFreePlay ? "🎯 Your turn" : `🎓 Lesson ${tutorialConfig?.lesson ?? 1}/3`}
+              </span>
+              <p className="tutorial-banner__text">
+                {tutorialFreePlay
+                  ? tutorialFreePlayMessage()
+                  : tutorialConfig?.message}
+              </p>
+              {tutorialConfig && (
+                <span className="tutorial-banner__hand">{tutorialConfig.title}</span>
+              )}
+            </div>
+          )}
+
+          {(level > 1 || tutorialFreePlay) && (
+          <div className="challenge-panel">
+            <div className="challenge-panel__header">
+              <span className="challenge-panel__title">Challenges</span>
+              <span
+                className="challenge-panel__est"
+                title={`Typical level length: ~${cfg.estimatedMoves} swipes`}
+              >
+                ~{remainingSwipes} swipes left
+              </span>
+            </div>
+            <ul className="challenge-list">
+              {cfg.challenges.map((c) => {
+                const have = levelHandCounts[c.hand] ?? 0;
+                const done = have >= c.minCount;
+                return (
+                  <li
+                    key={`${c.hand}-${c.minCount}`}
+                    className={`challenge-item${done ? " challenge-item--done" : ""}`}
+                  >
+                    <span className="challenge-item__mark">{done ? "✓" : "○"}</span>
+                    <span className="challenge-item__text">{formatChallenge(c)}</span>
+                    <span className="challenge-item__prog">
+                      {have}/{c.minCount}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+            {pointsMet && !challengesComplete && (
+              <p className="fail-reason">Points reached — finish challenges to advance</p>
+            )}
+          </div>
+          )}
 
           <div className="hands-track hands-track--stat">
             <span className="hands-label">🃏 {levelHands} hands this level</span>
@@ -313,6 +408,10 @@ export function GameScreen({ username, onMenu }: Props) {
               embedded
               locked={boardLocked}
               comboMultiplier={combo}
+              seedBoard={level1SeedBoard}
+              guidedPath={tutorialConfig?.guidedPath}
+              tutorialExpectedHand={tutorialConfig?.expectedHand}
+              onTutorialStepComplete={tutorialActive ? handleTutorialStepComplete : undefined}
               onHand={handleHand}
               onActivation={handleActivation}
             />
@@ -324,8 +423,8 @@ export function GameScreen({ username, onMenu }: Props) {
             type="button"
             className="action-btn action-btn--shuffle"
             onClick={() => boardRef.current?.shuffle()}
-            disabled={boardLocked}
-            title="Shuffle the board"
+            disabled={boardLocked || tutorialActive}
+            title={tutorialActive ? "Finish the lesson first" : "Shuffle the board"}
           >
             <span className="action-btn__icon">🔀</span>
             <span className="action-btn__label">Shuffle</span>
@@ -374,6 +473,12 @@ export function GameScreen({ username, onMenu }: Props) {
                 <span className="perk-icon">🃏</span>
                 <span>{completedStats?.hands ?? 0} hands cleared</span>
               </div>
+              {completedCfg.challenges.map((c) => (
+                <div className="perk" key={`${c.hand}-${c.minCount}`}>
+                  <span className="perk-icon">✓</span>
+                  <span>{formatChallenge(c)}</span>
+                </div>
+              ))}
               <div className="perk">
                 <span className="perk-icon">⭐</span>
                 <span>Up next: {nextCfg.label}</span>

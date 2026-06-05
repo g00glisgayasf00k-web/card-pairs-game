@@ -520,6 +520,33 @@ header h1 {
   );
 }
 
+.playing-card.guided {
+  z-index: 2;
+  animation: guided-pulse 1.4s ease-in-out infinite;
+  box-shadow:
+    0 0 0 2px #7dffba,
+    0 0 14px rgba(125, 255, 186, 0.65),
+    0 3px 8px rgba(0, 0, 0, 0.35);
+}
+
+@keyframes guided-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    box-shadow:
+      0 0 0 2px #7dffba,
+      0 0 10px rgba(125, 255, 186, 0.45),
+      0 3px 8px rgba(0, 0, 0, 0.35);
+  }
+  50% {
+    transform: scale(1.04);
+    box-shadow:
+      0 0 0 3px #7dffba,
+      0 0 18px rgba(125, 255, 186, 0.85),
+      0 3px 10px rgba(0, 0, 0, 0.35);
+  }
+}
+
 .playing-card.pop {
   animation: pop-out 0.28s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   will-change: transform, opacity;

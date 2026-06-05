@@ -14,10 +14,11 @@ const SPECIAL_CLASS: Record<SpecialType, string> = {
 interface Props {
   card: Card;
   selected?: boolean;
+  guided?: boolean;
   popping?: boolean;
 }
 
-export function PlayingCard({ card, selected, popping }: Props) {
+export function PlayingCard({ card, selected, guided, popping }: Props) {
   const suit = SUIT_SYMBOL[card.suit];
   const sp   = card.special;
 
@@ -28,6 +29,7 @@ export function PlayingCard({ card, selected, popping }: Props) {
         `suit-${card.suit}`,
         sp ? SPECIAL_CLASS[sp] : "",
         selected && !popping ? "selected" : "",
+        guided && !popping ? "guided" : "",
         popping ? "pop" : "",
       ].filter(Boolean).join(" ")}
       aria-label={`${card.rank} of ${card.suit}${sp ? ` (${sp})` : ""}`}

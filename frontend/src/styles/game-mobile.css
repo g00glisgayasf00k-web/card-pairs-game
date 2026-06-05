@@ -297,9 +297,127 @@
 .fail-reason {
   margin: 0 0 0.75rem;
   font-size: 0.88rem;
-  color: #ffb4b4;
+}
+
+.challenge-panel {
+  margin-top: 0.35rem;
+  padding: 0.45rem 0.55rem;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.challenge-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.35rem;
+}
+
+.challenge-panel__title {
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.8;
+}
+
+.challenge-panel__est {
+  font-size: 0.58rem;
+  font-weight: 600;
+  opacity: 0.65;
+  white-space: nowrap;
+}
+
+.challenge-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.challenge-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.62rem;
+  line-height: 1.2;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.challenge-item--done {
+  color: #7dffba;
+}
+
+.challenge-item__mark {
+  flex-shrink: 0;
+  width: 0.85rem;
   text-align: center;
-  line-height: 1.4;
+  font-weight: 700;
+}
+
+.challenge-item__text {
+  flex: 1;
+  min-width: 0;
+}
+
+.challenge-item__prog {
+  flex-shrink: 0;
+  font-weight: 700;
+  opacity: 0.75;
+}
+
+.challenge-panel .fail-reason {
+  margin: 0.35rem 0 0;
+  font-size: 0.58rem;
+  text-align: center;
+  color: #fbbf24;
+}
+
+.tutorial-banner {
+  margin-top: 0.35rem;
+  padding: 0.5rem 0.6rem;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(99, 102, 241, 0.35), rgba(124, 58, 237, 0.25));
+  border: 1px solid rgba(167, 139, 250, 0.45);
+  text-align: center;
+}
+
+.tutorial-banner--free {
+  background: linear-gradient(135deg, rgba(34, 197, 94, 0.25), rgba(16, 185, 129, 0.2));
+  border-color: rgba(125, 255, 186, 0.4);
+}
+
+.tutorial-banner__tag {
+  display: block;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  opacity: 0.9;
+  margin-bottom: 0.2rem;
+}
+
+.tutorial-banner__text {
+  margin: 0;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.92);
+}
+
+.tutorial-banner__hand {
+  display: block;
+  margin-top: 0.25rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: #c4b5fd;
+}
+
+.tutorial-banner--free .tutorial-banner__hand {
+  color: #7dffba;
 }
 
 /* Hand scores modal */

@@ -18,9 +18,11 @@ import {
   straightMustStartAtEnd,
   type Card,
   type FullHandResult,
+  type HandLabel,
   type Rank,
   type SpecialType,
 } from "../lib/pokerHands";
+import { pathMatchesGuide } from "../lib/tutorialLevel1";
 import { useSwipePath } from "../hooks/useSwipePath";
 import { PlayingCard } from "./PlayingCard";
 
@@ -85,6 +87,14 @@ interface Props {
   embedded?: boolean;
   /** Block input during level transitions */
   locked?: boolean;
+  /** Fixed opening board (Beginner 1 tutorial / free-play layout) */
+  seedBoard?: (Card | null)[][];
+  /** Cells the player should swipe during a guided lesson */
+  guidedPath?: { row: number; col: number }[];
+  /** Required hand for the current guided lesson */
+  tutorialExpectedHand?: HandLabel;
+  /** Skip gravity — parent loads the next lesson board */
+  onTutorialStepComplete?: () => void;
 }
 
 // ── Gravity ───────────────────────────────────────────────────────────────────
@@ -150,9 +160,28 @@ function fisherYatesShuffle<T>(arr: T[]): T[] {
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
+function cloneSeedBoard(seed: (Card | null)[][]): (Card | null)[][] {
+  return seed.map((row) => row.map((cell) => (cell ? { ...cell } : null)));
+}
+
 export const GameBoard = forwardRef<GameBoardHandle, Props>(
-  function GameBoard({ comboMultiplier, onHand, onActivation, embedded, locked = false }, ref) {
-    const [board, setBoard] = useState<(Card | null)[][]>(() => createBoard(ROWS, COLS));
+  function GameBoard(
+    {
+      comboMultiplier,
+      onHand,
+      onActivation,
+      embedded,
+      locked = false,
+      seedBoard,
+      guidedPath,
+      tutorialExpectedHand,
+      onTutorialStepComplete,
+    },
+    ref
+  ) {
+    const [board, setBoard] = useState<(Card | null)[][]>(() =>
+      seedBoard ? cloneSeedBoard(seedBoard) : createBoard(ROWS, COLS)
+    );
     const [message, setMessage] = useState<string | null>(null);
     const [popping, setPopping] = useState<Set<string>>(new Set());
     const [popOrder, setPopOrder] = useState<Map<string, number>>(new Map());
@@ -198,6 +227,8 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
 
     const pathKey = (r: number, c: number) => `${r},${c}`;
     const inPath = (r: number, c: number) => path.some((p) => p.row === r && p.col === c);
+    const guidedKeys = new Set((guidedPath ?? []).map((p) => pathKey(p.row, p.col)));
+    const isGuided = (r: number, c: number) => guidedKeys.has(pathKey(r, c));
 
     useImperativeHandle(ref, () => ({
       shuffle: () => {
@@ -375,6 +406,17 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
 
       const { path: validPath, result } = resolved;
 
+      if (
+        guidedPath &&
+        tutorialExpectedHand &&
+        onTutorialStepComplete &&
+        (result.hand !== tutorialExpectedHand || !pathMatchesGuide(validPath, guidedPath))
+      ) {
+        setMessage(`Swipe the glowing cards to make a ${HAND_DISPLAY[tutorialExpectedHand]}`);
+        clear();
+        return;
+      }
+
       finishingSwipe.current = true;
       setBusy(true);
 
@@ -393,22 +435,28 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
       const earned = specialsEarnedForHand(result.hand);
 
       const boardSnapshot = board;
+      const isTutorialStep = !!onTutorialStepComplete;
       try {
         await delay(waitForPop(validPath.length));
 
-        const gravity = applyGravity(boardSnapshot, allCleared, earned, validPath);
-        setBoard(gravity.newBoard);
-        setDropMap(gravity.dropMap);
-        setNewKeys(gravity.newKeys);
         setPopping(new Set());
         setPopOrder(new Map());
         setMessage(toast);
 
         onHand(result);
 
-        await delay(waitForSettle());
-        setDropMap(new Map());
-        setNewKeys(new Set());
+        if (isTutorialStep) {
+          onTutorialStepComplete();
+        } else {
+          const gravity = applyGravity(boardSnapshot, allCleared, earned, validPath);
+          setBoard(gravity.newBoard);
+          setDropMap(gravity.dropMap);
+          setNewKeys(gravity.newKeys);
+
+          await delay(waitForSettle());
+          setDropMap(new Map());
+          setNewKeys(new Set());
+        }
       } finally {
         finishingSwipe.current = false;
         clear();
@@ -417,6 +465,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
     }, [
       busy, board, clear, comboMultiplier, locked, pathRef,
       onHand, activateBomb, activateStar,
+      guidedPath, tutorialExpectedHand, onTutorialStepComplete,
     ]);
 
     const handlePointerUp = () => {
@@ -479,6 +528,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
                     <PlayingCard
                       card={cell}
                       selected={inPath(r, c) && !isPopping && !isBlasting}
+                      guided={isGuided(r, c) && !busy && !locked}
                       popping={isPopping}
                     />
                   </div>

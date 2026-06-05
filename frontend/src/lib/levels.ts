@@ -1,89 +1,220 @@
+import { HAND_DISPLAY, HAND_SCORES, type HandLabel } from "./pokerHands";
+
+export interface HandChallenge {
+  hand: HandLabel;
+  minCount: number;
+}
+
 export interface LevelConfig {
   level: number;
+  tier: string;
   label: string;
   targetPoints: number;
-  /** Minimum poker hands cleared this level to advance */
-  minHands: number;
+  challenges: HandChallenge[];
+  /** Typical swipes needed to finish (base scores, no combo luck). */
+  estimatedMoves: number;
 }
+
+export type HandCounts = Partial<Record<HandLabel, number>>;
 
 export const MAX_LEVEL = 100;
 
-const TIER_NAMES = [
+/** Average pts per filler swipe after challenge hands (pairs + occasional combos). */
+const AVG_FILLER_PTS = 130;
+
+const CAMPAIGN_TIERS = [
+  "Beginner",
+  "Amateur",
+  "Regular",
+  "Pro",
+  "Shark",
+  "High Roller",
+  "Ace",
   "Veteran",
   "Expert",
   "Elite",
-  "Master",
-  "Legend",
-  "Champion",
-  "Icon",
-  "Mythic",
-  "Immortal",
-  "Ultimate",
 ] as const;
 
-/** Curated early levels — targets sit above minHands × 100 (all pairs) */
-const EARLY_LEVELS: Omit<LevelConfig, "level">[] = [
-  { label: "Rookie",      targetPoints: 1000,  minHands: 6 },
-  { label: "Amateur",     targetPoints: 2000,  minHands: 10 },
-  { label: "Regular",     targetPoints: 3500,  minHands: 14 },
-  { label: "Pro",         targetPoints: 5500,  minHands: 18 },
-  { label: "Shark",       targetPoints: 8500,  minHands: 22 },
-  { label: "High Roller", targetPoints: 12500, minHands: 26 },
-  { label: "Ace",         targetPoints: 18000, minHands: 30 },
+/** Levels 1–10 — curated Beginner progression */
+const BEGINNER_LEVELS: {
+  targetPoints: number;
+  challenges: HandChallenge[];
+}[] = [
+  { targetPoints: 1000, challenges: [{ hand: "three_of_a_kind", minCount: 1 }] },
+  { targetPoints: 1200, challenges: [{ hand: "pair", minCount: 3 }] },
+  { targetPoints: 1400, challenges: [{ hand: "two_pair", minCount: 1 }] },
+  { targetPoints: 1600, challenges: [{ hand: "three_of_a_kind", minCount: 2 }] },
+  { targetPoints: 1800, challenges: [{ hand: "straight", minCount: 1 }] },
+  { targetPoints: 2000, challenges: [{ hand: "flush", minCount: 1 }] },
+  { targetPoints: 2400, challenges: [{ hand: "full_house", minCount: 1 }] },
+  { targetPoints: 2700, challenges: [{ hand: "straight", minCount: 2 }] },
+  { targetPoints: 3000, challenges: [{ hand: "four_of_a_kind", minCount: 1 }] },
+  {
+    targetPoints: 3500,
+    challenges: [
+      { hand: "flush", minCount: 1 },
+      { hand: "full_house", minCount: 1 },
+    ],
+  },
 ];
 
-function labelFromTier(level: number): string {
-  const idx = level - 8;
-  const tier = TIER_NAMES[Math.floor(idx / 10)] ?? "Ultimate";
-  const step = (idx % 10) + 1;
-  return `${tier} ${step}`;
+function tierForLevel(level: number): string {
+  const idx = Math.min(CAMPAIGN_TIERS.length - 1, Math.floor((level - 1) / 10));
+  return CAMPAIGN_TIERS[idx] ?? "Elite";
 }
 
-function buildLevelConfigs(): LevelConfig[] {
-  const configs: LevelConfig[] = EARLY_LEVELS.map((data, i) => ({
-    level: i + 1,
-    ...data,
-  }));
+function stepInTier(level: number): number {
+  return ((level - 1) % 10) + 1;
+}
 
-  const endPoints = 320_000;
-  const endHands = 52;
-  const startPoints = EARLY_LEVELS[6]!.targetPoints;
-  const startHands = EARLY_LEVELS[6]!.minHands;
+function labelForLevel(level: number): string {
+  return `${tierForLevel(level)} ${stepInTier(level)}`;
+}
 
-  for (let level = 8; level <= MAX_LEVEL; level++) {
-    const t = (level - 7) / (MAX_LEVEL - 7);
-    const minHands = Math.round(startHands + t * (endHands - startHands));
-    let targetPoints = Math.round(
-      startPoints + t * t * (endPoints - startPoints)
-    );
-    // ~167 pts/hand floor — can't finish on pairs alone
-    targetPoints = Math.max(targetPoints, minHands * 167);
+/** Minimum points the challenge hands must contribute (base scores). */
+export function challengePointsFloor(challenges: HandChallenge[]): number {
+  return challenges.reduce((sum, c) => sum + HAND_SCORES[c.hand] * c.minCount, 0);
+}
 
-    configs.push({
-      level,
-      label: labelFromTier(level),
-      targetPoints,
-      minHands,
-    });
+/**
+ * Estimate swipes to reach the point target.
+ * 1) Count swipes for each required challenge hand (at base payout).
+ * 2) Fill remaining points with average filler swipes.
+ */
+export function computeEstimatedMoves(
+  targetPoints: number,
+  challenges: HandChallenge[]
+): number {
+  let remaining = targetPoints;
+  let moves = 0;
+
+  for (const { hand, minCount } of challenges) {
+    remaining -= HAND_SCORES[hand] * minCount;
+    moves += minCount;
   }
 
-  return configs;
+  remaining = Math.max(0, remaining);
+  if (remaining > 0) {
+    moves += Math.ceil(remaining / AVG_FILLER_PTS);
+  }
+
+  return Math.max(moves, 1);
 }
 
-const LEVEL_CONFIGS = buildLevelConfigs();
+/** Dynamic estimate from current progress (uses your actual pts/swipe pace when available). */
+export function estimateRemainingSwipes(
+  cfg: LevelConfig,
+  levelScore: number,
+  handCounts: HandCounts,
+  swipesUsed: number
+): number {
+  if (levelRequirementsMet(levelScore, handCounts, cfg)) return 0;
+
+  let challengeSwipesLeft = 0;
+  let challengePtsLeft = 0;
+  for (const { hand, minCount } of cfg.challenges) {
+    const have = handCounts[hand] ?? 0;
+    const need = Math.max(0, minCount - have);
+    challengeSwipesLeft += need;
+    challengePtsLeft += need * HAND_SCORES[hand];
+  }
+
+  const pointsLeft = Math.max(0, cfg.targetPoints - levelScore);
+  const fillerPts = Math.max(0, pointsLeft - challengePtsLeft);
+  const pace =
+    swipesUsed > 0 ? Math.max(levelScore / swipesUsed, HAND_SCORES.pair) : AVG_FILLER_PTS;
+  const fillerSwipes = fillerPts > 0 ? Math.ceil(fillerPts / pace) : 0;
+
+  return challengeSwipesLeft + fillerSwipes;
+}
+
+export function challengesMet(handCounts: HandCounts, challenges: HandChallenge[]): boolean {
+  return challenges.every((c) => (handCounts[c.hand] ?? 0) >= c.minCount);
+}
+
+export function formatChallenge(c: HandChallenge): string {
+  const name = HAND_DISPLAY[c.hand];
+  return c.minCount === 1 ? `1× ${name}` : `${c.minCount}× ${name}`;
+}
+
+function challengesForAdvancedLevel(level: number): HandChallenge[] {
+  const step = stepInTier(level);
+  const tierIdx = Math.floor((level - 1) / 10);
+
+  const ladder: HandLabel[] = [
+    "pair",
+    "two_pair",
+    "three_of_a_kind",
+    "straight",
+    "flush",
+    "full_house",
+    "four_of_a_kind",
+    "straight_flush",
+  ];
+  const rank = Math.min(ladder.length - 1, tierIdx + Math.floor(step / 4));
+  const primary = ladder[rank]!;
+  const secondary = ladder[Math.max(0, rank - 1)]!;
+  const primaryCount = 1 + Math.floor(step / 5);
+
+  if (step >= 7 && rank >= 2) {
+    return [
+      { hand: primary, minCount: primaryCount },
+      { hand: secondary, minCount: 1 },
+    ];
+  }
+  return [{ hand: primary, minCount: primaryCount }];
+}
+
+function targetPointsForAdvancedLevel(level: number): number {
+  const floor = challengePointsFloor(challengesForAdvancedLevel(level));
+  const start = BEGINNER_LEVELS[9]!.targetPoints;
+  const end = 320_000;
+  const t = (level - 11) / (MAX_LEVEL - 11);
+  const scaled = Math.round(start + t * t * (end - start));
+  return Math.max(scaled, floor + 400);
+}
+
+function buildLevelConfig(level: number): LevelConfig {
+  if (level <= 10) {
+    const data = BEGINNER_LEVELS[level - 1]!;
+    const challenges = data.challenges;
+    return {
+      level,
+      tier: "Beginner",
+      label: `Beginner ${level}`,
+      targetPoints: data.targetPoints,
+      challenges,
+      estimatedMoves: computeEstimatedMoves(data.targetPoints, challenges),
+    };
+  }
+
+  const challenges = challengesForAdvancedLevel(level);
+  const targetPoints = targetPointsForAdvancedLevel(level);
+  return {
+    level,
+    tier: tierForLevel(level),
+    label: labelForLevel(level),
+    targetPoints,
+    challenges,
+    estimatedMoves: computeEstimatedMoves(targetPoints, challenges),
+  };
+}
+
+const LEVEL_CONFIGS: LevelConfig[] = Array.from({ length: MAX_LEVEL }, (_, i) =>
+  buildLevelConfig(i + 1)
+);
 
 export function getLevelConfig(level: number): LevelConfig {
   const n = Math.min(Math.max(1, Math.floor(level)), MAX_LEVEL);
   return LEVEL_CONFIGS[n - 1]!;
 }
 
-/** True when the level point target is reached. */
 export function levelRequirementsMet(
   levelScore: number,
-  _levelHands: number,
+  handCounts: HandCounts,
   cfg: LevelConfig
 ): boolean {
-  return levelScore >= cfg.targetPoints;
+  return levelScore >= cfg.targetPoints && challengesMet(handCounts, cfg.challenges);
 }
 
 export function comboMultiplier(streak: number): number {
@@ -102,7 +233,6 @@ export function comboLabel(streak: number): string | null {
   return "Combo ×3 🔥";
 }
 
-/** Leaderboard total from completed level targets + current level progress (not shown in HUD). */
 export function campaignLeaderboardPoints(level: number, levelScore: number): number {
   let pts = levelScore;
   for (let l = 1; l < level; l++) {

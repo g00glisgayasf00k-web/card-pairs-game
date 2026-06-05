@@ -296,66 +296,127 @@
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;
+  padding: 0 0.25rem;
 }
 
 .level-map {
   position: relative;
-  padding: 0.5rem 0.75rem 1rem;
-  min-height: 28rem;
+  width: 100%;
+  min-height: 36rem;
+  max-height: 44rem;
+  margin: 0 auto;
+  padding: 0.25rem 0.5rem 0.75rem;
 }
 
 .map-path-svg {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  inset: 0.35rem 0.4rem 0.5rem;
+  width: calc(100% - 0.8rem);
+  height: calc(100% - 0.85rem);
   z-index: 0;
-  opacity: 0.85;
-  filter: drop-shadow(0 0 8px rgba(125, 255, 186, 0.35));
+  overflow: visible;
+  pointer-events: none;
+}
+
+.map-path {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.map-path--shadow {
+  stroke: rgba(0, 0, 0, 0.55);
+  stroke-width: 16;
+  transform: translateY(2px);
+  filter: blur(1px);
+}
+
+.map-path--base {
+  stroke-width: 12;
+}
+
+.map-path--rail {
+  stroke-width: 13;
+  stroke-opacity: 0.85;
+  stroke-dasharray: 2 6;
+}
+
+.map-path--progress {
+  stroke-width: 8;
+  stroke-dasharray: 1000;
+  stroke-dashoffset: 0;
+  animation: path-progress-shimmer 3s ease-in-out infinite;
+}
+
+.map-path--shine {
+  stroke: rgba(255, 255, 255, 0.12);
+  stroke-width: 3;
+  stroke-dasharray: 1 18;
+}
+
+@keyframes path-progress-shimmer {
+  0%,
+  100% {
+    opacity: 0.92;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+.map-path-dot {
+  fill: rgba(255, 255, 255, 0.15);
+  stroke: rgba(138, 105, 20, 0.5);
+  stroke-width: 0.6;
+}
+
+.map-path-dot--lit {
+  fill: #4ade80;
+  stroke: #f5d060;
+  stroke-width: 0.8;
+}
+
+.map-path-dot--current {
+  fill: #f5d060;
+  stroke: #fff;
+  stroke-width: 1;
+  filter: drop-shadow(0 0 4px rgba(245, 208, 96, 0.9));
+  animation: path-dot-pulse 1.4s ease-in-out infinite;
+}
+
+@keyframes path-dot-pulse {
+  0%,
+  100% {
+    r: 2.2;
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.85;
+  }
 }
 
 .map-nodes {
-  position: relative;
+  position: absolute;
+  inset: 0.35rem 0.4rem 0.5rem;
   z-index: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 0.1rem;
+  pointer-events: none;
 }
 
 .map-node-slot {
-  position: relative;
+  position: absolute;
+  transform: translate(-50%, -50%);
+  pointer-events: auto;
 }
 
-.map-row {
-  display: flex;
-  min-height: 5.25rem;
-  align-items: flex-start;
-  padding-top: 0.15rem;
-}
-
-.map-row--left {
-  justify-content: flex-start;
-  padding-left: 0.25rem;
-}
-
-.map-row--center {
-  justify-content: center;
-}
-
-.map-row--right {
-  justify-content: flex-end;
-  padding-right: 0.25rem;
-}
-
-.map-row--milestone {
-  min-height: 6rem;
-}
-
-.map-row__inner {
+.map-node {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.2rem;
+}
+
+.map-node--milestone {
+  gap: 0.25rem;
 }
 
 /* ── Poker chip nodes ───────────────────────────────────────────────────── */
@@ -536,12 +597,12 @@
 
 .world-gate {
   position: relative;
-  z-index: 1;
-  margin-top: 1.5rem;
+  z-index: 2;
+  margin-top: 0.5rem;
+  padding-bottom: 0.5rem;
   display: flex;
   flex-direction: column;
-  align-items: flex-end;
-  padding-right: 0.5rem;
+  align-items: center;
 }
 
 .world-gate__icon {

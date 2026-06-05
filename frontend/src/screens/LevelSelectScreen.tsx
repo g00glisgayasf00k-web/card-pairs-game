@@ -10,6 +10,12 @@ import {
   type LevelNodeState,
 } from "../lib/levelMap";
 import {
+  buildWorldMapPoints,
+  mapViewBoxHeight,
+  progressIndexInWorld,
+  smoothPathThrough,
+} from "../lib/mapLayout";
+import {
   countCompleted,
   countStarsInWorld,
   countTotalStars,
@@ -45,7 +51,6 @@ function StarRating({ stars }: { stars: number }) {
 
 interface LevelChipProps {
   globalLevel: number;
-  side: "left" | "center" | "right";
   isMilestone: boolean;
   state: LevelNodeState;
   isCurrent: boolean;
@@ -55,7 +60,6 @@ interface LevelChipProps {
 
 function LevelChip({
   globalLevel,
-  side,
   isMilestone,
   state,
   isCurrent,
@@ -66,9 +70,8 @@ function LevelChip({
   const locked = state === "locked";
 
   return (
-    <div className={`map-row map-row--${side}${isMilestone ? " map-row--milestone" : ""}`}>
-      <div className="map-row__inner">
-        <button
+    <div className={`map-node${isMilestone ? " map-node--milestone" : ""}`}>
+      <button
           type="button"
           className={[
             "level-chip",
@@ -94,9 +97,99 @@ function LevelChip({
             </span>
           )}
         </button>
-        {!locked && <StarRating stars={stars} />}
-      </div>
+      {!locked && <StarRating stars={stars} />}
     </div>
+  );
+}
+
+function WorldMapPath({
+  points,
+  progressIndex,
+  viewHeight,
+}: {
+  points: ReturnType<typeof buildWorldMapPoints>;
+  progressIndex: number;
+  viewHeight: number;
+}) {
+  const fullPath = smoothPathThrough(points);
+  const litCount = Math.max(1, progressIndex + 1);
+  const litPoints = points.slice(0, Math.min(litCount, points.length));
+  const progressPath = smoothPathThrough(litPoints);
+  const gradId = "mapPathGrad";
+  const progressGradId = "mapPathProgress";
+  const railGradId = "mapPathRail";
+
+  return (
+    <svg
+      className="map-path-svg"
+      viewBox={`0 0 100 ${viewHeight}`}
+      preserveAspectRatio="xMidYMin meet"
+      aria-hidden
+    >
+      <defs>
+        <linearGradient id={gradId} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#1a4d32" />
+          <stop offset="50%" stopColor="#0f3322" />
+          <stop offset="100%" stopColor="#1a4d32" />
+        </linearGradient>
+        <linearGradient id={progressGradId} x1="0%" y1="0%" x2="0%" y2="100%">
+          <stop offset="0%" stopColor="#86efac" />
+          <stop offset="45%" stopColor="#4ade80" />
+          <stop offset="100%" stopColor="#22c55e" />
+        </linearGradient>
+        <linearGradient id={railGradId} x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stopColor="#8a6914" stopOpacity="0.3" />
+          <stop offset="20%" stopColor="#ffe566" stopOpacity="0.95" />
+          <stop offset="50%" stopColor="#f5d060" stopOpacity="1" />
+          <stop offset="80%" stopColor="#ffe566" stopOpacity="0.95" />
+          <stop offset="100%" stopColor="#8a6914" stopOpacity="0.3" />
+        </linearGradient>
+        <filter id="mapPathGlow" x="-20%" y="-10%" width="140%" height="120%">
+          <feGaussianBlur stdDeviation="1.8" result="blur" />
+          <feMerge>
+            <feMergeNode in="blur" />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
+
+      {/* Outer shadow track */}
+      <path className="map-path map-path--shadow" d={fullPath} />
+
+      {/* Felt base */}
+      <path className="map-path map-path--base" d={fullPath} stroke={`url(#${gradId})`} />
+
+      {/* Gold rail edges */}
+      <path className="map-path map-path--rail" d={fullPath} stroke={`url(#${railGradId})`} />
+
+      {/* Progress fill */}
+      {progressIndex >= 0 && (
+        <path
+          className="map-path map-path--progress"
+          d={progressPath}
+          stroke={`url(#${progressGradId})`}
+          filter="url(#mapPathGlow)"
+        />
+      )}
+
+      {/* Centre highlight */}
+      <path className="map-path map-path--shine" d={fullPath} />
+
+      {/* Node dots along the route */}
+      {points.map((pt, i) => {
+        const lit = progressIndex >= i;
+        const isCurrent = progressIndex === i;
+        return (
+          <circle
+            key={`dot-${i}`}
+            className={`map-path-dot${lit ? " map-path-dot--lit" : ""}${isCurrent ? " map-path-dot--current" : ""}`}
+            cx={pt.x}
+            cy={pt.y}
+            r={isCurrent ? 2.2 : 1.5}
+          />
+        );
+      })}
+    </svg>
   );
 }
 
@@ -137,6 +230,10 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
       onSelectLevel(currentLevel);
     }
   };
+
+  const mapPoints = buildWorldMapPoints();
+  const mapHeight = mapViewBoxHeight();
+  const pathProgress = progressIndexInWorld(selectedWorld, currentLevel);
 
   return (
     <div className="level-select-screen">
@@ -195,43 +292,33 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
         </div>
 
         <div className="level-map-scroll">
-          <div className="level-map">
-            <svg className="map-path-svg" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden>
-              <defs>
-                <linearGradient id="pathGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stopColor="#4ade80" stopOpacity="0.2" />
-                  <stop offset="50%" stopColor="#7dffba" stopOpacity="0.55" />
-                  <stop offset="100%" stopColor="#4ade80" stopOpacity="0.2" />
-                </linearGradient>
-              </defs>
-              <path
-                className="map-path-glow"
-                d="M 50 2 Q 22 18 50 28 Q 78 38 50 48 Q 22 58 50 68 Q 78 78 50 88 Q 22 94 50 98"
-                fill="none"
-                stroke="url(#pathGrad)"
-                strokeWidth="8"
-                strokeLinecap="round"
-              />
-            </svg>
+          <div className="level-map" style={{ aspectRatio: `100 / ${mapHeight}` }}>
+            <WorldMapPath
+              points={mapPoints}
+              progressIndex={pathProgress}
+              viewHeight={mapHeight}
+            />
 
             <div className="map-nodes">
               {stagesInWorld(selectedWorld).map((stage, index) => {
                 const globalLevel = toGlobalLevel(selectedWorld, stage);
                 const state = getLevelNodeState(globalLevel);
                 const isCurrent = globalLevel === currentLevel;
-                const side =
-                  index % 3 === 0 ? "left" : index % 3 === 1 ? "center" : "right";
                 const isMilestone = stage === STAGES_PER_WORLD;
+                const pt = mapPoints[index]!;
 
                 return (
                   <div
                     key={globalLevel}
                     ref={isCurrent ? currentRef : undefined}
                     className="map-node-slot"
+                    style={{
+                      left: `${pt.x}%`,
+                      top: `${(pt.y / mapHeight) * 100}%`,
+                    }}
                   >
                     <LevelChip
                       globalLevel={globalLevel}
-                      side={side}
                       isMilestone={isMilestone}
                       state={state}
                       isCurrent={isCurrent}
@@ -242,24 +329,24 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
                 );
               })}
             </div>
-
-            {nextWorldLocked && selectedWorld < 10 && (
-              <div className="world-gate">
-                <div className="world-gate__icon" aria-hidden>
-                  <span className="world-gate__shield">🛡️</span>
-                  <span className="world-gate__lock">🔒</span>
-                  <span className="world-gate__star">⭐</span>
-                </div>
-                <div className="world-gate__bar">
-                  <span className="world-gate__bar-lock" aria-hidden>🔒</span>
-                  <span className="world-gate__bar-text">
-                    {countStarsInWorld(selectedWorld)} / {starsToUnlockWorld(nextWorld)} ★ to unlock{" "}
-                    {worldTitle(nextWorld)}
-                  </span>
-                </div>
-              </div>
-            )}
           </div>
+
+          {nextWorldLocked && selectedWorld < 10 && (
+            <div className="world-gate">
+              <div className="world-gate__icon" aria-hidden>
+                <span className="world-gate__shield">🛡️</span>
+                <span className="world-gate__lock">🔒</span>
+                <span className="world-gate__star">⭐</span>
+              </div>
+              <div className="world-gate__bar">
+                <span className="world-gate__bar-lock" aria-hidden>🔒</span>
+                <span className="world-gate__bar-text">
+                  {countStarsInWorld(selectedWorld)} / {starsToUnlockWorld(nextWorld)} ★ to unlock{" "}
+                  {worldTitle(nextWorld)}
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         <footer className="levels-footer">

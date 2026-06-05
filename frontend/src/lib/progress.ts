@@ -1,9 +1,10 @@
 import { HAND_RANK_ORDER, type HandLabel } from "./pokerHands";
 import type { HandCounts } from "./levels";
 import { MAX_LEVEL } from "./levels";
+import { STARTING_CREDITS } from "./credits";
 
 const STORAGE_KEY = "royalMatchProgress";
-const VERSION = 5;
+const VERSION = 7;
 
 export interface SavedProgress {
   v: typeof VERSION;
@@ -11,12 +12,17 @@ export interface SavedProgress {
   highestUnlocked: number;
   /** Global levels cleared at least once. */
   completedLevels: number[];
+  /** Best star rating (1–3) per global level. */
+  levelStars: Record<number, number>;
   level: number;
   levelScore: number;
   levelHands: number;
   levelHandCounts: HandCounts;
   handsCleared: number;
   bestHand: HandLabel;
+  /** In-game currency for buying extra moves. */
+  credits: number;
+  /** @deprecated Combo removed — kept for save migration. */
   streak: number;
   /** Beginner 1 guided lesson progress (0–3). 3 = free play on level 1. */
   tutorialStep: number;
@@ -49,6 +55,22 @@ function parseCompletedLevels(raw: unknown): number[] {
   return [...new Set(out)].sort((a, b) => a - b);
 }
 
+function parseLevelStars(raw: unknown, completedLevels: number[]): Record<number, number> {
+  const out: Record<number, number> = {};
+  if (raw && typeof raw === "object") {
+    for (const [key, val] of Object.entries(raw)) {
+      const level = Math.floor(Number(key));
+      if (level >= 1 && level <= MAX_LEVEL && typeof val === "number" && val >= 1 && val <= 3) {
+        out[level] = Math.floor(val);
+      }
+    }
+  }
+  for (const n of completedLevels) {
+    if (out[n] === undefined) out[n] = 3;
+  }
+  return out;
+}
+
 function migrateFromLegacy(data: Partial<SavedProgress> & { v?: number }): {
   highestUnlocked: number;
   completedLevels: number[];
@@ -68,7 +90,7 @@ function parseProgress(raw: string | null): SavedProgress | null {
   if (!raw) return null;
   try {
     const data = JSON.parse(raw) as Partial<SavedProgress> & { totalScore?: number; v?: number };
-    if (data.v !== VERSION && data.v !== 4 && data.v !== 3 && data.v !== 2 && data.v !== 1) {
+    if (data.v !== VERSION && data.v !== 6 && data.v !== 5 && data.v !== 4 && data.v !== 3 && data.v !== 2 && data.v !== 1) {
       return null;
     }
     if (typeof data.level !== "number" || data.level < 1 || data.level > MAX_LEVEL) return null;
@@ -95,17 +117,26 @@ function parseProgress(raw: string | null): SavedProgress | null {
       ({ highestUnlocked, completedLevels } = migrateFromLegacy(data));
     }
 
+    const levelStars = parseLevelStars(data.levelStars, completedLevels);
+
+    const credits =
+      typeof data.credits === "number"
+        ? Math.max(0, Math.floor(data.credits))
+        : STARTING_CREDITS;
+
     return {
       v: VERSION,
       highestUnlocked,
       completedLevels,
+      levelStars,
       level: Math.floor(data.level),
       levelScore: Math.floor(data.levelScore),
       levelHands: Math.floor(data.levelHands),
       levelHandCounts: parseHandCounts(data.levelHandCounts),
       handsCleared: Math.floor(data.handsCleared),
       bestHand: data.bestHand,
-      streak: Math.floor(data.streak),
+      credits,
+      streak: 0,
       tutorialStep,
       updatedAt: typeof data.updatedAt === "number" ? data.updatedAt : Date.now(),
     };
@@ -135,12 +166,14 @@ export function defaultProgress(): Omit<SavedProgress, "v" | "updatedAt"> {
   return {
     highestUnlocked: 1,
     completedLevels: [],
+    levelStars: {},
     level: 1,
     levelScore: 0,
     levelHands: 0,
     levelHandCounts: {},
     handsCleared: 0,
     bestHand: "pair",
+    credits: STARTING_CREDITS,
     streak: 0,
     tutorialStep: 0,
   };

@@ -11,6 +11,7 @@ import {
 } from "../lib/levelMap";
 import {
   countCompleted,
+  countStarsInWorld,
   countTotalStars,
   getCurrentLevel,
   getLevelNodeState,
@@ -252,7 +253,8 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
                 <div className="world-gate__bar">
                   <span className="world-gate__bar-lock" aria-hidden>🔒</span>
                   <span className="world-gate__bar-text">
-                    {starsToUnlockWorld(nextWorld)} ★ to unlock {worldTitle(nextWorld)}
+                    {countStarsInWorld(selectedWorld)} / {starsToUnlockWorld(nextWorld)} ★ to unlock{" "}
+                    {worldTitle(nextWorld)}
                   </span>
                 </div>
               </div>

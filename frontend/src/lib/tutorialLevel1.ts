@@ -56,8 +56,11 @@ function cloneBoard(board: Card[][]): Card[][] {
 }
 
 const PAIR_PATH = [
+  { row: 3, col: 2 },
   { row: 3, col: 3 },
   { row: 3, col: 4 },
+  { row: 3, col: 5 },
+  { row: 3, col: 6 },
 ];
 
 const TWO_PAIR_PATH = [
@@ -65,12 +68,15 @@ const TWO_PAIR_PATH = [
   { row: 2, col: 3 },
   { row: 2, col: 4 },
   { row: 2, col: 5 },
+  { row: 2, col: 6 },
 ];
 
 const TRIPS_PATH = [
+  { row: 4, col: 2 },
   { row: 4, col: 3 },
   { row: 4, col: 4 },
   { row: 4, col: 5 },
+  { row: 4, col: 6 },
 ];
 
 export const TUTORIAL_STEPS: TutorialStepConfig[] = [
@@ -78,19 +84,22 @@ export const TUTORIAL_STEPS: TutorialStepConfig[] = [
     id: "pair",
     lesson: 1,
     title: "Make a Pair",
-    message: "Swipe the glowing cards — connect two cards of the same rank.",
+    message: "Swipe all five glowing cards — your pair plus three kickers.",
     expectedHand: "pair",
     guidedPath: PAIR_PATH,
     board: buildBoard({
+      "3,2": c("2", "spades"),
       "3,3": c("9", "hearts"),
       "3,4": c("9", "diamonds"),
+      "3,5": c("7", "clubs"),
+      "3,6": c("K", "spades"),
     }),
   },
   {
     id: "two_pair",
     lesson: 2,
     title: "Make Two Pair",
-    message: "Swipe all four glowing cards — two pairs in one path.",
+    message: "Swipe all five — two pairs plus one kicker card.",
     expectedHand: "two_pair",
     guidedPath: TWO_PAIR_PATH,
     board: buildBoard({
@@ -98,19 +107,22 @@ export const TUTORIAL_STEPS: TutorialStepConfig[] = [
       "2,3": c("J", "diamonds"),
       "2,4": c("4", "clubs"),
       "2,5": c("4", "spades"),
+      "2,6": c("A", "diamonds"),
     }),
   },
   {
     id: "three_of_a_kind",
     lesson: 3,
     title: "Three of a Kind",
-    message: "Swipe the three glowing 8s — this level needs at least one!",
+    message: "Swipe all five — three matching ranks plus two kickers.",
     expectedHand: "three_of_a_kind",
     guidedPath: TRIPS_PATH,
     board: buildBoard({
-      "4,3": c("8", "hearts"),
-      "4,4": c("8", "diamonds"),
-      "4,5": c("8", "clubs"),
+      "4,2": c("8", "hearts"),
+      "4,3": c("8", "diamonds"),
+      "4,4": c("8", "clubs"),
+      "4,5": c("2", "spades"),
+      "4,6": c("5", "hearts"),
     }),
   },
 ];
@@ -154,7 +166,7 @@ export function getLevel1SeedBoard(tutorialStep: number): Card[][] {
 }
 
 export function tutorialFreePlayMessage(): string {
-  return "Great job! Keep matching hands to reach 1,000 points.";
+  return "Great job! Swipe 5-card hands to reach 1,000 points.";
 }
 
 export function pathMatchesGuide(

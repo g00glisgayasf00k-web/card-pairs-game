@@ -145,16 +145,19 @@ function rankCounts(cards: { rank: Rank }[]): Map<number, number> {
 }
 
 export const HAND_CARD_COUNT: Record<HandLabel, number> = {
-  pair: 2,
-  two_pair: 4,
-  three_of_a_kind: 3,
+  pair: 5,
+  two_pair: 5,
+  three_of_a_kind: 5,
   straight: 5,
   flush: 5,
   full_house: 5,
-  four_of_a_kind: 4,
+  four_of_a_kind: 5,
   straight_flush: 5,
   royal_flush: 5,
 };
+
+/** Every poker hand is built from exactly five cards. */
+export const POKER_HAND_SIZE = 5;
 
 function isFlush5(cards: { suit: Suit }[]): boolean {
   return cards.length === 5 && new Set(cards.map((c) => c.suit)).size === 1;
@@ -181,26 +184,25 @@ function isRoyal(cards: { rank: Rank; suit: Suit }[]): boolean {
 export function evaluateHand(
   cards: { rank: Rank; suit: Suit }[]
 ): { hand: HandLabel; points: number } | null {
-  if (cards.length < 2) return null;
+  if (cards.length !== POKER_HAND_SIZE) return null;
+
   const counts = rankCounts(cards);
   const freq = [...counts.values()].sort((a, b) => b - a);
-  const n = cards.length;
   const flush = isFlush5(cards);
-  const straight = n === 5 && isStraight(cards);
+  const straight = isStraight(cards);
 
   let hand: HandLabel | null = null;
-  if (n === 5 && isRoyal(cards))                     hand = "royal_flush";
-  else if (n === 5 && straight && flush)              hand = "straight_flush";
-  else if (n === 4 && freq[0] === 4)                 hand = "four_of_a_kind";
-  else if (n === 5 && freq[0] === 3 && freq[1] === 2) hand = "full_house";
-  else if (n === 5 && flush)                          hand = "flush";
-  else if (n === 5 && straight)                       hand = "straight";
-  else if (n === 3 && freq[0] === 3)                 hand = "three_of_a_kind";
-  else if (n === 4 && freq[0] === 2 && freq[1] === 2) hand = "two_pair";
-  else if (n === 2 && freq[0] === 2)                  hand = "pair";
+  if (isRoyal(cards))                                              hand = "royal_flush";
+  else if (straight && flush)                                      hand = "straight_flush";
+  else if (freq[0] === 4 && freq[1] === 1)                         hand = "four_of_a_kind";
+  else if (freq[0] === 3 && freq[1] === 2)                         hand = "full_house";
+  else if (flush)                                                  hand = "flush";
+  else if (straight)                                               hand = "straight";
+  else if (freq[0] === 3 && freq[1] === 1 && freq[2] === 1)      hand = "three_of_a_kind";
+  else if (freq[0] === 2 && freq[1] === 2 && freq[2] === 1)       hand = "two_pair";
+  else if (freq[0] === 2 && freq[1] === 1 && freq[2] === 1 && freq[3] === 1) hand = "pair";
   else return null;
 
-  if (HAND_CARD_COUNT[hand] !== n) return null;
   return { hand, points: HAND_SCORES[hand] };
 }
 
@@ -215,12 +217,9 @@ function evaluateHandWithWilds(
   const n = cards.length;
 
   if (wc === 0) return evaluateHand(normals);
-  if (n < 2) return null;
+  if (n !== POKER_HAND_SIZE) return null;
 
   if (normals.length === 0) {
-    if (n === 2) return { hand: "pair", points: HAND_SCORES.pair };
-    if (n === 3) return { hand: "three_of_a_kind", points: HAND_SCORES.three_of_a_kind };
-    if (n === 4) return { hand: "four_of_a_kind", points: HAND_SCORES.four_of_a_kind };
     return { hand: "royal_flush", points: HAND_SCORES.royal_flush };
   }
 
@@ -233,11 +232,7 @@ function evaluateHandWithWilds(
           : { rank: c.rank, suit: c.suit }
       );
       const result = evaluateHand(filled);
-      if (
-        result &&
-        HAND_CARD_COUNT[result.hand] === n &&
-        (!best || result.points > best.points)
-      ) {
+      if (result && (!best || result.points > best.points)) {
         best = result;
       }
     }
@@ -258,11 +253,7 @@ function evaluateHandWithWilds(
           return { rank: c.rank, suit: c.suit };
         });
         const result = evaluateHand(filled);
-        if (
-          result &&
-          HAND_CARD_COUNT[result.hand] === n &&
-          (!best || result.points > best.points)
-        ) {
+        if (result && (!best || result.points > best.points)) {
           best = result;
         }
       }
@@ -270,11 +261,7 @@ function evaluateHandWithWilds(
     return best;
   }
 
-  // 3+ wilds — return best possible for hand size
-  if (n === 2) return { hand: "pair",              points: HAND_SCORES.pair };
-  if (n === 3) return { hand: "three_of_a_kind",   points: HAND_SCORES.three_of_a_kind };
-  if (n === 4) return { hand: "four_of_a_kind",    points: HAND_SCORES.four_of_a_kind };
-  return       { hand: "royal_flush",              points: HAND_SCORES.royal_flush };
+  return { hand: "royal_flush", points: HAND_SCORES.royal_flush };
 }
 
 // ── Full result with special effects ─────────────────────────────────────────
@@ -328,7 +315,7 @@ function tryPathHand(
   path: { row: number; col: number }[],
   getCard: (p: { row: number; col: number }) => Card | null | undefined
 ): { path: { row: number; col: number }[]; result: FullHandResult } | null {
-  if (path.length < 2 || !pathIsAdjacent(path)) return null;
+  if (path.length !== POKER_HAND_SIZE || !pathIsAdjacent(path)) return null;
 
   const cards: Card[] = [];
   for (const cell of path) {
@@ -339,24 +326,21 @@ function tryPathHand(
 
   const result = evaluateHandFull(cards);
   if (!result || !straightMustStartAtEnd(cards)) return null;
-  if (path.length !== HAND_CARD_COUNT[result.hand]) return null;
 
   return { path, result };
 }
 
 /**
- * Resolve a swipe path to a valid hand.
- * Trims up to 3 trailing touch overshoot cells.
- * Without a joker: use the full path when valid, otherwise the shortest trimmed match.
- * With a joker: shortest valid path (avoids upgrading to a larger hand via wild substitution).
+ * Resolve a swipe path to a valid 5-card poker hand.
+ * Trims trailing touch overshoot so the first five cells of the path are used.
  */
 export function resolveHandFromPath(
   path: { row: number; col: number }[],
   getCard: (p: { row: number; col: number }) => Card | null | undefined
 ): { path: { row: number; col: number }[]; result: FullHandResult } | null {
-  if (path.length < 2 || !pathIsAdjacent(path)) return null;
+  if (path.length < POKER_HAND_SIZE || !pathIsAdjacent(path)) return null;
 
-  const maxTrim = Math.min(3, path.length - 2);
+  const maxTrim = path.length - POKER_HAND_SIZE;
   const candidates: {
     path: { row: number; col: number }[];
     result: FullHandResult;
@@ -375,7 +359,7 @@ export function resolveHandFromPath(
   if (pathHasJoker) {
     candidates.sort(
       (a, b) =>
-        a.path.length - b.path.length ||
+        a.trim - b.trim ||
         b.result.totalPoints - a.result.totalPoints
     );
     const best = candidates[0]!;
@@ -387,7 +371,7 @@ export function resolveHandFromPath(
 
   candidates.sort(
     (a, b) =>
-      a.path.length - b.path.length ||
+      a.trim - b.trim ||
       b.result.totalPoints - a.result.totalPoints
   );
   const best = candidates[0]!;

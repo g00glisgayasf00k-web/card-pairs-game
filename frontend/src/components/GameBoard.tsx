@@ -12,6 +12,7 @@ import {
   evaluateHandFull,
   HAND_DISPLAY,
   pathIsAdjacent,
+  POKER_HAND_SIZE,
   randomCard,
   resolveHandFromPath,
   specialsEarnedForHand,
@@ -80,7 +81,6 @@ export interface GameBoardHandle {
 }
 
 interface Props {
-  comboMultiplier: number;
   onHand: (result: FullHandResult) => void;
   onActivation: (pts: number) => void;
   /** Hide internal HUD — parent renders mobile shell */
@@ -167,7 +167,6 @@ function cloneSeedBoard(seed: (Card | null)[][]): (Card | null)[][] {
 export const GameBoard = forwardRef<GameBoardHandle, Props>(
   function GameBoard(
     {
-      comboMultiplier,
       onHand,
       onActivation,
       embedded,
@@ -408,24 +407,32 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
         return;
       }
 
-      if (swipePath.length < 2) { clear(); return; }
+      if (swipePath.length < POKER_HAND_SIZE) {
+        if (embedded) showToast(`Swipe exactly ${POKER_HAND_SIZE} cards`, true);
+        else setMessage(`Swipe exactly ${POKER_HAND_SIZE} cards for a poker hand`);
+        clear();
+        return;
+      }
 
       const resolved = resolveHandFromPath(swipePath, (p) => board[p.row]?.[p.col]);
       if (!resolved) {
         if (!pathIsAdjacent(swipePath)) {
           if (embedded) showToast("Cards must be touching", true);
           else setMessage("Cards must be touching");
+        } else if (swipePath.length > POKER_HAND_SIZE) {
+          if (embedded) showToast(`Use exactly ${POKER_HAND_SIZE} cards (lift finger sooner)`, true);
+          else setMessage(`Use exactly ${POKER_HAND_SIZE} cards — lift finger sooner`);
         } else {
           const cards = swipePath
             .map((p) => board[p.row]?.[p.col])
             .filter((c): c is Card => !!c);
-          const maybe = cards.length === swipePath.length ? evaluateHandFull(cards) : null;
+          const maybe = cards.length === POKER_HAND_SIZE ? evaluateHandFull(cards) : null;
           if (maybe?.hand === "straight" && !straightMustStartAtEnd(cards)) {
             if (embedded) showToast("Straight: start on the 10 or Ace end", true);
             else setMessage("Straight: start on the 10 or Ace end");
           } else {
-            if (embedded) showToast("Not a valid poker hand", true);
-            else setMessage("Not a valid poker hand");
+            if (embedded) showToast("Not a valid 5-card poker hand", true);
+            else setMessage("Not a valid 5-card poker hand");
           }
         }
         clear();
@@ -453,10 +460,9 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
       const handKeys = new Set(validPath.map((p) => pathKey(p.row, p.col)));
       const allCleared = handKeys;
 
-      const finalPts = Math.round(result.totalPoints * comboMultiplier);
+      const finalPts = result.totalPoints;
       let toast = `${HAND_DISPLAY[result.hand]}! +${finalPts}`;
-      if (result.hasJoker)       toast += " 🃏";
-      if (comboMultiplier > 1)   toast += ` (×${comboMultiplier} combo)`;
+      if (result.hasJoker) toast += " 🃏";
 
       const order = new Map(validPath.map((p, i) => [pathKey(p.row, p.col), i]));
       setPopping(handKeys);
@@ -494,7 +500,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
         setBusy(false);
       }
     }, [
-      busy, board, clear, comboMultiplier, locked, pathRef,
+      busy, board, clear, locked, pathRef,
       onHand, activateBomb, activateStar,
       guidedPath, tutorialExpectedHand, onTutorialStepComplete, embedded, showToast,
     ]);

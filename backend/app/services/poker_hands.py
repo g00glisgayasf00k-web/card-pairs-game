@@ -110,36 +110,35 @@ def _is_royal(cards: Sequence[Card]) -> bool:
 
 def evaluate_hand(cards: Sequence[dict]) -> tuple[HandRank | None, int, str | None]:
     """
-    Evaluate a swiped path of cards.
+    Evaluate a swiped path of exactly five cards.
     Returns (rank, score, label) or (None, 0, None) if invalid.
     """
-    if len(cards) < 2:
+    if len(cards) != 5:
         return None, 0, None
 
     parsed = [Card(rank=c["rank"], suit=c["suit"]) for c in cards]
-    n = len(parsed)
     counts = _rank_counts(parsed)
     freq = sorted(counts.values(), reverse=True)
-    flush = _is_flush(parsed) if n >= 5 else False
-    straight = _is_straight(parsed) if n == 5 else False
+    flush = _is_flush(parsed)
+    straight = _is_straight(parsed)
 
-    if n == 5 and _is_royal(parsed):
+    if _is_royal(parsed):
         rank = HandRank.ROYAL_FLUSH
-    elif n == 5 and straight and flush:
+    elif straight and flush:
         rank = HandRank.STRAIGHT_FLUSH
-    elif freq == [4, 1] or (n == 4 and freq == [4]):
+    elif freq == [4, 1]:
         rank = HandRank.FOUR_OF_A_KIND
-    elif n == 5 and freq == [3, 2]:
+    elif freq == [3, 2]:
         rank = HandRank.FULL_HOUSE
-    elif n == 5 and flush:
+    elif flush:
         rank = HandRank.FLUSH
-    elif n == 5 and straight:
+    elif straight:
         rank = HandRank.STRAIGHT
-    elif freq == [3] or (n == 3 and freq == [3]):
+    elif freq == [3, 1, 1]:
         rank = HandRank.THREE_OF_A_KIND
-    elif n == 4 and freq == [2, 2]:
+    elif freq == [2, 2, 1]:
         rank = HandRank.TWO_PAIR
-    elif n == 2 and freq == [2]:
+    elif freq == [2, 1, 1, 1]:
         rank = HandRank.PAIR
     else:
         return None, 0, None

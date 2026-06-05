@@ -9,7 +9,13 @@ import {
   type FullHandResult,
   type HandLabel,
 } from "../lib/pokerHands";
-import { campaignLeaderboardPoints, comboLabel, comboMultiplier, estimateRemainingSwipes, formatChallenge, getLevelConfig, levelRequirementsMet, movesRemaining, MAX_LEVEL, outOfMoves, type HandCounts } from "../lib/levels";
+import { campaignLeaderboardPoints, computeLevelStars, estimateRemainingSwipes, formatChallenge, getLevelConfig, levelPointsMet, movesRemaining, MAX_LEVEL, outOfMoves, STAR_MOVE_EFFICIENCY, type HandCounts } from "../lib/levels";
+import {
+  canAffordMovesPack,
+  MOVES_PACK_COST,
+  MOVES_PACK_SIZE,
+  movesPackLabel,
+} from "../lib/credits";
 import {
   clearProgress,
   defaultProgress,
@@ -48,7 +54,9 @@ interface RunState {
   levelHandCounts: HandCounts;
   handsCleared: number;
   bestHand: HandLabel;
-  streak: number;
+  credits: number;
+  /** Extra moves bought this attempt (not persisted). */
+  bonusMoves: number;
   tutorialStep: number;
 }
 
@@ -78,11 +86,13 @@ function initRunState(startLevel?: number): RunState {
         levelHandCounts: saved.levelHandCounts ?? {},
         handsCleared: saved.handsCleared,
         bestHand: saved.bestHand,
-        streak: saved.streak,
+        credits: saved.credits,
+        bonusMoves: 0,
         tutorialStep: saved.tutorialStep ?? 0,
       };
     }
-    return defaultProgress() as RunState;
+    const defaults = defaultProgress();
+    return { ...defaults, bonusMoves: 0 } as RunState;
   }
 
   if (saved && shouldResumeSavedRun(startLevel, saved)) {
@@ -93,7 +103,8 @@ function initRunState(startLevel?: number): RunState {
       levelHandCounts: saved.levelHandCounts ?? {},
       handsCleared: saved.handsCleared,
       bestHand: saved.bestHand,
-      streak: saved.streak,
+      credits: saved.credits,
+      bonusMoves: 0,
       tutorialStep: saved.tutorialStep ?? 0,
     };
   }
@@ -103,6 +114,8 @@ function initRunState(startLevel?: number): RunState {
     ...fresh,
     handsCleared: saved?.handsCleared ?? 0,
     bestHand: saved?.bestHand ?? "pair",
+    credits: saved?.credits ?? defaultProgress().credits,
+    bonusMoves: 0,
   };
 }
 
@@ -115,13 +128,16 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
   );
 
   const [run, setRun] = useState<RunState>(() => initRunState(startLevel));
-  const { level, levelScore, levelHands, levelHandCounts, handsCleared, bestHand, streak, tutorialStep } = run;
+  const { level, levelScore, levelHands, levelHandCounts, handsCleared, bestHand, credits, bonusMoves, tutorialStep } = run;
 
   const [phase, setPhase] = useState<Phase>("playing");
   const [completedLevel, setCompletedLevel] = useState<number | null>(null);
-  const [completedStats, setCompletedStats] = useState<{ score: number; hands: number } | null>(
-    null
-  );
+  const [completedStats, setCompletedStats] = useState<{
+    score: number;
+    hands: number;
+    stars: number;
+    handCounts: HandCounts;
+  } | null>(null);
   const [showScores, setShowScores] = useState(false);
   const [showSpecials, setShowSpecials] = useState(false);
   const [showChallenges, setShowChallenges] = useState(false);
@@ -144,14 +160,13 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
   levelRef.current = level;
 
   const cfg = getLevelConfig(level);
-  const combo = comboMultiplier(streak);
-  const comboMsg = comboLabel(streak);
+  const effectiveMoveLimit = cfg.moveLimit + bonusMoves;
   const levelProgress = Math.min(1, levelScore / cfg.targetPoints);
   const pointsMet = levelScore >= cfg.targetPoints;
   const nextCfg = getLevelConfig(level + 1);
 
   const remainingSwipes = estimateRemainingSwipes(cfg, levelScore, levelHandCounts, levelHands);
-  const movesLeft = movesRemaining(cfg.moveLimit, levelHands);
+  const movesLeft = movesRemaining(effectiveMoveLimit, levelHands);
   const movesLow = movesLeft <= 3 && movesLeft > 0;
   const movesCritical = movesLeft === 0;
   const challengesComplete = cfg.challenges.every(
@@ -177,13 +192,15 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
     saveProgress({
       highestUnlocked: saved.highestUnlocked,
       completedLevels: saved.completedLevels,
+      levelStars: saved.levelStars,
       level: onFrontier ? next.level : saved.level,
       levelScore: onFrontier ? next.levelScore : saved.levelScore,
       levelHands: onFrontier ? next.levelHands : saved.levelHands,
       levelHandCounts: onFrontier ? next.levelHandCounts : saved.levelHandCounts,
       handsCleared: next.handsCleared,
       bestHand: next.bestHand,
-      streak: onFrontier ? next.streak : saved.streak,
+      credits: next.credits,
+      streak: 0,
       tutorialStep: next.level === 1 ? next.tutorialStep : saved.tutorialStep,
     });
   }, []);
@@ -203,7 +220,7 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
         levelScore: 0,
         levelHands: 0,
         levelHandCounts: {},
-        streak: 0,
+        bonusMoves: 0,
         tutorialStep: 0,
       };
       levelScoreRef.current = 0;
@@ -222,7 +239,7 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
       levelScore: 0,
       levelHands: 0,
       levelHandCounts: {},
-      streak: 0,
+      bonusMoves: 0,
       tutorialStep:
         level === 1
           ? tutorialStep < TUTORIAL_FREE_STEP
@@ -251,13 +268,16 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
     (score: number, handCounts: HandCounts, hands: number) => {
       if (phase !== "playing" || advancingRef.current) return false;
       if (level === 1 && tutorialStep < TUTORIAL_FREE_STEP) return false;
-      if (!levelRequirementsMet(score, handCounts, cfg)) return false;
+      if (!levelPointsMet(score, cfg)) return false;
 
       advancingRef.current = true;
-      markLevelComplete(level);
+      const stars = markLevelComplete(
+        level,
+        computeLevelStars(score, handCounts, hands, cfg)
+      );
       savedSnapshot.current = loadProgress();
       setCompletedLevel(level);
-      setCompletedStats({ score, hands });
+      setCompletedStats({ score, hands, stars, handCounts: { ...handCounts } });
 
       if (level >= MAX_LEVEL) {
         setPhase("campaign_complete");
@@ -279,10 +299,9 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
 
   const handleHand = useCallback(
     (result: FullHandResult) => {
-      const newStreak = streak + 1;
-      const comboPts = Math.round(result.totalPoints * comboMultiplier(newStreak));
+      const pts = result.totalPoints;
       const nextHands = levelHandsRef.current + 1;
-      const nextScore = levelScoreRef.current + comboPts;
+      const nextScore = levelScoreRef.current + pts;
       const nextHandCounts: HandCounts = {
         ...levelHandCountsRef.current,
         [result.hand]: (levelHandCountsRef.current[result.hand] ?? 0) + 1,
@@ -300,7 +319,6 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
         handsClearedRef.current = prev.handsCleared + 1;
         return {
           ...prev,
-          streak: newStreak,
           handsCleared: prev.handsCleared + 1,
           levelHands: nextHands,
           levelScore: nextScore,
@@ -310,14 +328,26 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
       });
       tryAdvanceLevel(nextScore, nextHandCounts, nextHands);
       if (
-        !levelRequirementsMet(nextScore, nextHandCounts, cfg) &&
-        outOfMoves(cfg.moveLimit, nextHands)
+        !levelPointsMet(nextScore, cfg) &&
+        outOfMoves(effectiveMoveLimit, nextHands)
       ) {
         setPhase("moves_failed");
       }
     },
-    [streak, tryAdvanceLevel, cfg]
+    [tryAdvanceLevel, cfg, effectiveMoveLimit]
   );
+
+  const handleBuyMoves = useCallback(() => {
+    setRun((prev) => {
+      if (!canAffordMovesPack(prev.credits)) return prev;
+      return {
+        ...prev,
+        credits: prev.credits - MOVES_PACK_COST,
+        bonusMoves: prev.bonusMoves + MOVES_PACK_SIZE,
+      };
+    });
+    setPhase("playing");
+  }, []);
 
   const handleActivation = useCallback(
     (pts: number) => {
@@ -356,7 +386,11 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
 
   const boardLocked = phase !== "playing";
 
-  const movesUsedRatio = Math.min(1, levelHands / cfg.moveLimit);
+  const movesUsedRatio = Math.min(1, levelHands / effectiveMoveLimit);
+  const canBuyMoves = canAffordMovesPack(credits);
+
+  const starMoveTarget = Math.floor(cfg.moveLimit * STAR_MOVE_EFFICIENCY);
+  const movesEfficient = levelHands <= cfg.moveLimit * STAR_MOVE_EFFICIENCY;
 
   return (
     <div className="game-screen">
@@ -368,9 +402,18 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
               <span className="level-badge__num">{level}/{MAX_LEVEL}</span>
             </div>
 
-            <div className="score-chip" title={`Level goal: ${cfg.targetPoints.toLocaleString()} pts`}>
-              <span className="score-chip__icon">💰</span>
-              <span className="score-chip__value">{levelScore.toLocaleString()}</span>
+            <div
+              className={`moves-chip${movesLow ? " moves-chip--low" : ""}${movesCritical ? " moves-chip--critical" : ""}`}
+              title={`${movesLeft} of ${effectiveMoveLimit} hands remaining`}
+            >
+              <span className="moves-chip__icon">🎯</span>
+              <span className="moves-chip__val">{movesLeft}</span>
+              <span className="moves-chip__label">moves</span>
+            </div>
+
+            <div className="credits-chip" title="In-game credits — buy extra moves when you run out">
+              <span className="credits-chip__icon">💎</span>
+              <span className="credits-chip__val">{credits}</span>
             </div>
 
             <div className="rank-chip" title={cfg.label}>
@@ -404,19 +447,6 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
             </div>
           )}
 
-          <div
-            className={`moves-track${movesLow ? " moves-track--low" : ""}${movesCritical ? " moves-track--critical" : ""}`}
-            title={`${movesLeft} of ${cfg.moveLimit} hands remaining`}
-          >
-            <div
-              className={`moves-fill${movesCritical ? " moves-fill--critical" : movesLow ? " moves-fill--low" : ""}`}
-              style={{ width: `${movesUsedRatio * 100}%` }}
-            />
-            <span className="moves-label">
-              🎯 {movesLeft} / {cfg.moveLimit} moves
-            </span>
-          </div>
-
           <div className="stat-chips">
             <div className="stat-chip" title="Total hands this run">
               <span className="stat-chip__icon">🎯</span>
@@ -425,12 +455,6 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
             <div className="stat-chip" title={`Best: ${HAND_DISPLAY[bestHand]}`}>
               <span className="stat-chip__icon">{HAND_BADGE[bestHand]}</span>
             </div>
-            {comboMsg && (
-              <div className="stat-chip stat-chip--combo" key={streak}>
-                <span className="stat-chip__icon">🔥</span>
-                <span className="stat-chip__val">×{combo}</span>
-              </div>
-            )}
             {username && (
               <div className="stat-chip stat-chip--user" title={username}>
                 <span className="stat-chip__icon">👤</span>
@@ -447,7 +471,6 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
               key={boardKey}
               embedded
               locked={boardLocked}
-              comboMultiplier={combo}
               seedBoard={level1SeedBoard}
               guidedPath={tutorialConfig?.guidedPath}
               tutorialExpectedHand={tutorialConfig?.expectedHand}
@@ -518,6 +541,17 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
             <div className="levelup-badge round-complete-badge">ROUND COMPLETE!</div>
             <h2>Level {completedLevel} cleared</h2>
             <p className="levelup-label">{completedCfg.label}</p>
+            <div className="round-complete-stars" aria-label={`${completedStats?.stars ?? 0} of 3 stars`}>
+              {[1, 2, 3].map((i) => (
+                <span
+                  key={i}
+                  className={`round-complete-star${i <= (completedStats?.stars ?? 0) ? " round-complete-star--lit" : ""}`}
+                  aria-hidden
+                >
+                  ★
+                </span>
+              ))}
+            </div>
             <div className="levelup-perks">
               <div className="perk">
                 <span className="perk-icon">💰</span>
@@ -527,12 +561,26 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
                 <span className="perk-icon">🃏</span>
                 <span>{completedStats?.hands ?? 0} hands cleared</span>
               </div>
-              {completedCfg.challenges.map((c) => (
-                <div className="perk" key={`${c.hand}-${c.minCount}`}>
-                  <span className="perk-icon">✓</span>
-                  <span>{formatChallenge(c)}</span>
+              {completedCfg.challenges.map((c) => {
+                const have = completedStats?.handCounts[c.hand] ?? 0;
+                const done = have >= c.minCount;
+                return (
+                  <div className="perk" key={`${c.hand}-${c.minCount}`}>
+                    <span className="perk-icon">{done ? "✓" : "○"}</span>
+                    <span>{formatChallenge(c)}</span>
+                  </div>
+                );
+              })}
+              {(completedStats?.stars ?? 0) < 3 && (
+                <div className="perk perk--hint">
+                  <span className="perk-icon">💡</span>
+                  <span>
+                    {(completedStats?.stars ?? 0) < 2
+                      ? `Use ≤${starMoveTarget} moves for 2★`
+                      : "Finish all hand challenges for 3★"}
+                  </span>
                 </div>
-              ))}
+              )}
               <div className="perk">
                 <span className="perk-icon">⭐</span>
                 <span>Up next: {nextCfg.label}</span>
@@ -552,7 +600,7 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
             <div className="levelup-badge moves-failed-badge">OUT OF MOVES!</div>
             <h2>Level {formatLevelId(level)}</h2>
             <p className="levelup-label">
-              You used all {cfg.moveLimit} hands before reaching the goal.
+              You used all {effectiveMoveLimit} hands before reaching the goal.
             </p>
             <div className="levelup-perks">
               <div className="perk">
@@ -561,11 +609,26 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
               </div>
               <div className="perk">
                 <span className="perk-icon">🎯</span>
-                <span>{levelHands} / {cfg.moveLimit} moves used</span>
+                <span>{levelHands} / {effectiveMoveLimit} moves used</span>
+              </div>
+              <div className="perk">
+                <span className="perk-icon">💎</span>
+                <span>{credits} credits · {movesPackLabel()}</span>
               </div>
             </div>
-            <button type="button" className="btn" onClick={retryLevel}>
-              Try again
+            <button
+              type="button"
+              className="btn btn-buy-moves"
+              onClick={handleBuyMoves}
+              disabled={!canBuyMoves}
+            >
+              Buy {MOVES_PACK_SIZE} moves ({MOVES_PACK_COST} 💎)
+            </button>
+            {!canBuyMoves && (
+              <p className="moves-failed-hint">Not enough credits — restart or return to the map.</p>
+            )}
+            <button type="button" className="btn ghost" onClick={retryLevel}>
+              Restart level
             </button>
             <button type="button" className="btn ghost" onClick={onMenu}>
               Back to levels
@@ -614,12 +677,27 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
             aria-labelledby="challenges-title"
           >
             <h2 id="challenges-title">Level goals</h2>
-            <p className="scores-note">{cfg.label} — reach the point target and complete every challenge.</p>
+            <p className="scores-note">{cfg.label} — reach the point target to clear. Earn up to 3★.</p>
+
+            <ul className="star-criteria-list">
+              <li className={`star-criteria${pointsMet ? " star-criteria--done" : ""}`}>
+                <span className="star-criteria__stars">★</span>
+                <span>Reach {cfg.targetPoints.toLocaleString()} pts</span>
+              </li>
+              <li className={`star-criteria${pointsMet && movesEfficient ? " star-criteria--done" : ""}`}>
+                <span className="star-criteria__stars">★★</span>
+                <span>Use ≤{starMoveTarget} of {cfg.moveLimit} moves (50%)</span>
+              </li>
+              <li className={`star-criteria${pointsMet && movesEfficient && challengesComplete ? " star-criteria--done" : ""}`}>
+                <span className="star-criteria__stars">★★★</span>
+                <span>Complete every hand challenge below</span>
+              </li>
+            </ul>
 
             <div className="challenges-modal__points">
               <span className="challenges-modal__points-label">Moves</span>
               <span className="challenges-modal__points-val">
-                {movesLeft} / {cfg.moveLimit} remaining
+                {movesLeft} / {effectiveMoveLimit} remaining
               </span>
               <div className="challenges-modal__bar">
                 <div
@@ -668,7 +746,9 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
             </p>
 
             {pointsMet && !challengesComplete && (
-              <p className="challenges-modal__warn">Points reached — finish the hand challenges to advance.</p>
+              <p className="challenges-modal__warn">
+                Points reached — finish hand challenges for 3★ (replay anytime).
+              </p>
             )}
 
             <button
@@ -695,7 +775,7 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
             aria-labelledby="scores-title"
           >
             <h2 id="scores-title">Hand payouts</h2>
-            <p className="scores-note">Base points per hand — combo streaks multiply 🔥</p>
+            <p className="scores-note">Every hand uses exactly 5 cards — base points shown below.</p>
             <ul className="scores-list">
               {HAND_SCORE_LIST.map(({ hand, points }) => (
                 <li key={hand} className="scores-row">

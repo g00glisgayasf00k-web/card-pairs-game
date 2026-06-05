@@ -166,12 +166,13 @@ export function OnboardingScreen({ username, onSetName, onClearName, onPlay }: P
             {section === "rules" && (
               <div className="home-panel-body home-rules">
                 <ul className="home-rules-list">
-                  <li><strong>Swipe</strong> adjacent cards (up, down, left, right).</li>
-                  <li><strong>Pair</strong> — two of the same rank side by side.</li>
+                  <li><strong>Swipe</strong> exactly five adjacent cards (up, down, left, right).</li>
+                  <li><strong>Pair</strong> — two of the same rank plus any three kickers.</li>
                   <li>
                     <strong>Straight</strong> — five in a row (e.g. 10-J-Q-K-A).
                     Start on the <em>10 or Ace</em> end.
                   </li>
+                  <li>Every hand clears five cards — like real poker.</li>
                   <li>Flush = 5 same suit. Full house, four of a kind, and more.</li>
                   <li>Cleared cards drop down — new ones refill from the top.</li>
                 </ul>

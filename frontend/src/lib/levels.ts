@@ -11,9 +11,9 @@ export interface LevelConfig {
   label: string;
   targetPoints: number;
   challenges: HandChallenge[];
-  /** Typical swipes needed to finish (base scores, no combo luck). */
+  /** Typical swipes needed to finish (5-card hands, base scores). */
   estimatedMoves: number;
-  /** Max hands allowed — derived from target + challenges with combo buffer. */
+  /** Max hands allowed — derived from target + challenges with path-finding grace. */
   moveLimit: number;
 }
 
@@ -105,7 +105,7 @@ export function computeEstimatedMoves(
 
 /**
  * Move budget for the level — tight but achievable.
- * Starts from the theoretical minimum, then adds grace for combos and imperfect paths.
+ * Starts from the theoretical minimum, then adds grace for imperfect 5-card paths.
  */
 export function computeMoveLimit(
   targetPoints: number,
@@ -114,8 +114,7 @@ export function computeMoveLimit(
 ): number {
   const base = computeEstimatedMoves(targetPoints, challenges);
   const tierIdx = Math.floor((level - 1) / 10);
-  // ~42% grace + small flat buffer; later worlds get slightly more breathing room
-  const grace = Math.ceil(base * 0.42) + 3 + tierIdx;
+  const grace = Math.ceil(base * 0.48) + 4 + tierIdx;
   const limit = base + grace;
   const floor = base + 2;
   return Math.max(floor, limit);
@@ -136,7 +135,7 @@ export function estimateRemainingSwipes(
   handCounts: HandCounts,
   swipesUsed: number
 ): number {
-  if (levelRequirementsMet(levelScore, handCounts, cfg)) return 0;
+  if (levelPointsMet(levelScore, cfg)) return 0;
 
   let challengeSwipesLeft = 0;
   let challengePtsLeft = 0;
@@ -237,6 +236,33 @@ const LEVEL_CONFIGS: LevelConfig[] = Array.from({ length: MAX_LEVEL }, (_, i) =>
 export function getLevelConfig(level: number): LevelConfig {
   const n = Math.min(Math.max(1, Math.floor(level)), MAX_LEVEL);
   return LEVEL_CONFIGS[n - 1]!;
+}
+
+export function levelPointsMet(levelScore: number, cfg: LevelConfig): boolean {
+  return levelScore >= cfg.targetPoints;
+}
+
+/** Move budget used for 2★ — base limit only (purchased moves don't help). */
+export const STAR_MOVE_EFFICIENCY = 0.5;
+
+/**
+ * Star rating for a cleared level:
+ * 1★ reach point target · 2★ use ≤50% of moves · 3★ also finish hand challenges
+ */
+export function computeLevelStars(
+  levelScore: number,
+  handCounts: HandCounts,
+  handsUsed: number,
+  cfg: LevelConfig
+): number {
+  if (!levelPointsMet(levelScore, cfg)) return 0;
+
+  const efficient = handsUsed <= cfg.moveLimit * STAR_MOVE_EFFICIENCY;
+  const challengesDone = challengesMet(handCounts, cfg.challenges);
+
+  if (efficient && challengesDone) return 3;
+  if (efficient) return 2;
+  return 1;
 }
 
 export function levelRequirementsMet(

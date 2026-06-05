@@ -183,6 +183,8 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
       seedBoard ? cloneSeedBoard(seedBoard) : createBoard(ROWS, COLS)
     );
     const [message, setMessage] = useState<string | null>(null);
+    const [toastHint, setToastHint] = useState(false);
+    const toastTimer = useRef<number | null>(null);
     const [popping, setPopping] = useState<Set<string>>(new Set());
     const [popOrder, setPopOrder] = useState<Map<string, number>>(new Map());
     const [blasting, setBlasting] = useState<Set<string>>(new Set());
@@ -225,6 +227,28 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
     const { path, pathRef, clear, onPointerDown, onPointerMove, onPointerUp } =
       useSwipePath(ROWS, COLS);
 
+    const showToast = useCallback(
+      (text: string, hint = false) => {
+        if (toastTimer.current) window.clearTimeout(toastTimer.current);
+        setMessage(text);
+        setToastHint(hint);
+        if (embedded) {
+          toastTimer.current = window.setTimeout(() => {
+            setMessage(null);
+            setToastHint(false);
+          }, hint ? 1250 : 1500);
+        }
+      },
+      [embedded]
+    );
+
+    useEffect(
+      () => () => {
+        if (toastTimer.current) window.clearTimeout(toastTimer.current);
+      },
+      []
+    );
+
     const pathKey = (r: number, c: number) => `${r},${c}`;
     const inPath = (r: number, c: number) => path.some((p) => p.row === r && p.col === c);
     const guidedKeys = new Set((guidedPath ?? []).map((p) => pathKey(p.row, p.col)));
@@ -256,7 +280,8 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
         popCount: number,
         hasBlast = false
       ) => {
-        setMessage(toastMsg);
+        if (!embedded) setMessage(toastMsg);
+        else showToast(toastMsg);
         await delay(
           Math.max(waitForPop(popCount), hasBlast ? ANIM.blast + ANIM.settlePad : 0)
         );
@@ -278,7 +303,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
         clear();
         setBusy(false);
       },
-      [onHand, onActivation, clear]
+      [onHand, onActivation, clear, embedded, showToast]
     );
 
     // ── 💣 Bomb tap ───────────────────────────────────────────────────────────
@@ -388,16 +413,19 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
       const resolved = resolveHandFromPath(swipePath, (p) => board[p.row]?.[p.col]);
       if (!resolved) {
         if (!pathIsAdjacent(swipePath)) {
-          setMessage("Cards must be touching");
+          if (embedded) showToast("Cards must be touching", true);
+          else setMessage("Cards must be touching");
         } else {
           const cards = swipePath
             .map((p) => board[p.row]?.[p.col])
             .filter((c): c is Card => !!c);
           const maybe = cards.length === swipePath.length ? evaluateHandFull(cards) : null;
           if (maybe?.hand === "straight" && !straightMustStartAtEnd(cards)) {
-            setMessage("Straight: start on the 10 or Ace end");
+            if (embedded) showToast("Straight: start on the 10 or Ace end", true);
+            else setMessage("Straight: start on the 10 or Ace end");
           } else {
-            setMessage("Not a valid poker hand");
+            if (embedded) showToast("Not a valid poker hand", true);
+            else setMessage("Not a valid poker hand");
           }
         }
         clear();
@@ -412,7 +440,9 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
         onTutorialStepComplete &&
         (result.hand !== tutorialExpectedHand || !pathMatchesGuide(validPath, guidedPath))
       ) {
-        setMessage(`Swipe the glowing cards to make a ${HAND_DISPLAY[tutorialExpectedHand]}`);
+        const hint = `Swipe the glowing cards to make a ${HAND_DISPLAY[tutorialExpectedHand]}`;
+        if (embedded) showToast(hint, true);
+        else setMessage(hint);
         clear();
         return;
       }
@@ -441,7 +471,8 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
 
         setPopping(new Set());
         setPopOrder(new Map());
-        setMessage(toast);
+        if (embedded) showToast(toast);
+        else setMessage(toast);
 
         onHand(result);
 
@@ -465,7 +496,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
     }, [
       busy, board, clear, comboMultiplier, locked, pathRef,
       onHand, activateBomb, activateStar,
-      guidedPath, tutorialExpectedHand, onTutorialStepComplete,
+      guidedPath, tutorialExpectedHand, onTutorialStepComplete, embedded, showToast,
     ]);
 
     const handlePointerUp = () => {
@@ -543,7 +574,11 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
     return (
       <div className={`game-panel${embedded ? " game-panel--embedded" : ""}`}>
         <div className={`toast-area${embedded ? " toast-area--compact" : ""}`}>
-          {message && <p className="toast" key={message}>{message}</p>}
+          {message && (
+            <p className={`toast${toastHint ? " toast--hint" : ""}`} key={message}>
+              {message}
+            </p>
+          )}
         </div>
 
         {embedded ? (

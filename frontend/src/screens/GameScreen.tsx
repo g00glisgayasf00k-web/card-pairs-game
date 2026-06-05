@@ -33,11 +33,6 @@ interface Props {
 
 type Phase = "playing" | "round_complete" | "campaign_complete";
 
-interface FloatScore {
-  id: number;
-  text: string;
-}
-
 interface RunState {
   level: number;
   levelScore: number;
@@ -91,9 +86,8 @@ export function GameScreen({ username, onMenu }: Props) {
   );
   const [showScores, setShowScores] = useState(false);
   const [showSpecials, setShowSpecials] = useState(false);
+  const [showChallenges, setShowChallenges] = useState(false);
   const [boardKey, setBoardKey] = useState(0);
-  const [floatScores, setFloatScores] = useState<FloatScore[]>([]);
-  const floatId = useRef(0);
   const levelScoreRef = useRef(levelScore);
   const levelHandsRef = useRef(levelHands);
   const levelHandCountsRef = useRef<HandCounts>(levelHandCounts);
@@ -127,6 +121,11 @@ export function GameScreen({ username, onMenu }: Props) {
   const tutorialConfig = tutorialActive ? getTutorialStepConfig(tutorialStep) : null;
   const level1SeedBoard = level === 1 ? getLevel1SeedBoard(tutorialStep) : undefined;
   const tutorialFreePlay = level === 1 && tutorialStep >= TUTORIAL_FREE_STEP;
+  const showChallengeUi = level > 1 || tutorialFreePlay;
+  const challengesDone = cfg.challenges.filter(
+    (c) => (levelHandCounts[c.hand] ?? 0) >= c.minCount
+  ).length;
+  const challengesTotal = cfg.challenges.length;
 
   const completedCfg = completedLevel ? getLevelConfig(completedLevel) : null;
 
@@ -204,14 +203,6 @@ export function GameScreen({ username, onMenu }: Props) {
     setBoardKey((k) => k + 1);
   }, []);
 
-  const spawnFloat = useCallback((text: string) => {
-    const id = ++floatId.current;
-    setFloatScores((prev) => [...prev, { id, text }]);
-    window.setTimeout(() => {
-      setFloatScores((prev) => prev.filter((f) => f.id !== id));
-    }, 1200);
-  }, []);
-
   const handleHand = useCallback(
     (result: FullHandResult) => {
       const newStreak = streak + 1;
@@ -244,9 +235,8 @@ export function GameScreen({ username, onMenu }: Props) {
         };
       });
       tryAdvanceLevel(nextScore, nextHandCounts, nextHands);
-      spawnFloat(`+${comboPts.toLocaleString()}`);
     },
-    [streak, tryAdvanceLevel, spawnFloat]
+    [streak, tryAdvanceLevel]
   );
 
   const handleActivation = useCallback(
@@ -258,9 +248,8 @@ export function GameScreen({ username, onMenu }: Props) {
         levelScore: nextScore,
       }));
       tryAdvanceLevel(nextScore, levelHandCountsRef.current, levelHandsRef.current);
-      spawnFloat(`+${pts.toLocaleString()}`);
     },
-    [tryAdvanceLevel, spawnFloat]
+    [tryAdvanceLevel]
   );
 
   const submitRunScore = () => {
@@ -333,41 +322,6 @@ export function GameScreen({ username, onMenu }: Props) {
             </div>
           )}
 
-          {(level > 1 || tutorialFreePlay) && (
-          <div className="challenge-panel">
-            <div className="challenge-panel__header">
-              <span className="challenge-panel__title">Challenges</span>
-              <span
-                className="challenge-panel__est"
-                title={`Typical level length: ~${cfg.estimatedMoves} swipes`}
-              >
-                ~{remainingSwipes} swipes left
-              </span>
-            </div>
-            <ul className="challenge-list">
-              {cfg.challenges.map((c) => {
-                const have = levelHandCounts[c.hand] ?? 0;
-                const done = have >= c.minCount;
-                return (
-                  <li
-                    key={`${c.hand}-${c.minCount}`}
-                    className={`challenge-item${done ? " challenge-item--done" : ""}`}
-                  >
-                    <span className="challenge-item__mark">{done ? "✓" : "○"}</span>
-                    <span className="challenge-item__text">{formatChallenge(c)}</span>
-                    <span className="challenge-item__prog">
-                      {have}/{c.minCount}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-            {pointsMet && !challengesComplete && (
-              <p className="fail-reason">Points reached — finish challenges to advance</p>
-            )}
-          </div>
-          )}
-
           <div className="hands-track hands-track--stat">
             <span className="hands-label">🃏 {levelHands} hands this level</span>
           </div>
@@ -397,11 +351,6 @@ export function GameScreen({ username, onMenu }: Props) {
         <main className={`board-stage${boardLocked ? " board-stage--locked" : ""}`}>
           <div className="board-stage__glow" aria-hidden />
           <div className="board-stage__frame">
-            {floatScores.map((f) => (
-              <div key={f.id} className="float-score">
-                {f.text}
-              </div>
-            ))}
             <GameBoard
               ref={boardRef}
               key={boardKey}
@@ -447,6 +396,20 @@ export function GameScreen({ username, onMenu }: Props) {
             <span className="action-btn__icon">📋</span>
             <span className="action-btn__label">Payouts</span>
           </button>
+          {showChallengeUi && (
+            <button
+              type="button"
+              className={`action-btn action-btn--goals${pointsMet && !challengesComplete ? " action-btn--goals-alert" : ""}`}
+              onClick={() => setShowChallenges(true)}
+              title="Level goals and hand challenges"
+            >
+              <span className="action-btn__icon">🎯</span>
+              <span className="action-btn__label">Goals</span>
+              <span className="action-btn__cost">
+                {challengesDone}/{challengesTotal}
+              </span>
+            </button>
+          )}
           <button
             type="button"
             className="action-btn action-btn--menu"
@@ -514,6 +477,74 @@ export function GameScreen({ username, onMenu }: Props) {
             </div>
             <button type="button" className="btn" onClick={finishCampaign}>
               Finish →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showChallenges && (
+        <div
+          className="modal-overlay scores-overlay"
+          onClick={() => setShowChallenges(false)}
+          role="presentation"
+        >
+          <div
+            className="modal scores-modal challenges-modal"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-labelledby="challenges-title"
+          >
+            <h2 id="challenges-title">Level goals</h2>
+            <p className="scores-note">{cfg.label} — reach the point target and complete every challenge.</p>
+
+            <div className="challenges-modal__points">
+              <span className="challenges-modal__points-label">Points</span>
+              <span className="challenges-modal__points-val">
+                {levelScore.toLocaleString()} / {cfg.targetPoints.toLocaleString()}
+                {pointsMet ? " ✓" : ""}
+              </span>
+              <div className="challenges-modal__bar">
+                <div
+                  className={`challenges-modal__bar-fill${pointsMet ? " challenges-modal__bar-fill--done" : ""}`}
+                  style={{ width: `${levelProgress * 100}%` }}
+                />
+              </div>
+            </div>
+
+            <h3 className="specials-subtitle">Hand challenges</h3>
+            <ul className="challenge-list challenge-list--modal">
+              {cfg.challenges.map((c) => {
+                const have = levelHandCounts[c.hand] ?? 0;
+                const done = have >= c.minCount;
+                return (
+                  <li
+                    key={`${c.hand}-${c.minCount}`}
+                    className={`challenge-item challenge-item--modal${done ? " challenge-item--done" : ""}`}
+                  >
+                    <span className="challenge-item__mark">{done ? "✓" : "○"}</span>
+                    <span className="challenge-item__text">{formatChallenge(c)}</span>
+                    <span className="challenge-item__prog">
+                      {have}/{c.minCount}
+                    </span>
+                  </li>
+                );
+              })}
+            </ul>
+
+            <p className="challenges-modal__est">
+              ~{remainingSwipes} swipes left · typical level ~{cfg.estimatedMoves} swipes
+            </p>
+
+            {pointsMet && !challengesComplete && (
+              <p className="challenges-modal__warn">Points reached — finish the hand challenges to advance.</p>
+            )}
+
+            <button
+              type="button"
+              className="btn scores-close"
+              onClick={() => setShowChallenges(false)}
+            >
+              Close
             </button>
           </div>
         </div>

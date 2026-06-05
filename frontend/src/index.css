@@ -364,6 +364,70 @@ header h1 {
   pointer-events: none;
 }
 
+/* Glass / crate blockers (level 11+) */
+.blocker-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 5px;
+  pointer-events: none;
+}
+
+.blocker-overlay--glass {
+  background: linear-gradient(
+    145deg,
+    rgba(186, 230, 253, 0.72) 0%,
+    rgba(56, 189, 248, 0.45) 50%,
+    rgba(14, 116, 144, 0.55) 100%
+  );
+  border: 2px solid rgba(224, 242, 254, 0.65);
+  box-shadow:
+    inset 0 0 12px rgba(255, 255, 255, 0.35),
+    0 0 8px rgba(56, 189, 248, 0.35);
+}
+
+.blocker-overlay--crate {
+  background: linear-gradient(
+    145deg,
+    #a16207 0%,
+    #78350f 45%,
+    #451a03 100%
+  );
+  border: 2px solid #d97706;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -3px 6px rgba(0, 0, 0, 0.45),
+    0 2px 6px rgba(0, 0, 0, 0.4);
+}
+
+.blocker-overlay--crate.blocker-overlay--damaged {
+  background: linear-gradient(
+    145deg,
+    #92400e 0%,
+    #451a03 100%
+  );
+  border-color: #fbbf24;
+  opacity: 0.88;
+}
+
+.blocker-overlay--damaged::after {
+  content: "";
+  position: absolute;
+  inset: 12% 18%;
+  border-top: 2px solid rgba(255, 255, 255, 0.35);
+  transform: rotate(-18deg);
+  pointer-events: none;
+}
+
+.blocker-overlay__icon {
+  font-size: 1.35rem;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.45));
+  opacity: 0.95;
+}
+
 .card-face {
   width: 100%;
   height: 100%;

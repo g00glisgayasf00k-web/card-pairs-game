@@ -9,13 +9,14 @@ import {
   type FullHandResult,
   type HandLabel,
 } from "../lib/pokerHands";
-import { campaignLeaderboardPoints, computeLevelStars, estimateRemainingSwipes, formatChallenge, getLevelConfig, levelPointsMet, movesRemaining, MAX_LEVEL, outOfMoves, STAR_MOVE_EFFICIENCY, type HandCounts } from "../lib/levels";
+import { campaignLeaderboardPoints, computeLevelStars, formatChallenge, getLevelConfig, levelPointsMet, movesRemaining, MAX_LEVEL, outOfMoves, STAR_MOVE_EFFICIENCY, type HandCounts } from "../lib/levels";
 import {
   canAffordMovesPack,
   MOVES_PACK_COST,
   MOVES_PACK_SIZE,
   movesPackLabel,
 } from "../lib/credits";
+import { blockersGuideText } from "../lib/blockers";
 import {
   clearProgress,
   defaultProgress,
@@ -165,7 +166,6 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
   const pointsMet = levelScore >= cfg.targetPoints;
   const nextCfg = getLevelConfig(level + 1);
 
-  const remainingSwipes = estimateRemainingSwipes(cfg, levelScore, levelHandCounts, levelHands);
   const movesLeft = movesRemaining(effectiveMoveLimit, levelHands);
   const movesLow = movesLeft <= 3 && movesLeft > 0;
   const movesCritical = movesLeft === 0;
@@ -386,11 +386,9 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
 
   const boardLocked = phase !== "playing";
 
-  const movesUsedRatio = Math.min(1, levelHands / effectiveMoveLimit);
   const canBuyMoves = canAffordMovesPack(credits);
 
   const starMoveTarget = Math.floor(cfg.moveLimit * STAR_MOVE_EFFICIENCY);
-  const movesEfficient = levelHands <= cfg.moveLimit * STAR_MOVE_EFFICIENCY;
 
   return (
     <div className="game-screen">
@@ -490,6 +488,7 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
               guidedPath={tutorialConfig?.guidedPath}
               tutorialExpectedHand={tutorialConfig?.expectedHand}
               onTutorialStepComplete={tutorialActive ? handleTutorialStepComplete : undefined}
+              blockerConfig={cfg.blockers}
               onHand={handleHand}
               onActivation={handleActivation}
             />
@@ -701,52 +700,9 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
             role="dialog"
             aria-labelledby="challenges-title"
           >
-            <h2 id="challenges-title">Level goals</h2>
-            <p className="scores-note">{cfg.label} — reach the point target to clear. Earn up to 3★.</p>
+            <h2 id="challenges-title">Hand challenges</h2>
+            <p className="scores-note">{cfg.label} — clear these hands for 3★.</p>
 
-            <ul className="star-criteria-list">
-              <li className={`star-criteria${pointsMet ? " star-criteria--done" : ""}`}>
-                <span className="star-criteria__stars">★</span>
-                <span>Reach {cfg.targetPoints.toLocaleString()} pts</span>
-              </li>
-              <li className={`star-criteria${pointsMet && movesEfficient ? " star-criteria--done" : ""}`}>
-                <span className="star-criteria__stars">★★</span>
-                <span>Use ≤{starMoveTarget} of {cfg.moveLimit} moves (50%)</span>
-              </li>
-              <li className={`star-criteria${pointsMet && movesEfficient && challengesComplete ? " star-criteria--done" : ""}`}>
-                <span className="star-criteria__stars">★★★</span>
-                <span>Complete every hand challenge below</span>
-              </li>
-            </ul>
-
-            <div className="challenges-modal__points">
-              <span className="challenges-modal__points-label">Moves</span>
-              <span className="challenges-modal__points-val">
-                {movesLeft} / {effectiveMoveLimit} remaining
-              </span>
-              <div className="challenges-modal__bar">
-                <div
-                  className={`challenges-modal__bar-fill challenges-modal__bar-fill--moves${movesLow ? " challenges-modal__bar-fill--low" : ""}`}
-                  style={{ width: `${movesUsedRatio * 100}%` }}
-                />
-              </div>
-            </div>
-
-            <div className="challenges-modal__points">
-              <span className="challenges-modal__points-label">Points</span>
-              <span className="challenges-modal__points-val">
-                {levelScore.toLocaleString()} / {cfg.targetPoints.toLocaleString()}
-                {pointsMet ? " ✓" : ""}
-              </span>
-              <div className="challenges-modal__bar">
-                <div
-                  className={`challenges-modal__bar-fill${pointsMet ? " challenges-modal__bar-fill--done" : ""}`}
-                  style={{ width: `${levelProgress * 100}%` }}
-                />
-              </div>
-            </div>
-
-            <h3 className="specials-subtitle">Hand challenges</h3>
             <ul className="challenge-list challenge-list--modal">
               {cfg.challenges.map((c) => {
                 const have = levelHandCounts[c.hand] ?? 0;
@@ -766,13 +722,9 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
               })}
             </ul>
 
-            <p className="challenges-modal__est">
-              ~{remainingSwipes} swipes left · typical level ~{cfg.estimatedMoves} swipes
-            </p>
-
             {pointsMet && !challengesComplete && (
               <p className="challenges-modal__warn">
-                Points reached — finish hand challenges for 3★ (replay anytime).
+                Points reached — finish these for 3★.
               </p>
             )}
 
@@ -834,6 +786,9 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
           >
             <h2 id="specials-title">Power-ups</h2>
             <p className="scores-note">Earned by clearing big hands — spawn where you started the swipe</p>
+            {cfg.blockers && (
+              <p className="scores-note scores-note--blockers">🧊 {blockersGuideText()}</p>
+            )}
             <ul className="specials-list">
               {SPECIALS_GUIDE.map((sp) => (
                 <li key={sp.name} className="specials-card">

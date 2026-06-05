@@ -1,4 +1,5 @@
 import type { Card, SpecialType, Suit } from "../lib/pokerHands";
+import type { Blocker } from "../lib/blockers";
 import { SpecialArt } from "./SpecialArt";
 
 const SUIT_SYMBOL: Record<Suit, string> = {
@@ -13,12 +14,13 @@ const SPECIAL_CLASS: Record<SpecialType, string> = {
 
 interface Props {
   card: Card;
+  blocker?: Blocker | null;
   selected?: boolean;
   guided?: boolean;
   popping?: boolean;
 }
 
-export function PlayingCard({ card, selected, guided, popping }: Props) {
+export function PlayingCard({ card, blocker, selected, guided, popping }: Props) {
   const suit = SUIT_SYMBOL[card.suit];
   const sp   = card.special;
 
@@ -50,6 +52,23 @@ export function PlayingCard({ card, selected, guided, popping }: Props) {
           </div>
         )}
       </div>
+
+      {blocker && blocker.hp > 0 && (
+        <div
+          className={[
+            "blocker-overlay",
+            `blocker-overlay--${blocker.kind}`,
+            blocker.kind === "crate" && blocker.hp === 1 ? "blocker-overlay--damaged" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
+          aria-hidden
+        >
+          <span className="blocker-overlay__icon">
+            {blocker.kind === "glass" ? "🧊" : "📦"}
+          </span>
+        </div>
+      )}
     </div>
   );
 }

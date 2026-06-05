@@ -22,6 +22,14 @@ import {
   type SpecialType,
 } from "../lib/pokerHands";
 import { pathMatchesGuide } from "../lib/tutorialLevel1";
+import {
+  applyBlockerDamage,
+  emptyBlockerGrid,
+  isBlocked,
+  spawnBlockers,
+  type BlockerGrid,
+  type BlockerSpawnConfig,
+} from "../lib/blockers";
 import { useSwipePath } from "../hooks/useSwipePath";
 import { PlayingCard } from "./PlayingCard";
 
@@ -93,27 +101,42 @@ interface Props {
   tutorialExpectedHand?: HandLabel;
   /** Skip gravity — parent loads the next lesson board */
   onTutorialStepComplete?: () => void;
+  /** Glass / crate overlays (level 11+). */
+  blockerConfig?: BlockerSpawnConfig | null;
 }
 
 // ── Gravity ───────────────────────────────────────────────────────────────────
 
 function applyGravity(
   board: (Card | null)[][],
+  blockers: BlockerGrid,
   clearedKeys: Set<string>,
   earned: SpecialType[],
   spawnPath: { row: number; col: number }[]
-): { newBoard: (Card | null)[][]; dropMap: Map<string, number>; newKeys: Set<string> } {
+): {
+  newBoard: (Card | null)[][];
+  newBlockers: BlockerGrid;
+  dropMap: Map<string, number>;
+  newKeys: Set<string>;
+} {
+  const damagedBlockers = applyBlockerDamage(blockers, clearedKeys, ROWS, COLS);
+
   const newBoard: (Card | null)[][] = Array.from({ length: ROWS }, () =>
     Array<Card | null>(COLS).fill(null)
   );
+  const newBlockers = emptyBlockerGrid(ROWS, COLS);
   const dropMap = new Map<string, number>();
   const newKeys = new Set<string>();
 
   for (let c = 0; c < COLS; c++) {
     let write = ROWS - 1;
     for (let r = ROWS - 1; r >= 0; r--) {
-      if (board[r]?.[c] && !clearedKeys.has(`${r},${c}`)) {
+      const key = `${r},${c}`;
+      if (board[r]?.[c] && !clearedKeys.has(key)) {
         newBoard[write]![c] = board[r]![c];
+        newBlockers[write]![c] = damagedBlockers[r]?.[c]
+          ? { ...damagedBlockers[r]![c]! }
+          : null;
         const dropped = write - r;
         if (dropped > 0) dropMap.set(`${write},${c}`, dropped);
         write--;
@@ -144,7 +167,7 @@ function applyGravity(
     });
   }
 
-  return { newBoard, dropMap, newKeys };
+  return { newBoard, newBlockers, dropMap, newKeys };
 }
 
 function fisherYatesShuffle<T>(arr: T[]): T[] {
@@ -173,11 +196,17 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
       guidedPath,
       tutorialExpectedHand,
       onTutorialStepComplete,
+      blockerConfig,
     },
     ref
   ) {
     const [board, setBoard] = useState<(Card | null)[][]>(() =>
       seedBoard ? cloneSeedBoard(seedBoard) : createBoard(ROWS, COLS)
+    );
+    const [blockers, setBlockers] = useState<BlockerGrid>(() =>
+      seedBoard || !blockerConfig
+        ? emptyBlockerGrid(ROWS, COLS)
+        : spawnBlockers(ROWS, COLS, blockerConfig)
     );
     const [message, setMessage] = useState<string | null>(null);
     const [toastHint, setToastHint] = useState(false);
@@ -192,6 +221,16 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
     const gridRef = useRef<HTMLDivElement>(null);
     const finishingSwipe = useRef(false);
     const [gridFit, setGridFit] = useState<{ width: number; height: number } | null>(null);
+
+    useEffect(() => {
+      if (seedBoard) {
+        setBlockers(emptyBlockerGrid(ROWS, COLS));
+      } else if (blockerConfig) {
+        setBlockers(spawnBlockers(ROWS, COLS, blockerConfig));
+      } else {
+        setBlockers(emptyBlockerGrid(ROWS, COLS));
+      }
+    }, [seedBoard, blockerConfig]);
 
     useEffect(() => {
       if (!embedded) return;
@@ -268,6 +307,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
     const commitClear = useCallback(
       async (
         currentBoard: (Card | null)[][],
+        currentBlockers: BlockerGrid,
         allCleared: Set<string>,
         earnedSpecials: SpecialType[],
         cols: Set<number>,
@@ -283,8 +323,15 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
           Math.max(waitForPop(popCount), hasBlast ? ANIM.blast + ANIM.settlePad : 0)
         );
 
-        const gravity = applyGravity(currentBoard, allCleared, earnedSpecials, []);
+        const gravity = applyGravity(
+          currentBoard,
+          currentBlockers,
+          allCleared,
+          earnedSpecials,
+          []
+        );
         setBoard(gravity.newBoard);
+        setBlockers(gravity.newBlockers);
         setDropMap(gravity.dropMap);
         setNewKeys(gravity.newKeys);
         setPopping(new Set());
@@ -334,6 +381,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
 
         await commitClear(
           board,
+          blockers,
           cleared,
           [],
           new Set([c]),
@@ -344,7 +392,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
           true
         );
       },
-      [board, commitClear]
+      [board, blockers, commitClear]
     );
 
     // ── ⭐ Star tap ───────────────────────────────────────────────────────────
@@ -374,6 +422,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
 
         await commitClear(
           board,
+          blockers,
           cleared,
           [],
           new Set([c]),
@@ -383,7 +432,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
           count
         );
       },
-      [board, commitClear]
+      [board, blockers, commitClear]
     );
 
     // ── Main swipe handler ────────────────────────────────────────────────────
@@ -398,9 +447,22 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
       // Single tap
       if (swipePath.length === 1) {
         const { row, col } = swipePath[0]!;
+        if (isBlocked(blockers[row]?.[col])) {
+          if (embedded) showToast("Break the glass or crate first", true);
+          else setMessage("Break the glass or crate first");
+          clear();
+          return;
+        }
         const cell = board[row]?.[col];
         if (cell?.special === "bomb") { await activateBomb(row, col); return; }
         if (cell?.special === "star") { await activateStar(row, col, cell.rank); return; }
+        clear();
+        return;
+      }
+
+      if (swipePath.some((p) => isBlocked(blockers[p.row]?.[p.col]))) {
+        if (embedded) showToast("Clear the glass or crate blocking that card", true);
+        else setMessage("Clear the glass or crate blocking that card");
         clear();
         return;
       }
@@ -412,7 +474,10 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
         return;
       }
 
-      const resolved = resolveHandFromPath(swipePath, (p) => board[p.row]?.[p.col]);
+      const resolved = resolveHandFromPath(swipePath, (p) => {
+        if (isBlocked(blockers[p.row]?.[p.col])) return undefined;
+        return board[p.row]?.[p.col] ?? undefined;
+      });
       if (!resolved) {
         if (!pathIsAdjacent(swipePath)) {
           if (embedded) showToast("Cards must be touching", true);
@@ -460,6 +525,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
       const earned = specialsEarnedForHand(result.hand);
 
       const boardSnapshot = board;
+      const blockersSnapshot = blockers;
       const isTutorialStep = !!onTutorialStepComplete;
       try {
         await delay(waitForPop(validPath.length));
@@ -474,8 +540,15 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
         if (isTutorialStep) {
           onTutorialStepComplete();
         } else {
-          const gravity = applyGravity(boardSnapshot, allCleared, earned, validPath);
+          const gravity = applyGravity(
+            boardSnapshot,
+            blockersSnapshot,
+            allCleared,
+            earned,
+            validPath
+          );
           setBoard(gravity.newBoard);
+          setBlockers(gravity.newBlockers);
           setDropMap(gravity.dropMap);
           setNewKeys(gravity.newKeys);
 
@@ -489,7 +562,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
         setBusy(false);
       }
     }, [
-      busy, board, clear, locked, pathRef,
+      busy, board, blockers, clear, locked, pathRef,
       onHand, activateBomb, activateStar,
       guidedPath, tutorialExpectedHand, onTutorialStepComplete, embedded, showToast,
     ]);
@@ -524,7 +597,9 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
             const key = pathKey(r, c);
             const drop = dropMap.get(key) ?? 0;
             const isNew = newKeys.has(key);
-            const isTappable = cell?.special === "bomb" || cell?.special === "star";
+            const overlay = blockers[r]?.[c] ?? null;
+            const blocked = isBlocked(overlay);
+            const isTappable = !blocked && (cell?.special === "bomb" || cell?.special === "star");
             const isPopping = popping.has(key);
             const isBlasting = blasting.has(key);
             const cardStyle: CSSProperties | undefined =
@@ -553,8 +628,9 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
                   >
                     <PlayingCard
                       card={cell}
-                      selected={inPath(r, c) && !isPopping && !isBlasting}
-                      guided={isGuided(r, c) && !busy && !locked}
+                      blocker={overlay}
+                      selected={inPath(r, c) && !isPopping && !isBlasting && !blocked}
+                      guided={isGuided(r, c) && !busy && !locked && !blocked}
                       popping={isPopping}
                     />
                   </div>

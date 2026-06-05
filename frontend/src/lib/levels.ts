@@ -1,4 +1,5 @@
 import { HAND_DISPLAY, HAND_SCORES, type HandLabel } from "./pokerHands";
+import { blockersForLevel, type BlockerSpawnConfig } from "./blockers";
 
 export interface HandChallenge {
   hand: HandLabel;
@@ -15,6 +16,8 @@ export interface LevelConfig {
   estimatedMoves: number;
   /** Max hands allowed — derived from target + challenges with path-finding grace. */
   moveLimit: number;
+  /** Glass / crate overlays from level 11+. */
+  blockers: BlockerSpawnConfig | null;
 }
 
 export type HandCounts = Partial<Record<HandLabel, number>>;
@@ -213,6 +216,7 @@ function buildLevelConfig(level: number): LevelConfig {
       challenges,
       estimatedMoves: computeEstimatedMoves(data.targetPoints, challenges),
       moveLimit: computeMoveLimit(data.targetPoints, challenges, level),
+      blockers: blockersForLevel(level),
     };
   }
 
@@ -226,6 +230,7 @@ function buildLevelConfig(level: number): LevelConfig {
     challenges,
     estimatedMoves: computeEstimatedMoves(targetPoints, challenges),
     moveLimit: computeMoveLimit(targetPoints, challenges, level),
+    blockers: blockersForLevel(level),
   };
 }
 

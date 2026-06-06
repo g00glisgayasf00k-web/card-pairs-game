@@ -7,13 +7,15 @@ import {
 } from "../lib/energy";
 import { countCompleted, countTotalStars } from "../lib/levelProgress";
 import { loadProgress } from "../lib/progress";
+import { ProfileAccountSection } from "./ProfileAccountSection";
 
 interface Props {
   username: string | null;
   onClose: () => void;
+  onAccountChange?: () => void;
 }
 
-export function ProfileModal({ username, onClose }: Props) {
+export function ProfileModal({ username, onClose, onAccountChange }: Props) {
   const saved = loadProgress();
   const { energy } = syncEnergyState();
   const completed = countCompleted();
@@ -39,6 +41,8 @@ export function ProfileModal({ username, onClose }: Props) {
             <p className="profile-modal__sub">Royal Match Poker</p>
           </div>
         </div>
+
+        <ProfileAccountSection displayName={username} onAccountChange={onAccountChange} />
 
         <ul className="profile-stats">
           <li>

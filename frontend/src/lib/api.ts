@@ -60,3 +60,72 @@ export async function submitScore(payload: {
     }),
   });
 }
+
+export interface RemoteProgressResponse {
+  progress: Record<string, unknown> | null;
+  client_updated_at: number;
+  server_updated_at?: string;
+  saved?: boolean;
+  reason?: string;
+}
+
+export async function fetchMyProgress() {
+  return request<RemoteProgressResponse>("/api/progress/me");
+}
+
+export async function syncProgressToServer(progress: Record<string, unknown>) {
+  return request<RemoteProgressResponse & { saved: boolean }>("/api/progress/sync", {
+    method: "POST",
+    body: JSON.stringify({
+      progress,
+      client_updated_at: progress.updatedAt ?? Date.now(),
+    }),
+  });
+}
+
+export async function fetchAdminMe() {
+  return request<{ username: string; is_admin: boolean }>("/api/admin/me");
+}
+
+export async function fetchAdminStats() {
+  return request<{ users: number; scores: number; synced_players: number }>("/api/admin/stats");
+}
+
+export interface AdminUserRow {
+  id: number;
+  username: string;
+  is_admin: boolean;
+  created_at: string;
+  score_count: number;
+  progress: {
+    level?: number;
+    credits?: number;
+    energy?: number;
+    completed?: number;
+    highest_unlocked?: number;
+    client_updated_at?: number;
+  } | null;
+}
+
+export async function fetchAdminUsers(offset = 0, limit = 50) {
+  return request<{ users: AdminUserRow[]; total: number; offset: number; limit: number }>(
+    `/api/admin/users?offset=${offset}&limit=${limit}`
+  );
+}
+
+export async function fetchAdminUserDetail(userId: number) {
+  return request<{
+    id: number;
+    username: string;
+    is_admin: boolean;
+    created_at: string;
+    progress: Record<string, unknown> | null;
+    client_updated_at: number;
+    scores: {
+      points: number;
+      hands_cleared: number;
+      best_hand: string;
+      played_at: string;
+    }[];
+  }>(`/api/admin/users/${userId}`);
+}

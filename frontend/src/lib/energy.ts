@@ -3,11 +3,8 @@ import { loadProgress, saveProgress, defaultProgress, type SavedProgress } from 
 export const MAX_ENERGY = 10;
 export const ENERGY_PER_ATTEMPT = 1;
 
-/** Gems to buy a single energy point (up to max). */
-export const ENERGY_BUY_ONE_COST = 15;
-
-/** Gems to refill energy to max. */
-export const ENERGY_REFILL_ALL_COST = 40;
+/** Gems to buy a full energy refill (10 ⚡). */
+export const ENERGY_BUY_TEN_COST = 100;
 
 /** UK calendar day key for midnight refresh (YYYY-MM-DD). */
 export function ukDateKey(date = new Date()): string {
@@ -119,31 +116,17 @@ export function trySpendEnergyForRetry(globalLevel: number): boolean {
   return trySpendEnergyForLevel(globalLevel);
 }
 
-export function buyOneEnergy(): boolean {
+/** Buy a full energy bar (10 ⚡) for 100 gems. */
+export function buyTenEnergy(): boolean {
   const saved = loadProgress();
   if (!saved) return false;
   const refreshed = withRefreshedEnergy(saved);
   if (refreshed.energy >= MAX_ENERGY) return false;
-  if (refreshed.credits < ENERGY_BUY_ONE_COST) return false;
+  if (refreshed.credits < ENERGY_BUY_TEN_COST) return false;
 
   saveProgress({
     ...refreshed,
-    credits: refreshed.credits - ENERGY_BUY_ONE_COST,
-    energy: refreshed.energy + 1,
-  });
-  return true;
-}
-
-export function buyFullEnergyRefill(): boolean {
-  const saved = loadProgress();
-  if (!saved) return false;
-  const refreshed = withRefreshedEnergy(saved);
-  if (refreshed.energy >= MAX_ENERGY) return false;
-  if (refreshed.credits < ENERGY_REFILL_ALL_COST) return false;
-
-  saveProgress({
-    ...refreshed,
-    credits: refreshed.credits - ENERGY_REFILL_ALL_COST,
+    credits: refreshed.credits - ENERGY_BUY_TEN_COST,
     energy: MAX_ENERGY,
   });
   return true;

@@ -19,10 +19,14 @@ def create_app(config_class=Config):
     from app.blueprints.auth import auth_bp
     from app.blueprints.game import game_bp
     from app.blueprints.scores import scores_bp
+    from app.blueprints.progress import progress_bp
+    from app.blueprints.admin import admin_bp
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(game_bp, url_prefix="/api/game")
     app.register_blueprint(scores_bp, url_prefix="/api/scores")
+    app.register_blueprint(progress_bp, url_prefix="/api/progress")
+    app.register_blueprint(admin_bp, url_prefix="/api/admin")
 
     @app.route("/api/health")
     def health():
@@ -40,6 +44,9 @@ def create_app(config_class=Config):
             return send_from_directory(static_path, "index.html")
 
     with app.app_context():
-        db.create_all()
+        from app.db_util import ensure_admin_user, ensure_schema
+
+        ensure_schema()
+        ensure_admin_user()
 
     return app

@@ -11,11 +11,27 @@ class User(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(128), nullable=False)
+    is_admin = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(
         db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )
 
     scores = db.relationship("Score", back_populates="user", lazy="dynamic")
+    progress = db.relationship("PlayerProgress", back_populates="user", uselist=False)
+
+
+class PlayerProgress(db.Model):
+    __tablename__ = "player_progress"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), unique=True, nullable=False)
+    payload = db.Column(db.Text, nullable=False, default="{}")
+    client_updated_at = db.Column(db.BigInteger, default=0, nullable=False)
+    updated_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+
+    user = db.relationship("User", back_populates="progress")
 
 
 class Score(db.Model):

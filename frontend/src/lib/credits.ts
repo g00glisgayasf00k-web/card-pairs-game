@@ -16,10 +16,10 @@ export interface GemPack {
 
 /** Display-only prices — grants gems instantly (hook up IAP later). */
 export const GEM_SHOP_PACKS: GemPack[] = [
-  { id: "handful", gems: 100, label: "Handful", priceLabel: "£0.99" },
-  { id: "pouch", gems: 300, label: "Pouch", priceLabel: "£2.99" },
-  { id: "vault", gems: 750, label: "Vault", priceLabel: "£5.99" },
-  { id: "treasure", gems: 2000, label: "Treasure", priceLabel: "£12.99" },
+  { id: "handful", gems: 100, label: "Handful", priceLabel: "$0.99" },
+  { id: "pouch", gems: 300, label: "Pouch", priceLabel: "$2.79" },
+  { id: "vault", gems: 500, label: "Vault", priceLabel: "$4.49" },
+  { id: "treasure", gems: 1000, label: "Treasure", priceLabel: "$8.99" },
 ];
 
 export function canAffordMovesPack(credits: number): boolean {

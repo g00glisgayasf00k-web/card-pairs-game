@@ -7,6 +7,13 @@ import { MAX_ENERGY, applyDailyEnergyRefresh, ukDateKey } from "./energy";
 const STORAGE_KEY = "royalMatchProgress";
 const VERSION = 8;
 
+type ProgressSyncHook = (payload: SavedProgress) => void;
+let progressSyncHook: ProgressSyncHook | null = null;
+
+export function setProgressSyncHook(hook: ProgressSyncHook | null): void {
+  progressSyncHook = hook;
+}
+
 export interface SavedProgress {
   v: typeof VERSION;
   /** Furthest level the player may start (1–100). */
@@ -167,13 +174,35 @@ export function loadProgress(): SavedProgress | null {
   return parseProgress(localStorage.getItem(STORAGE_KEY));
 }
 
-export function saveProgress(data: Omit<SavedProgress, "v" | "updatedAt">): void {
+export function importProgress(data: unknown): SavedProgress | null {
+  if (data == null) return null;
+  try {
+    return parseProgress(JSON.stringify(data));
+  } catch {
+    return null;
+  }
+}
+
+export function saveProgress(
+  data: Omit<SavedProgress, "v" | "updatedAt">,
+  options?: { skipSync?: boolean }
+): void {
   const payload: SavedProgress = {
     v: VERSION,
     ...data,
     updatedAt: Date.now(),
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  if (!options?.skipSync) {
+    progressSyncHook?.(payload);
+  }
+}
+
+export function applyImportedProgress(data: unknown): boolean {
+  const parsed = importProgress(data);
+  if (!parsed) return false;
+  saveProgress(parsed, { skipSync: true });
+  return true;
 }
 
 export function clearProgress(): void {

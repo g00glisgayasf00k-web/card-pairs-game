@@ -75,6 +75,19 @@ const HAND_BADGE: Record<HandLabel, string> = {
 
 const ROUND_COMPLETE_MS = 2200;
 
+function missionBriefEligible(level: number, tutorialStep: number): boolean {
+  return level > 1 || tutorialStep >= TUTORIAL_FREE_STEP;
+}
+
+function isFreshMissionStart(startLevel: number | undefined): boolean {
+  const saved = loadProgress();
+  if (startLevel === undefined) {
+    if (!saved) return true;
+    return saved.levelScore === 0 && saved.levelHands === 0;
+  }
+  return !shouldResumeSavedRun(startLevel, saved);
+}
+
 function initRunState(startLevel?: number): RunState {
   const saved = loadProgress();
 
@@ -150,6 +163,7 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
   const bestHandRef = useRef(bestHand);
   const levelRef = useRef(level);
   const advancingRef = useRef(false);
+  const briefOnNextBoardRef = useRef(isFreshMissionStart(startLevel));
 
   const boardRef = useRef<GameBoardHandle>(null);
 
@@ -209,10 +223,19 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
     persistRun(run);
   }, [run, persistRun]);
 
+  useEffect(() => {
+    if (!briefOnNextBoardRef.current) return;
+    briefOnNextBoardRef.current = false;
+    if (missionBriefEligible(level, tutorialStep)) {
+      setShowChallenges(true);
+    }
+  }, [level, boardKey, tutorialStep]);
+
   const advanceLevel = useCallback(() => {
     advancingRef.current = false;
     setCompletedLevel(null);
     setCompletedStats(null);
+    briefOnNextBoardRef.current = true;
     setRun((prev) => {
       const next: RunState = {
         ...prev,
@@ -234,6 +257,7 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
 
   const retryLevel = useCallback(() => {
     advancingRef.current = false;
+    briefOnNextBoardRef.current = true;
     setRun((prev) => ({
       ...prev,
       levelScore: 0,
@@ -290,10 +314,13 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
   );
 
   const handleTutorialStepComplete = useCallback(() => {
-    setRun((prev) => ({
-      ...prev,
-      tutorialStep: Math.min(TUTORIAL_FREE_STEP, prev.tutorialStep + 1),
-    }));
+    setRun((prev) => {
+      const nextStep = Math.min(TUTORIAL_FREE_STEP, prev.tutorialStep + 1);
+      if (prev.level === 1 && nextStep === TUTORIAL_FREE_STEP) {
+        briefOnNextBoardRef.current = true;
+      }
+      return { ...prev, tutorialStep: nextStep };
+    });
     setBoardKey((k) => k + 1);
   }, []);
 
@@ -384,7 +411,7 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
     onMenu();
   };
 
-  const boardLocked = phase !== "playing";
+  const boardLocked = phase !== "playing" || showChallenges;
 
   const canBuyMoves = canAffordMovesPack(credits);
 
@@ -539,7 +566,7 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
               type="button"
               className={`action-btn action-btn--goals${pointsMet && !challengesComplete ? " action-btn--goals-alert" : ""}`}
               onClick={() => setShowChallenges(true)}
-              title="Level goals and hand challenges"
+              title="Mission goals — point target and hand challenges"
             >
               <span className="action-btn__icon">🎯</span>
               <span className="action-btn__label">Goals</span>
@@ -700,27 +727,45 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
             role="dialog"
             aria-labelledby="challenges-title"
           >
-            <h2 id="challenges-title">Hand challenges</h2>
-            <p className="scores-note">{cfg.label} — clear these hands for 3★.</p>
+            <h2 id="challenges-title">Mission goals</h2>
+            <p className="scores-note">
+              Level {formatLevelId(level)} · {cfg.label}
+            </p>
 
-            <ul className="challenge-list challenge-list--modal">
-              {cfg.challenges.map((c) => {
-                const have = levelHandCounts[c.hand] ?? 0;
-                const done = have >= c.minCount;
-                return (
-                  <li
-                    key={`${c.hand}-${c.minCount}`}
-                    className={`challenge-item challenge-item--modal${done ? " challenge-item--done" : ""}`}
-                  >
-                    <span className="challenge-item__mark">{done ? "✓" : "○"}</span>
-                    <span className="challenge-item__text">{formatChallenge(c)}</span>
-                    <span className="challenge-item__prog">
-                      {have}/{c.minCount}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
+            <div className="challenges-modal__points">
+              <span className="challenges-modal__points-label">Clear the level</span>
+              <span className="challenges-modal__points-val">
+                {cfg.targetPoints.toLocaleString()} pts · {cfg.moveLimit} moves
+              </span>
+            </div>
+
+            {cfg.challenges.length > 0 && (
+              <>
+                <h3 className="specials-subtitle">For 3★ — hand challenges</h3>
+                <ul className="challenge-list challenge-list--modal">
+                  {cfg.challenges.map((c) => {
+                    const have = levelHandCounts[c.hand] ?? 0;
+                    const done = have >= c.minCount;
+                    return (
+                      <li
+                        key={`${c.hand}-${c.minCount}`}
+                        className={`challenge-item challenge-item--modal${done ? " challenge-item--done" : ""}`}
+                      >
+                        <span className="challenge-item__mark">{done ? "✓" : "○"}</span>
+                        <span className="challenge-item__text">{formatChallenge(c)}</span>
+                        <span className="challenge-item__prog">
+                          {have}/{c.minCount}
+                        </span>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </>
+            )}
+
+            {cfg.blockers && (
+              <p className="scores-note scores-note--blockers">🧊 {blockersGuideText()}</p>
+            )}
 
             {pointsMet && !challengesComplete && (
               <p className="challenges-modal__warn">
@@ -733,7 +778,7 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
               className="btn scores-close"
               onClick={() => setShowChallenges(false)}
             >
-              Close
+              Got it
             </button>
           </div>
         </div>

@@ -2,6 +2,7 @@ import os
 from datetime import datetime, timezone
 
 from sqlalchemy import inspect, text
+from sqlalchemy.exc import IntegrityError, OperationalError
 
 from app.blueprints.auth import _hash_password
 from app.models import User, db
@@ -15,14 +16,20 @@ def ensure_schema():
     if engine.dialect.name != "sqlite":
         return
 
-    insp = inspect(engine)
-    if "users" not insp.get_table_names():
+    inspector = inspect(engine)
+    if "users" not in inspector.get_table_names():
         return
 
-    cols = {c["name"] for c in insp.get_columns("users")}
+    cols = {c["name"] for c in inspector.get_columns("users")}
     if "is_admin" not in cols:
-        with engine.begin() as conn:
-            conn.execute(text("ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT 0 NOT NULL"))
+        try:
+            with engine.begin() as conn:
+                conn.execute(
+                    text("ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT 0 NOT NULL")
+                )
+        except OperationalError:
+            # Another gunicorn worker may have applied this migration first.
+            pass
 
 
 def ensure_admin_user():
@@ -31,18 +38,21 @@ def ensure_admin_user():
     if not username or not password:
         return
 
-    user = User.query.filter_by(username=username).first()
-    if not user:
-        user = User(
-            username=username,
-            password_hash=_hash_password(password),
-            is_admin=True,
-        )
-        db.session.add(user)
-    else:
-        user.is_admin = True
-        user.password_hash = _hash_password(password)
-    db.session.commit()
+    try:
+        user = User.query.filter_by(username=username).first()
+        if not user:
+            user = User(
+                username=username,
+                password_hash=_hash_password(password),
+                is_admin=True,
+            )
+            db.session.add(user)
+        else:
+            user.is_admin = True
+            user.password_hash = _hash_password(password)
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
 
 
 def utc_now():

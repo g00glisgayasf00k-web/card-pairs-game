@@ -27,6 +27,10 @@ import {
   starsToUnlockWorld,
   worldForLevel,
 } from "../lib/levelProgress";
+import { canBeginLevelAttempt } from "../lib/levelAttempt";
+import { MAX_ENERGY, syncEnergyState } from "../lib/energy";
+import { loadProgress } from "../lib/progress";
+import { GemShopModal } from "../components/GemShopModal";
 
 interface Props {
   onBack: () => void;
@@ -133,6 +137,9 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
   const currentLevel = getCurrentLevel();
   const [selectedWorld, setSelectedWorld] = useState(() => worldForLevel(currentLevel));
   const [tick, setTick] = useState(0);
+  const [walletTick, setWalletTick] = useState(0);
+  const [showGemShop, setShowGemShop] = useState(false);
+  const [pendingLevel, setPendingLevel] = useState<number | null>(null);
   const currentRef = useRef<HTMLDivElement>(null);
 
   const completedCount = countCompleted();
@@ -158,14 +165,34 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
 
   const handleSelect = (globalLevel: number) => {
     if (!isLevelPlayable(globalLevel)) return;
+    if (!canBeginLevelAttempt(globalLevel)) {
+      setPendingLevel(globalLevel);
+      setShowGemShop(true);
+      return;
+    }
     onSelectLevel(globalLevel);
   };
 
   const handleStart = () => {
     if (isLevelPlayable(currentLevel)) {
-      onSelectLevel(currentLevel);
+      handleSelect(currentLevel);
     }
   };
+
+  const handleWalletChange = () => {
+    setWalletTick((t) => t + 1);
+    if (pendingLevel !== null && canBeginLevelAttempt(pendingLevel)) {
+      const level = pendingLevel;
+      setPendingLevel(null);
+      setShowGemShop(false);
+      onSelectLevel(level);
+    }
+  };
+
+  const saved = loadProgress();
+  const { energy } = syncEnergyState();
+  void walletTick;
+  const gems = saved?.credits ?? 0;
 
   const mapPoints = buildWorldMapPoints();
   const mapHeight = mapViewBoxHeight();
@@ -193,7 +220,7 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
               <span className="levels-title-banner__wing levels-title-banner__wing--r">♥</span>
             </div>
             <p className="levels-subtitle">
-              {completedCount} / {TOTAL_LEVELS} cleared · {totalStars} ★
+              {completedCount} / {TOTAL_LEVELS} cleared · {totalStars} ★ · ⚡ {energy}/{MAX_ENERGY} · 💎 {gems}
             </p>
           </div>
 
@@ -300,6 +327,17 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
           </button>
         </footer>
       </div>
+
+      {showGemShop && (
+        <GemShopModal
+          emphasizeEnergy
+          onClose={() => {
+            setShowGemShop(false);
+            setPendingLevel(null);
+          }}
+          onBalanceChange={handleWalletChange}
+        />
+      )}
     </div>
   );
 }

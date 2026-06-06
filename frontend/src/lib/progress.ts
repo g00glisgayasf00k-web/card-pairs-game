@@ -2,9 +2,10 @@ import { HAND_RANK_ORDER, type HandLabel } from "./pokerHands";
 import type { HandCounts } from "./levels";
 import { MAX_LEVEL } from "./levels";
 import { STARTING_CREDITS } from "./credits";
+import { MAX_ENERGY, applyDailyEnergyRefresh, ukDateKey } from "./energy";
 
 const STORAGE_KEY = "royalMatchProgress";
-const VERSION = 7;
+const VERSION = 8;
 
 export interface SavedProgress {
   v: typeof VERSION;
@@ -22,6 +23,12 @@ export interface SavedProgress {
   bestHand: HandLabel;
   /** In-game currency for buying extra moves. */
   credits: number;
+  /** Play attempts remaining today (max 10, refreshes UK midnight). */
+  energy: number;
+  /** Last UK date energy was synced (YYYY-MM-DD). */
+  energyUkDate: string;
+  /** Level we already spent energy to enter this attempt. */
+  energyPaidLevel: number | null;
   /** @deprecated Combo removed — kept for save migration. */
   streak: number;
   /** Beginner 1 guided lesson progress (0–3). 3 = free play on level 1. */
@@ -90,7 +97,7 @@ function parseProgress(raw: string | null): SavedProgress | null {
   if (!raw) return null;
   try {
     const data = JSON.parse(raw) as Partial<SavedProgress> & { totalScore?: number; v?: number };
-    if (data.v !== VERSION && data.v !== 6 && data.v !== 5 && data.v !== 4 && data.v !== 3 && data.v !== 2 && data.v !== 1) {
+    if (data.v !== VERSION && data.v !== 7 && data.v !== 6 && data.v !== 5 && data.v !== 4 && data.v !== 3 && data.v !== 2 && data.v !== 1) {
       return null;
     }
     if (typeof data.level !== "number" || data.level < 1 || data.level > MAX_LEVEL) return null;
@@ -124,6 +131,14 @@ function parseProgress(raw: string | null): SavedProgress | null {
         ? Math.max(0, Math.floor(data.credits))
         : STARTING_CREDITS;
 
+    const energyRaw =
+      typeof data.energy === "number" ? Math.max(0, Math.floor(data.energy)) : MAX_ENERGY;
+    const energyUkDate =
+      typeof data.energyUkDate === "string" ? data.energyUkDate : ukDateKey();
+    const { energy, energyUkDate: syncedDate } = applyDailyEnergyRefresh(energyRaw, energyUkDate);
+    const energyPaidLevel =
+      typeof data.energyPaidLevel === "number" ? Math.floor(data.energyPaidLevel) : null;
+
     return {
       v: VERSION,
       highestUnlocked,
@@ -136,6 +151,9 @@ function parseProgress(raw: string | null): SavedProgress | null {
       handsCleared: Math.floor(data.handsCleared),
       bestHand: data.bestHand,
       credits,
+      energy,
+      energyUkDate: syncedDate,
+      energyPaidLevel,
       streak: 0,
       tutorialStep,
       updatedAt: typeof data.updatedAt === "number" ? data.updatedAt : Date.now(),
@@ -174,6 +192,9 @@ export function defaultProgress(): Omit<SavedProgress, "v" | "updatedAt"> {
     handsCleared: 0,
     bestHand: "pair",
     credits: STARTING_CREDITS,
+    energy: MAX_ENERGY,
+    energyUkDate: ukDateKey(),
+    energyPaidLevel: null,
     streak: 0,
     tutorialStep: 0,
   };

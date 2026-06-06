@@ -16,6 +16,13 @@ import {
   MOVES_PACK_SIZE,
   movesPackLabel,
 } from "../lib/credits";
+import {
+  MAX_ENERGY,
+  clearEnergyPaidLevel,
+  syncEnergyState,
+  trySpendEnergyForRetry,
+} from "../lib/energy";
+import { beginLevelAttempt, levelAttemptCostsEnergy } from "../lib/levelAttempt";
 import { blockersGuideText } from "../lib/blockers";
 import {
   clearProgress,
@@ -38,6 +45,8 @@ import {
 } from "../lib/levelProgress";
 import { formatLevelId } from "../lib/levelMap";
 import { GameBoard, type GameBoardHandle } from "../components/GameBoard";
+import { ProfileModal } from "../components/ProfileModal";
+import { GemShopModal } from "../components/GemShopModal";
 
 interface Props {
   username: string | null;
@@ -155,6 +164,11 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
   const [showScores, setShowScores] = useState(false);
   const [showSpecials, setShowSpecials] = useState(false);
   const [showChallenges, setShowChallenges] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const [showGemShop, setShowGemShop] = useState(false);
+  const [gemShopEnergyFocus, setGemShopEnergyFocus] = useState(false);
+  const [walletTick, setWalletTick] = useState(0);
+  const [energyBlocked, setEnergyBlocked] = useState(false);
   const [boardKey, setBoardKey] = useState(0);
   const levelScoreRef = useRef(levelScore);
   const levelHandsRef = useRef(levelHands);
@@ -166,6 +180,7 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
   const briefOnNextBoardRef = useRef(isFreshMissionStart(startLevel));
 
   const boardRef = useRef<GameBoardHandle>(null);
+  const refreshWallet = useCallback(() => setWalletTick((t) => t + 1), []);
 
   levelScoreRef.current = levelScore;
   levelHandsRef.current = levelHands;
@@ -214,6 +229,9 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
       handsCleared: next.handsCleared,
       bestHand: next.bestHand,
       credits: next.credits,
+      energy: saved.energy,
+      energyUkDate: saved.energyUkDate,
+      energyPaidLevel: saved.energyPaidLevel ?? null,
       streak: 0,
       tutorialStep: next.level === 1 ? next.tutorialStep : saved.tutorialStep,
     });
@@ -235,6 +253,15 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
     advancingRef.current = false;
     setCompletedLevel(null);
     setCompletedStats(null);
+    clearEnergyPaidLevel();
+    const nextLevel = levelRef.current + 1;
+    if (!beginLevelAttempt(nextLevel)) {
+      setGemShopEnergyFocus(true);
+      setShowGemShop(true);
+      setEnergyBlocked(true);
+      return;
+    }
+    setEnergyBlocked(false);
     briefOnNextBoardRef.current = true;
     setRun((prev) => {
       const next: RunState = {
@@ -257,6 +284,12 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
 
   const retryLevel = useCallback(() => {
     advancingRef.current = false;
+    if (!trySpendEnergyForRetry(level)) {
+      setGemShopEnergyFocus(true);
+      setShowGemShop(true);
+      return;
+    }
+    refreshWallet();
     briefOnNextBoardRef.current = true;
     setRun((prev) => ({
       ...prev,
@@ -276,7 +309,7 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
     levelHandCountsRef.current = {};
     setPhase("playing");
     setBoardKey((k) => k + 1);
-  }, [level, tutorialStep]);
+  }, [level, tutorialStep, refreshWallet]);
 
   useEffect(() => {
     if (phase !== "round_complete") return;
@@ -411,7 +444,7 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
     onMenu();
   };
 
-  const boardLocked = phase !== "playing" || showChallenges;
+  const boardLocked = phase !== "playing" || showChallenges || energyBlocked;
 
   const canBuyMoves = canAffordMovesPack(credits);
 
@@ -420,6 +453,39 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
   const oneStarMoveTarget = cfg.moveLimit;
   const movesEfficientFor2 = levelHands <= twoStarMoveTarget;
   const movesEfficientFor3 = levelHands <= starMoveTarget;
+
+  const energyState = syncEnergyState();
+  const energy = energyState.energy;
+  void walletTick;
+
+  useEffect(() => {
+    if (startLevel === undefined) return;
+    refreshWallet();
+    if (!levelAttemptCostsEnergy(startLevel)) return;
+    if (!beginLevelAttempt(startLevel)) {
+      setEnergyBlocked(true);
+      setGemShopEnergyFocus(true);
+      setShowGemShop(true);
+    }
+  }, [startLevel, refreshWallet]);
+
+  const handleWalletChange = useCallback(() => {
+    refreshWallet();
+    const saved = loadProgress();
+    if (saved) {
+      setRun((prev) => ({ ...prev, credits: saved.credits }));
+    }
+    if (startLevel !== undefined && energyBlocked && hasEnergyFromSync()) {
+      if (beginLevelAttempt(startLevel)) {
+        setEnergyBlocked(false);
+        setShowGemShop(false);
+      }
+    }
+  }, [refreshWallet, startLevel, energyBlocked]);
+
+  function hasEnergyFromSync(): boolean {
+    return syncEnergyState().energy >= 1;
+  }
 
   return (
     <div className="game-screen">
@@ -455,10 +521,31 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
               <span className="score-chip__value">{levelScore.toLocaleString()}</span>
             </div>
 
-            <div className="credits-chip" title="In-game credits — buy extra moves when you run out">
+            <button
+              type="button"
+              className="energy-chip hud-chip-btn"
+              onClick={() => {
+                setGemShopEnergyFocus(true);
+                setShowGemShop(true);
+              }}
+              title="Energy — refills to 10 at midnight UK time"
+            >
+              <span className="energy-chip__icon">⚡</span>
+              <span className="energy-chip__val">{energy}/{MAX_ENERGY}</span>
+            </button>
+
+            <button
+              type="button"
+              className="credits-chip hud-chip-btn"
+              onClick={() => {
+                setGemShopEnergyFocus(false);
+                setShowGemShop(true);
+              }}
+              title="Gems — tap to buy more"
+            >
               <span className="credits-chip__icon">💎</span>
               <span className="credits-chip__val">{credits}</span>
-            </div>
+            </button>
 
             <div className="rank-chip" title={cfg.label}>
               <span className="rank-chip__label">{formatLevelId(level)}</span>
@@ -499,10 +586,24 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
             <div className="stat-chip" title={`Best: ${HAND_DISPLAY[bestHand]}`}>
               <span className="stat-chip__icon">{HAND_BADGE[bestHand]}</span>
             </div>
-            {username && (
-              <div className="stat-chip stat-chip--user" title={username}>
+            {username ? (
+              <button
+                type="button"
+                className="stat-chip stat-chip--user hud-chip-btn"
+                onClick={() => setShowProfile(true)}
+                title="Your profile"
+              >
                 <span className="stat-chip__icon">👤</span>
-              </div>
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="stat-chip stat-chip--user hud-chip-btn"
+                onClick={() => setShowProfile(true)}
+                title="Guest profile"
+              >
+                <span className="stat-chip__icon">👤</span>
+              </button>
             )}
           </div>
         </header>
@@ -904,6 +1005,18 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
             </button>
           </div>
         </div>
+      )}
+
+      {showProfile && (
+        <ProfileModal username={username} onClose={() => setShowProfile(false)} />
+      )}
+
+      {showGemShop && (
+        <GemShopModal
+          emphasizeEnergy={gemShopEnergyFocus}
+          onClose={() => setShowGemShop(false)}
+          onBalanceChange={handleWalletChange}
+        />
       )}
     </div>
   );

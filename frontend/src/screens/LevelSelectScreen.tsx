@@ -6,14 +6,18 @@ import {
   stagesInWorld,
   toGlobalLevel,
   TOTAL_LEVELS,
+  worldShortName,
   worldTitle,
   type LevelNodeState,
 } from "../lib/levelMap";
 import {
+  buildPathSegments,
   buildWorldMapPoints,
+  chipPaletteForStage,
   mapViewBoxHeight,
   pathThrough,
   progressIndexInWorld,
+  type ChipPalette,
 } from "../lib/mapLayout";
 import {
   countCompleted,
@@ -51,6 +55,7 @@ function StarRating({ stars }: { stars: number }) {
 
 interface LevelChipProps {
   globalLevel: number;
+  palette: ChipPalette;
   isMilestone: boolean;
   state: LevelNodeState;
   isCurrent: boolean;
@@ -60,6 +65,7 @@ interface LevelChipProps {
 
 function LevelChip({
   globalLevel,
+  palette,
   isMilestone,
   state,
   isCurrent,
@@ -68,46 +74,56 @@ function LevelChip({
 }: LevelChipProps) {
   const label = formatLevelId(globalLevel);
   const locked = state === "locked";
+  const completed = state === "completed";
 
   return (
     <div className={`map-node${isMilestone ? " map-node--milestone" : ""}`}>
+      {isCurrent && (
+        <span className="level-chip__avatar" aria-hidden>
+          🕵️
+        </span>
+      )}
       <button
-          type="button"
-          className={[
-            "level-chip",
-            isMilestone ? "level-chip--milestone" : "",
-            `level-chip--${state}`,
-            isCurrent ? "level-chip--current" : "",
-          ]
-            .filter(Boolean)
-            .join(" ")}
-          disabled={locked}
-          onClick={() => onSelect(globalLevel)}
-          aria-label={locked ? `${label} locked` : `Play level ${label}`}
-        >
-          <span className="level-chip__rim" aria-hidden />
-          {locked ? (
-            <span className="level-chip__lock" aria-hidden>
-              <span className="level-chip__lock-icon">🔒</span>
-              <span className="level-chip__lock-label">{label}</span>
-            </span>
-          ) : (
-            <span className="level-chip__face">
-              <span className="level-chip__label">{label}</span>
-            </span>
-          )}
-        </button>
+        type="button"
+        className={[
+          "level-chip",
+          `level-chip--${palette}`,
+          isMilestone ? "level-chip--milestone" : "",
+          `level-chip--${state}`,
+          isCurrent ? "level-chip--current" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        disabled={locked}
+        onClick={() => onSelect(globalLevel)}
+        aria-label={locked ? `${label} locked` : `Play level ${label}`}
+      >
+        <span className="level-chip__rim" aria-hidden />
+        <span className="level-chip__edge" aria-hidden />
+        {locked ? (
+          <span className="level-chip__lock" aria-hidden>
+            <span className="level-chip__lock-icon">🔒</span>
+          </span>
+        ) : (
+          <span className="level-chip__face">
+            <span className="level-chip__label">{label}</span>
+            {completed && <span className="level-chip__check">✓</span>}
+          </span>
+        )}
+      </button>
       {!locked && <StarRating stars={stars} />}
     </div>
   );
 }
 
-function WorldMapPath({
+function PixelMapPath({
   points,
+  segments,
   progressIndex,
   viewHeight,
 }: {
   points: ReturnType<typeof buildWorldMapPoints>;
+  segments: ReturnType<typeof buildPathSegments>;
   progressIndex: number;
   viewHeight: number;
 }) {
@@ -116,6 +132,9 @@ function WorldMapPath({
   const litPoints = points.slice(0, Math.min(litCount, points.length));
   const progressPath = litPoints.length >= 2 ? pathThrough(litPoints) : "";
 
+  let tileIndex = 0;
+  const litTileLimit = progressIndex >= 0 ? progressIndex * 4 + 4 : 0;
+
   return (
     <svg
       className="map-path-svg"
@@ -123,8 +142,26 @@ function WorldMapPath({
       preserveAspectRatio="xMidYMin meet"
       aria-hidden
     >
-      <path className="map-path map-path--track" d={fullPath} />
+      <path className="map-path map-path--shadow" d={fullPath} />
+      <path className="map-path map-path--stone" d={fullPath} />
       {progressPath && <path className="map-path map-path--active" d={progressPath} />}
+
+      {segments.map((seg) =>
+        seg.tiles.map((pt) => {
+          const idx = tileIndex++;
+          const lit = idx < litTileLimit;
+          return (
+            <rect
+              key={`tile-${seg.from}-${idx}`}
+              className={`map-stone-tile${lit ? " map-stone-tile--lit" : ""}`}
+              x={pt.x - 1.8}
+              y={pt.y - 1.8}
+              width={3.6}
+              height={3.6}
+            />
+          );
+        })
+      )}
     </svg>
   );
 }
@@ -139,6 +176,7 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
   const totalStars = countTotalStars();
   const nextWorld = selectedWorld + 1;
   const nextWorldLocked = nextWorld <= 10 && !isWorldUnlocked(nextWorld);
+  const nextWorldUnlocked = nextWorld <= 10 && isWorldUnlocked(nextWorld);
 
   const refresh = useCallback(() => setTick((t) => t + 1), []);
 
@@ -168,39 +206,25 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
   };
 
   const mapPoints = buildWorldMapPoints();
+  const mapSegments = buildPathSegments(mapPoints);
   const mapHeight = mapViewBoxHeight();
   const pathProgress = progressIndexInWorld(selectedWorld, currentLevel);
+  const currentInWorld = worldForLevel(currentLevel) === selectedWorld;
 
   return (
-    <div className="level-select-screen">
-      <div className="level-select-sparkles" aria-hidden />
-
+    <div className="level-select-screen level-select-screen--pixel">
       <div className="mobile-shell mobile-shell--levels">
-        <header className="levels-hero">
+        <header className="levels-hero levels-hero--pixel">
           <button type="button" className="levels-back" onClick={onBack} aria-label="Back">
             ←
           </button>
-
-          <div className="levels-title-wrap">
-            <div className="levels-title-deco" aria-hidden>
-              <span className="levels-deco-card levels-deco-card--1">A♠</span>
-              <span className="levels-deco-card levels-deco-card--2">A♥</span>
-              <span className="levels-deco-coin">🪙</span>
-            </div>
-            <div className="levels-title-banner">
-              <span className="levels-title-banner__wing levels-title-banner__wing--l">♠</span>
-              <h1 className="levels-title-banner__text">LEVELS</h1>
-              <span className="levels-title-banner__wing levels-title-banner__wing--r">♥</span>
-            </div>
-            <p className="levels-subtitle">
-              {completedCount} / {TOTAL_LEVELS} cleared · {totalStars} ★
-            </p>
-          </div>
-
+          <p className="levels-subtitle levels-subtitle--pixel">
+            {completedCount}/{TOTAL_LEVELS} · {totalStars} ★
+          </p>
           <div className="levels-hero__spacer" aria-hidden />
         </header>
 
-        <nav className="world-tabs" aria-label="World selection">
+        <nav className="world-tabs world-tabs--pixel" aria-label="World selection">
           {allWorlds().map((world) => {
             const unlocked = isWorldUnlocked(world);
             return (
@@ -212,28 +236,54 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
                 onClick={() => setSelectedWorld(world)}
                 aria-label={`${worldTitle(world)}${!unlocked ? " locked" : ""}`}
               >
-                <span className="world-tab__suit" aria-hidden>
-                  {world % 2 === 0 ? "♦" : "♣"}
-                </span>
                 <span className="world-tab__num">{world}</span>
               </button>
             );
           })}
         </nav>
 
-        <div className="world-ribbon">
-          <span className="world-ribbon__fold world-ribbon__fold--l" aria-hidden />
-          <h2 className="world-ribbon__text">{worldTitle(selectedWorld)}</h2>
-          <span className="world-ribbon__fold world-ribbon__fold--r" aria-hidden />
-        </div>
-
         <div className="level-map-scroll">
-          <div className="level-map" style={{ aspectRatio: `100 / ${mapHeight}` }}>
-            <WorldMapPath
+          <div className="level-map level-map--pixel" style={{ aspectRatio: `100 / ${mapHeight}` }}>
+            <PixelMapPath
               points={mapPoints}
+              segments={mapSegments}
               progressIndex={pathProgress}
               viewHeight={mapHeight}
             />
+
+            <div className="pixel-map-sign pixel-map-sign--world" aria-hidden>
+              <span className="pixel-map-sign__post" />
+              <span className="pixel-map-sign__board">
+                WORLD {selectedWorld}: {worldShortName(selectedWorld).toUpperCase()}
+              </span>
+            </div>
+
+            <div className="pixel-map-hud" role="status">
+              <div className="pixel-map-hud__row">
+                <span className="pixel-map-hud__icon">🏆</span>
+                <span className="pixel-map-hud__label">SCORE</span>
+              </div>
+              <div className="pixel-map-hud__stars">{totalStars} ★</div>
+              {currentInWorld && (
+                <div className="pixel-map-hud__next">
+                  NEXT: {formatLevelId(currentLevel)}
+                </div>
+              )}
+            </div>
+
+            {nextWorldUnlocked && selectedWorld < 10 && (
+              <button
+                type="button"
+                className="pixel-map-sign pixel-map-sign--next"
+                onClick={() => setSelectedWorld(nextWorld)}
+                aria-label={`Go to ${worldTitle(nextWorld)}`}
+              >
+                <span className="pixel-map-sign__post" />
+                <span className="pixel-map-sign__board pixel-map-sign__board--arrow">
+                  TO WORLD {nextWorld}: {worldShortName(nextWorld).toUpperCase()} →
+                </span>
+              </button>
+            )}
 
             <div className="map-nodes">
               {stagesInWorld(selectedWorld).map((stage, index) => {
@@ -255,6 +305,7 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
                   >
                     <LevelChip
                       globalLevel={globalLevel}
+                      palette={chipPaletteForStage(stage)}
                       isMilestone={isMilestone}
                       state={state}
                       isCurrent={isCurrent}
@@ -268,19 +319,16 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
           </div>
 
           {nextWorldLocked && selectedWorld < 10 && (
-            <div className="world-gate">
-              <div className="world-gate__icon" aria-hidden>
-                <span className="world-gate__shield">🛡️</span>
-                <span className="world-gate__lock">🔒</span>
-                <span className="world-gate__star">⭐</span>
-              </div>
-              <div className="world-gate__bar">
-                <span className="world-gate__bar-lock" aria-hidden>🔒</span>
-                <span className="world-gate__bar-text">
-                  {countStarsInWorld(selectedWorld)} / {starsToUnlockWorld(nextWorld)} ★ to unlock{" "}
-                  {worldTitle(nextWorld)}
+            <div className="world-gate world-gate--pixel">
+              <div className="pixel-map-sign pixel-map-sign--gate" aria-hidden>
+                <span className="pixel-map-sign__post" />
+                <span className="pixel-map-sign__board">
+                  🔒 WORLD {nextWorld}: {worldShortName(nextWorld).toUpperCase()}
                 </span>
               </div>
+              <p className="world-gate__bar-text">
+                {countStarsInWorld(selectedWorld)} / {starsToUnlockWorld(nextWorld)} ★ to unlock
+              </p>
             </div>
           )}
         </div>
@@ -288,11 +336,10 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
         <footer className="levels-footer">
           <button
             type="button"
-            className="levels-start-btn"
+            className="levels-start-btn levels-start-btn--pixel"
             onClick={handleStart}
             disabled={!isLevelPlayable(currentLevel)}
           >
-            <span className="levels-start-btn__glow" aria-hidden />
             <span className="levels-start-btn__text">START</span>
             <span className="levels-start-btn__sub">
               Level {formatLevelId(currentLevel)}

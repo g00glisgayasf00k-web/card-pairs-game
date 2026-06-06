@@ -9,7 +9,7 @@ import {
   type FullHandResult,
   type HandLabel,
 } from "../lib/pokerHands";
-import { campaignLeaderboardPoints, computeLevelStars, formatChallenge, getLevelConfig, levelPointsMet, movesRemaining, MAX_LEVEL, outOfMoves, STAR_MOVE_EFFICIENCY, type HandCounts } from "../lib/levels";
+import { campaignLeaderboardPoints, computeLevelStars, formatChallenge, getLevelConfig, levelPointsMet, movesBudgetForStars, movesRemaining, MAX_LEVEL, outOfMoves, type HandCounts } from "../lib/levels";
 import {
   canAffordMovesPack,
   MOVES_PACK_COST,
@@ -415,7 +415,8 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
 
   const canBuyMoves = canAffordMovesPack(credits);
 
-  const starMoveTarget = Math.floor(cfg.moveLimit * STAR_MOVE_EFFICIENCY);
+  const starMoveTarget = movesBudgetForStars(3, cfg.targetPoints);
+  const twoStarMoveTarget = movesBudgetForStars(2, cfg.targetPoints);
 
   return (
     <div className="game-screen">
@@ -627,8 +628,8 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
                   <span className="perk-icon">💡</span>
                   <span>
                     {(completedStats?.stars ?? 0) < 2
-                      ? `Use ≤${starMoveTarget} moves for 2★`
-                      : "Finish all hand challenges for 3★"}
+                      ? `Use ≤${twoStarMoveTarget} moves for 2★`
+                      : `Use ≤${starMoveTarget} moves and finish challenges for 3★`}
                   </span>
                 </div>
               )}

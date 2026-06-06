@@ -47,9 +47,9 @@ const CAMPAIGN_TIERS = [
   "Elite",
 ] as const;
 
-/** Level 1-1 target; each level adds 50% of the previous level's target. */
-const LEVEL_1_TARGET = 1000;
-const LEVEL_TARGET_GROWTH = 1.5;
+/** World 1 starts at 1,000 pts; world 2 at 2,000; ~8% growth per stage within a world. */
+const WORLD_BASE_POINTS = 1000;
+const STAGE_TARGET_GROWTH = 1.08;
 
 const HAND_LADDER: HandLabel[] = [
   "pair",
@@ -220,7 +220,10 @@ function challengesForLevel(level: number): HandChallenge[] {
 }
 
 function targetPointsForLevel(level: number, challenges: HandChallenge[]): number {
-  const scaled = Math.round(LEVEL_1_TARGET * LEVEL_TARGET_GROWTH ** (level - 1));
+  const world = worldForLevel(level);
+  const stage = stepInTier(level);
+  const worldStart = world * WORLD_BASE_POINTS;
+  const scaled = Math.round(worldStart * STAGE_TARGET_GROWTH ** (stage - 1));
   const floor = challengePointsFloor(challenges);
   return Math.max(scaled, floor + 300);
 }

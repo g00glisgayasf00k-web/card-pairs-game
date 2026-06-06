@@ -657,7 +657,33 @@
   font-size: 1.15rem;
   font-weight: 800;
   color: var(--mg-gold);
-  margin-bottom: 0.45rem;
+  margin-bottom: 0.35rem;
+}
+
+.challenges-modal__points-sub {
+  display: block;
+  font-size: 0.72rem;
+  opacity: 0.75;
+  line-height: 1.35;
+}
+
+.star-criteria-list--modal {
+  margin-bottom: 0.85rem;
+}
+
+.star-criteria-list--modal .star-criteria {
+  align-items: flex-start;
+  font-size: 0.78rem;
+  line-height: 1.4;
+}
+
+.star-criteria-list--modal .star-criteria strong {
+  color: rgba(255, 255, 255, 0.95);
+}
+
+.star-criteria-list--modal .star-criteria em {
+  font-style: normal;
+  color: var(--mg-gold);
 }
 
 .challenges-modal__bar {

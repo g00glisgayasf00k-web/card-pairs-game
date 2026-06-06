@@ -417,6 +417,9 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
 
   const starMoveTarget = movesBudgetForStars(3, cfg.targetPoints);
   const twoStarMoveTarget = movesBudgetForStars(2, cfg.targetPoints);
+  const oneStarMoveTarget = cfg.moveLimit;
+  const movesEfficientFor2 = levelHands <= twoStarMoveTarget;
+  const movesEfficientFor3 = levelHands <= starMoveTarget;
 
   return (
     <div className="game-screen">
@@ -734,15 +737,47 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
             </p>
 
             <div className="challenges-modal__points">
-              <span className="challenges-modal__points-label">Clear the level</span>
+              <span className="challenges-modal__points-label">Main goal</span>
               <span className="challenges-modal__points-val">
-                {cfg.targetPoints.toLocaleString()} pts · {cfg.moveLimit} moves
+                Score {cfg.targetPoints.toLocaleString()} pts before moves run out
+              </span>
+              <span className="challenges-modal__points-sub">
+                You have {cfg.moveLimit} hands max · {movesLeft} left now
               </span>
             </div>
 
+            <h3 className="specials-subtitle">Star rating — how to win big</h3>
+            <ul className="star-criteria-list star-criteria-list--modal">
+              <li className={`star-criteria${pointsMet ? " star-criteria--done" : ""}`}>
+                <span className="star-criteria__stars">★</span>
+                <span>
+                  <strong>Clear the level</strong> — hit {cfg.targetPoints.toLocaleString()} pts
+                  within {oneStarMoveTarget} moves. Hand challenges optional.
+                </span>
+              </li>
+              <li
+                className={`star-criteria${pointsMet && movesEfficientFor2 ? " star-criteria--done" : ""}`}
+              >
+                <span className="star-criteria__stars">★★</span>
+                <span>
+                  <strong>Speed run</strong> — same points goal, but finish in{" "}
+                  {twoStarMoveTarget} moves or fewer. Challenges still optional.
+                </span>
+              </li>
+              <li
+                className={`star-criteria${pointsMet && movesEfficientFor3 && challengesComplete ? " star-criteria--done" : ""}`}
+              >
+                <span className="star-criteria__stars">★★★</span>
+                <span>
+                  <strong>Perfect run</strong> — hit the target in {starMoveTarget} moves or fewer{" "}
+                  <em>and</em> complete every hand challenge below.
+                </span>
+              </li>
+            </ul>
+
             {cfg.challenges.length > 0 && (
               <>
-                <h3 className="specials-subtitle">For 3★ — hand challenges</h3>
+                <h3 className="specials-subtitle">Hand challenges (3★ only)</h3>
                 <ul className="challenge-list challenge-list--modal">
                   {cfg.challenges.map((c) => {
                     const have = levelHandCounts[c.hand] ?? 0;

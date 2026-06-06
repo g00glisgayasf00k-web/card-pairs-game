@@ -22,28 +22,23 @@ export function formatLevelId(global: number): string {
   return `${world}-${stage}`;
 }
 
-/** Poker-themed world names (displayed on the pixel map sign). */
-const WORLD_NAMES = [
-  "The Ante",
-  "The Flop",
-  "The Turn",
-  "The River",
-  "Showdown",
-  "High Stakes",
-  "All In",
-  "The Nuts",
-  "Final Table",
-  "Royal Flush",
+const TIER_NAMES = [
+  "Beginner",
+  "Amateur",
+  "Regular",
+  "Pro",
+  "Shark",
+  "High Roller",
+  "Ace",
+  "Veteran",
+  "Expert",
+  "Elite",
 ] as const;
 
 export function worldTitle(world: number): string {
   const n = Math.min(Math.max(1, Math.floor(world)), WORLDS);
-  return `World ${n}: ${WORLD_NAMES[n - 1] ?? WORLD_NAMES[WORLD_NAMES.length - 1]}`;
-}
-
-export function worldShortName(world: number): string {
-  const n = Math.min(Math.max(1, Math.floor(world)), WORLDS);
-  return WORLD_NAMES[n - 1] ?? WORLD_NAMES[WORLD_NAMES.length - 1]!;
+  const tier = TIER_NAMES[n - 1] ?? "Elite";
+  return `${tier} ${n}`;
 }
 
 export function allWorlds(): number[] {

@@ -1,4 +1,5 @@
 import json
+from datetime import datetime, timedelta, timezone
 from functools import wraps
 
 from flask import Blueprint, jsonify, request
@@ -23,6 +24,23 @@ def admin_required(fn):
     return wrapper
 
 
+def _progress_summary(payload: dict | None) -> dict | None:
+    if not payload:
+        return None
+    level_stars = payload.get("levelStars") or {}
+    stars_total = sum(int(v) for v in level_stars.values() if isinstance(v, (int, float)))
+    return {
+        "level": payload.get("level"),
+        "credits": payload.get("credits"),
+        "energy": payload.get("energy"),
+        "completed": len(payload.get("completedLevels") or []),
+        "highest_unlocked": payload.get("highestUnlocked"),
+        "stars_total": stars_total,
+        "hands_cleared": payload.get("handsCleared"),
+        "client_updated_at": payload.get("updatedAt"),
+    }
+
+
 @admin_bp.get("/me")
 @jwt_required()
 def admin_me():
@@ -36,14 +54,78 @@ def admin_me():
 @admin_bp.get("/stats")
 @admin_required
 def admin_stats():
+    now = datetime.now(timezone.utc)
+    week_ago = now - timedelta(days=7)
+
     user_count = User.query.count()
     score_count = Score.query.count()
     synced_count = PlayerProgress.query.count()
+    signups_7d = User.query.filter(User.created_at >= week_ago).count()
+    scores_7d = Score.query.filter(Score.created_at >= week_ago).count()
+
+    recent_scores = (
+        db.session.query(Score, User.username)
+        .join(User)
+        .order_by(desc(Score.created_at))
+        .limit(8)
+        .all()
+    )
+
+    recent_users = User.query.order_by(desc(User.created_at)).limit(8).all()
+
     return jsonify(
         {
             "users": user_count,
             "scores": score_count,
             "synced_players": synced_count,
+            "signups_7d": signups_7d,
+            "scores_7d": scores_7d,
+            "recent_scores": [
+                {
+                    "username": username,
+                    "points": score.points,
+                    "hands_cleared": score.hands_cleared,
+                    "best_hand": score.best_hand,
+                    "played_at": score.created_at.isoformat(),
+                }
+                for score, username in recent_scores
+            ],
+            "recent_signups": [
+                {
+                    "id": u.id,
+                    "username": u.username,
+                    "created_at": u.created_at.isoformat(),
+                }
+                for u in recent_users
+            ],
+        }
+    )
+
+
+@admin_bp.get("/leaderboard")
+@admin_required
+def admin_leaderboard():
+    limit = min(int(request.args.get("limit", 25)), 100)
+    rows = (
+        db.session.query(Score, User.username, User.id)
+        .join(User)
+        .order_by(desc(Score.points), desc(Score.created_at))
+        .limit(limit)
+        .all()
+    )
+    return jsonify(
+        {
+            "leaderboard": [
+                {
+                    "user_id": user_id,
+                    "username": username,
+                    "points": score.points,
+                    "hands_cleared": score.hands_cleared,
+                    "best_hand": score.best_hand,
+                    "played_at": score.created_at.isoformat(),
+                }
+                for score, username, user_id in rows
+            ]
         }
     )
 
@@ -51,27 +133,37 @@ def admin_stats():
 @admin_bp.get("/users")
 @admin_required
 def admin_users():
-    limit = min(int(request.args.get("limit", 50)), 200)
+    limit = min(int(request.args.get("limit", 25)), 100)
     offset = max(int(request.args.get("offset", 0)), 0)
+    query_text = (request.args.get("q") or "").strip()
 
+    base_query = User.query
+    if query_text:
+        base_query = base_query.filter(User.username.ilike(f"%{query_text}%"))
+
+    total = base_query.count()
     rows = (
-        User.query.order_by(desc(User.created_at))
+        base_query.order_by(desc(User.created_at))
         .offset(offset)
         .limit(limit)
         .all()
     )
 
     user_ids = [u.id for u in rows]
-    progress_map = {
-        p.user_id: p
-        for p in PlayerProgress.query.filter(PlayerProgress.user_id.in_(user_ids)).all()
-    }
-    score_counts = dict(
-        db.session.query(Score.user_id, func.count(Score.id))
-        .filter(Score.user_id.in_(user_ids))
-        .group_by(Score.user_id)
-        .all()
-    )
+    progress_map: dict[int, PlayerProgress] = {}
+    score_counts: dict[int, int] = {}
+
+    if user_ids:
+        progress_map = {
+            p.user_id: p
+            for p in PlayerProgress.query.filter(PlayerProgress.user_id.in_(user_ids)).all()
+        }
+        score_counts = dict(
+            db.session.query(Score.user_id, func.count(Score.id))
+            .filter(Score.user_id.in_(user_ids))
+            .group_by(Score.user_id)
+            .all()
+        )
 
     users = []
     for u in rows:
@@ -79,15 +171,9 @@ def admin_users():
         summary = None
         if prog:
             try:
-                payload = json.loads(prog.payload)
-                summary = {
-                    "level": payload.get("level"),
-                    "credits": payload.get("credits"),
-                    "energy": payload.get("energy"),
-                    "completed": len(payload.get("completedLevels") or []),
-                    "highest_unlocked": payload.get("highestUnlocked"),
-                    "client_updated_at": prog.client_updated_at,
-                }
+                summary = _progress_summary(json.loads(prog.payload))
+                if summary is not None:
+                    summary["client_updated_at"] = prog.client_updated_at
             except json.JSONDecodeError:
                 summary = None
 
@@ -102,7 +188,6 @@ def admin_users():
             }
         )
 
-    total = User.query.count()
     return jsonify({"users": users, "total": total, "offset": offset, "limit": limit})
 
 
@@ -124,8 +209,14 @@ def admin_user_detail(user_id: int):
     scores = (
         Score.query.filter_by(user_id=user.id)
         .order_by(desc(Score.created_at))
-        .limit(20)
+        .limit(50)
         .all()
+    )
+
+    best_score = (
+        Score.query.filter_by(user_id=user.id)
+        .order_by(desc(Score.points))
+        .first()
     )
 
     return jsonify(
@@ -135,7 +226,9 @@ def admin_user_detail(user_id: int):
             "is_admin": bool(user.is_admin),
             "created_at": user.created_at.isoformat(),
             "progress": progress_payload,
+            "progress_summary": _progress_summary(progress_payload),
             "client_updated_at": prog.client_updated_at if prog else 0,
+            "best_score": best_score.points if best_score else None,
             "scores": [
                 {
                     "points": s.points,

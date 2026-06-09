@@ -88,7 +88,34 @@ export async function fetchAdminMe() {
 }
 
 export async function fetchAdminStats() {
-  return request<{ users: number; scores: number; synced_players: number }>("/api/admin/stats");
+  return request<{
+    users: number;
+    scores: number;
+    synced_players: number;
+    signups_7d: number;
+    scores_7d: number;
+    recent_scores: {
+      username: string;
+      points: number;
+      hands_cleared: number;
+      best_hand: string;
+      played_at: string;
+    }[];
+    recent_signups: { id: number; username: string; created_at: string }[];
+  }>("/api/admin/stats");
+}
+
+export async function fetchAdminLeaderboard(limit = 25) {
+  return request<{
+    leaderboard: {
+      user_id: number;
+      username: string;
+      points: number;
+      hands_cleared: number;
+      best_hand: string;
+      played_at: string;
+    }[];
+  }>(`/api/admin/leaderboard?limit=${limit}`);
 }
 
 export interface AdminUserRow {
@@ -103,13 +130,16 @@ export interface AdminUserRow {
     energy?: number;
     completed?: number;
     highest_unlocked?: number;
+    stars_total?: number;
+    hands_cleared?: number;
     client_updated_at?: number;
   } | null;
 }
 
-export async function fetchAdminUsers(offset = 0, limit = 50) {
+export async function fetchAdminUsers(offset = 0, limit = 25, query = "") {
+  const q = query.trim() ? `&q=${encodeURIComponent(query.trim())}` : "";
   return request<{ users: AdminUserRow[]; total: number; offset: number; limit: number }>(
-    `/api/admin/users?offset=${offset}&limit=${limit}`
+    `/api/admin/users?offset=${offset}&limit=${limit}${q}`
   );
 }
 
@@ -120,7 +150,9 @@ export async function fetchAdminUserDetail(userId: number) {
     is_admin: boolean;
     created_at: string;
     progress: Record<string, unknown> | null;
+    progress_summary: AdminUserRow["progress"];
     client_updated_at: number;
+    best_score: number | null;
     scores: {
       points: number;
       hands_cleared: number;

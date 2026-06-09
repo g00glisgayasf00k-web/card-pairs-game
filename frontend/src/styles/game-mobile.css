@@ -617,6 +617,69 @@
   cursor: not-allowed;
 }
 
+.moves-failed-buy-title {
+  margin: 0.75rem 0 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(224, 242, 254, 0.85);
+  text-align: center;
+}
+
+.moves-pack-list {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.4rem;
+}
+
+.moves-pack-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  width: 100%;
+  padding: 0.5rem 0.35rem;
+  border-radius: 10px;
+  border: 2px solid rgba(167, 139, 250, 0.45);
+  background: linear-gradient(180deg, #6366f1 0%, #4338ca 100%);
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  transition: transform 0.12s ease;
+}
+
+.moves-pack-btn:active:not(:disabled) {
+  transform: scale(0.97);
+}
+
+.moves-pack-btn--disabled,
+.moves-pack-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: rgba(0, 0, 0, 0.35);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.moves-pack-btn__moves {
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.moves-pack-btn__cost {
+  font-size: 0.68rem;
+  opacity: 0.9;
+}
+
+@media (max-width: 340px) {
+  .moves-pack-list {
+    grid-template-columns: 1fr;
+  }
+}
+
 .moves-failed-hint {
   margin: 0 0 0.65rem;
   font-size: 0.78rem;

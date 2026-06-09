@@ -12,9 +12,7 @@ import {
 import { campaignLeaderboardPoints, computeLevelStars, formatChallenge, getLevelConfig, levelPointsMet, movesBudgetForStars, movesRemaining, MAX_LEVEL, outOfMoves, type HandCounts } from "../lib/levels";
 import {
   canAffordMovesPack,
-  MOVES_PACK_COST,
-  MOVES_PACK_SIZE,
-  movesPackLabel,
+  MOVES_PACKS,
 } from "../lib/credits";
 import {
   MAX_ENERGY,
@@ -397,13 +395,14 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
     [tryAdvanceLevel, cfg, effectiveMoveLimit]
   );
 
-  const handleBuyMoves = useCallback(() => {
+  const handleBuyMoves = useCallback((packId: string) => {
     setRun((prev) => {
-      if (!canAffordMovesPack(prev.credits)) return prev;
+      const pack = MOVES_PACKS.find((p) => p.id === packId);
+      if (!pack || prev.credits < pack.cost) return prev;
       return {
         ...prev,
-        credits: prev.credits - MOVES_PACK_COST,
-        bonusMoves: prev.bonusMoves + MOVES_PACK_SIZE,
+        credits: prev.credits - pack.cost,
+        bonusMoves: prev.bonusMoves + pack.moves,
       };
     });
     setPhase("playing");
@@ -445,8 +444,6 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
   };
 
   const boardLocked = phase !== "playing" || showChallenges || energyBlocked;
-
-  const canBuyMoves = canAffordMovesPack(credits);
 
   const starMoveTarget = movesBudgetForStars(3, cfg.targetPoints);
   const twoStarMoveTarget = movesBudgetForStars(2, cfg.targetPoints);
@@ -753,10 +750,13 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
       {phase === "moves_failed" && (
         <div className="modal-overlay levelup-overlay">
           <div className="modal levelup-modal moves-failed-modal game-over-modal">
-            <div className="levelup-badge moves-failed-badge game-over-badge">GAME OVER</div>
-            <h2>Out of moves</h2>
+            <div className="levelup-badge moves-failed-badge game-over-badge">OUT OF MOVES</div>
+            <h2>Keep going?</h2>
             <p className="levelup-label">
-              Level {formatLevelId(level)} — you used all {effectiveMoveLimit} hands.
+              Level {formatLevelId(level)} — used all {effectiveMoveLimit} hands.
+              {levelHands > starMoveTarget && (
+                <> You&apos;re over the {starMoveTarget}-move budget for 3★.</>
+              )}
             </p>
             <div className="levelup-perks">
               <div className="perk">
@@ -764,28 +764,44 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
                 <span>{levelScore.toLocaleString()} / {cfg.targetPoints.toLocaleString()} pts</span>
               </div>
               <div className="perk">
-                <span className="perk-icon">🎯</span>
-                <span>0 moves left</span>
+                <span className="perk-icon">⭐</span>
+                <span>
+                  3★ needs ≤{starMoveTarget} moves · you used {levelHands}
+                </span>
               </div>
               <div className="perk">
                 <span className="perk-icon">💎</span>
-                <span>{credits} credits · {movesPackLabel()}</span>
+                <span>{credits} gems available</span>
               </div>
             </div>
+
+            <p className="moves-failed-buy-title">Buy more moves with gems</p>
+            <ul className="moves-pack-list">
+              {MOVES_PACKS.map((pack) => {
+                const affordable = canAffordMovesPack(credits, pack.id);
+                return (
+                  <li key={pack.id}>
+                    <button
+                      type="button"
+                      className={`moves-pack-btn${affordable ? "" : " moves-pack-btn--disabled"}`}
+                      onClick={() => handleBuyMoves(pack.id)}
+                      disabled={!affordable}
+                    >
+                      <span className="moves-pack-btn__moves">{pack.label}</span>
+                      <span className="moves-pack-btn__cost">{pack.cost} 💎</span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+
+            {!MOVES_PACKS.some((p) => canAffordMovesPack(credits, p.id)) && (
+              <p className="moves-failed-hint">Not enough gems — tap 💎 in the HUD to buy more.</p>
+            )}
+
             <button type="button" className="btn btn-restart-level" onClick={retryLevel}>
               Restart level
             </button>
-            <button
-              type="button"
-              className="btn btn-buy-moves"
-              onClick={handleBuyMoves}
-              disabled={!canBuyMoves}
-            >
-              Buy {MOVES_PACK_SIZE} moves ({MOVES_PACK_COST} 💎)
-            </button>
-            {!canBuyMoves && (
-              <p className="moves-failed-hint">Not enough credits to buy more moves.</p>
-            )}
             <button type="button" className="btn ghost" onClick={onMenu}>
               Back to levels
             </button>

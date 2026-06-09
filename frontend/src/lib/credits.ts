@@ -1,11 +1,19 @@
 /** Starting balance for new players. */
 export const STARTING_CREDITS = 200;
 
-/** Extra hands granted per purchase. */
-export const MOVES_PACK_SIZE = 5;
+export interface MovesPack {
+  id: string;
+  moves: number;
+  cost: number;
+  label: string;
+}
 
-/** Credit cost for one move pack. */
-export const MOVES_PACK_COST = 60;
+/** Extra move packs — offered when the player runs out of hands. */
+export const MOVES_PACKS: MovesPack[] = [
+  { id: "one", moves: 1, cost: 5, label: "+1 move" },
+  { id: "three", moves: 3, cost: 10, label: "+3 moves" },
+  { id: "five", moves: 5, cost: 15, label: "+5 moves" },
+];
 
 export interface GemPack {
   id: string;
@@ -22,12 +30,20 @@ export const GEM_SHOP_PACKS: GemPack[] = [
   { id: "treasure", gems: 1000, label: "Treasure", priceLabel: "$8.99" },
 ];
 
-export function canAffordMovesPack(credits: number): boolean {
-  return credits >= MOVES_PACK_COST;
+export function getMovesPack(packId: string): MovesPack | undefined {
+  return MOVES_PACKS.find((p) => p.id === packId);
 }
 
-export function movesPackLabel(): string {
-  return `+${MOVES_PACK_SIZE} moves (${MOVES_PACK_COST} 💎)`;
+export function canAffordMovesPack(credits: number, packId: string): boolean {
+  const pack = getMovesPack(packId);
+  return pack != null && credits >= pack.cost;
+}
+
+export function cheapestAffordableMovesPack(credits: number): MovesPack | null {
+  for (const pack of MOVES_PACKS) {
+    if (credits >= pack.cost) return pack;
+  }
+  return null;
 }
 
 export function grantGemPack(packId: string): number {

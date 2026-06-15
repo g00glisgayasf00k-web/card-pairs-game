@@ -4,8 +4,6 @@ import secrets
 import bcrypt
 from flask import Blueprint, current_app, jsonify, request
 from flask_jwt_extended import create_access_token
-from google.auth.transport import requests as google_requests
-from google.oauth2 import id_token
 
 from app.models import User, db
 
@@ -79,6 +77,17 @@ def login():
     return _auth_response(user)
 
 
+def _verify_google_credential(credential: str, client_id: str) -> dict:
+    """Lazy import so the app boots even if google-auth extras are missing."""
+    try:
+        from google.auth.transport import requests as google_requests
+        from google.oauth2 import id_token
+    except ImportError as exc:
+        raise RuntimeError("Google sign-in dependencies are not installed") from exc
+
+    return id_token.verify_oauth2_token(credential, google_requests.Request(), client_id)
+
+
 @auth_bp.post("/google")
 def google_login():
     client_id = current_app.config.get("GOOGLE_CLIENT_ID") or ""
@@ -91,9 +100,9 @@ def google_login():
         return jsonify({"error": "Missing Google credential"}), 400
 
     try:
-        idinfo = id_token.verify_oauth2_token(
-            credential, google_requests.Request(), client_id
-        )
+        idinfo = _verify_google_credential(credential, client_id)
+    except RuntimeError:
+        return jsonify({"error": "Google sign-in is not available on the server"}), 503
     except ValueError:
         return jsonify({"error": "Invalid Google sign-in"}), 401
 

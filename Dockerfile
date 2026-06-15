@@ -19,6 +19,8 @@ COPY backend/requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY backend/ ./
+RUN python -c "from app import create_app; create_app()"
+
 COPY --from=frontend-build /app/frontend/dist /app/static
 
 EXPOSE 5000

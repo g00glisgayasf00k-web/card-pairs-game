@@ -27,12 +27,15 @@ def ensure_schema():
         ("email", "ALTER TABLE users ADD COLUMN email VARCHAR(255)"),
     ]
     for col_name, sql in migrations:
-        if col_name not in cols:
-            try:
-                with engine.begin() as conn:
-                    conn.execute(text(sql))
-            except OperationalError:
-                pass
+        if col_name in cols:
+            continue
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(sql))
+            cols.add(col_name)
+        except OperationalError:
+            # Re-check — another worker may have migrated first.
+            cols = {c["name"] for c in inspector.get_columns("users")}
 
 
 def ensure_admin_user():

@@ -13,9 +13,10 @@ interface Props {
   username: string | null;
   onClose: () => void;
   onAccountChange?: () => void;
+  onSignOut?: () => void;
 }
 
-export function ProfileModal({ username, onClose, onAccountChange }: Props) {
+export function ProfileModal({ username, onClose, onAccountChange, onSignOut }: Props) {
   const saved = loadProgress();
   const { energy } = syncEnergyState();
   const completed = countCompleted();
@@ -42,7 +43,11 @@ export function ProfileModal({ username, onClose, onAccountChange }: Props) {
           </div>
         </div>
 
-        <ProfileAccountSection displayName={username} onAccountChange={onAccountChange} />
+        <ProfileAccountSection
+          displayName={username}
+          onAccountChange={onAccountChange}
+          onSignOut={onSignOut}
+        />
 
         <ul className="profile-stats">
           <li>

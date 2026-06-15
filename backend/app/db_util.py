@@ -21,15 +21,18 @@ def ensure_schema():
         return
 
     cols = {c["name"] for c in inspector.get_columns("users")}
-    if "is_admin" not in cols:
-        try:
-            with engine.begin() as conn:
-                conn.execute(
-                    text("ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT 0 NOT NULL")
-                )
-        except OperationalError:
-            # Another gunicorn worker may have applied this migration first.
-            pass
+    migrations = [
+        ("is_admin", "ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT 0 NOT NULL"),
+        ("google_id", "ALTER TABLE users ADD COLUMN google_id VARCHAR(128)"),
+        ("email", "ALTER TABLE users ADD COLUMN email VARCHAR(255)"),
+    ]
+    for col_name, sql in migrations:
+        if col_name not in cols:
+            try:
+                with engine.begin() as conn:
+                    conn.execute(text(sql))
+            except OperationalError:
+                pass
 
 
 def ensure_admin_user():

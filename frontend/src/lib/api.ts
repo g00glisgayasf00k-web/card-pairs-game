@@ -25,9 +25,16 @@ export async function register(username: string, password: string) {
 }
 
 export async function login(username: string, password: string) {
-  return request<{ token: string; username: string }>("/api/auth/login", {
+  return request<{ token: string; username: string; email?: string }>("/api/auth/login", {
     method: "POST",
     body: JSON.stringify({ username, password }),
+  });
+}
+
+export async function loginWithGoogle(credential: string) {
+  return request<{ token: string; username: string; email?: string }>("/api/auth/google", {
+    method: "POST",
+    body: JSON.stringify({ credential }),
   });
 }
 

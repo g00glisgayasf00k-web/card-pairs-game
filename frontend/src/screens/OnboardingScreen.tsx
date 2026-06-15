@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from "react";
+import { useState } from "react";
+import { AuthPanel } from "../components/AuthPanel";
 import { Leaderboard } from "../components/Leaderboard";
 import { clearProgress, loadProgress } from "../lib/progress";
 import { HAND_DISPLAY, HAND_SCORE_LIST, type HandLabel } from "../lib/pokerHands";
@@ -7,35 +8,25 @@ const HANDS = HAND_SCORE_LIST.map(({ hand, points }) => [hand, points] as [HandL
 
 interface Props {
   username: string | null;
-  onSetName: (username: string) => void;
-  onClearName: () => void;
+  loggedIn: boolean;
+  onAuthSuccess: (username: string, token: string) => void;
+  onSignOut: () => void;
   onPlay: () => void;
 }
 
-export function OnboardingScreen({ username, onSetName, onClearName, onPlay }: Props) {
-  const [nameInput, setNameInput] = useState(username ?? "");
-  const [nameError, setNameError] = useState<string | null>(null);
+export function OnboardingScreen({
+  username,
+  loggedIn,
+  onAuthSuccess,
+  onSignOut,
+  onPlay,
+}: Props) {
   const [section, setSection] = useState<"leaderboard" | "rules" | null>(null);
   const saved = loadProgress();
 
   const startFresh = () => {
     clearProgress();
     onPlay();
-  };
-
-  const saveName = (e: FormEvent) => {
-    e.preventDefault();
-    const trimmed = nameInput.trim();
-    if (trimmed.length < 2) {
-      setNameError("Name must be at least 2 characters");
-      return;
-    }
-    if (trimmed.length > 32) {
-      setNameError("Name must be 32 characters or less");
-      return;
-    }
-    setNameError(null);
-    onSetName(trimmed);
   };
 
   return (
@@ -53,19 +44,28 @@ export function OnboardingScreen({ username, onSetName, onClearName, onPlay }: P
           <p className="home-tagline">Swipe hands · Clear the board · Level up</p>
         </header>
 
-        <button type="button" className="home-play-btn" onClick={onPlay}>
-          <span className="home-play-btn__icon">🗺️</span>
-          <span className="home-play-btn__label">
-            {saved
-              ? `Levels — ${(saved.completedLevels ?? []).length} / 100`
-              : "Choose Level"}
-          </span>
-        </button>
+        {loggedIn ? (
+          <>
+            <button type="button" className="home-play-btn" onClick={onPlay}>
+              <span className="home-play-btn__icon">🗺️</span>
+              <span className="home-play-btn__label">
+                {saved
+                  ? `Levels — ${(saved.completedLevels ?? []).length} / 100`
+                  : "Choose Level"}
+              </span>
+            </button>
 
-        {saved && (
-          <button type="button" className="home-start-over" onClick={startFresh}>
-            Start over from level 1
-          </button>
+            {saved && (
+              <button type="button" className="home-start-over" onClick={startFresh}>
+                Start over from level 1
+              </button>
+            )}
+          </>
+        ) : (
+          <div className="home-play-locked">
+            <span className="home-play-locked__icon">🔒</span>
+            <p>Sign in below to unlock levels and save your progress.</p>
+          </div>
         )}
 
         <div className="home-features">
@@ -86,48 +86,23 @@ export function OnboardingScreen({ username, onSetName, onClearName, onPlay }: P
         <div className="home-panel home-panel--auth">
           <div className="home-panel__header">
             <span className="home-panel__icon">👤</span>
-            <span>Your name for the leaderboard</span>
+            <span>{loggedIn ? "Your account" : "Sign in required"}</span>
           </div>
-          {username ? (
+          {loggedIn && username ? (
             <div className="home-profile">
               <div className="home-profile__badge">
                 <span className="home-profile__avatar">👤</span>
                 <div className="home-profile__info">
-                  <span className="home-profile__label">Playing as</span>
+                  <span className="home-profile__label">Signed in as</span>
                   <strong className="home-profile__name">{username}</strong>
                 </div>
               </div>
-              <button
-                type="button"
-                className="home-btn-ghost"
-                onClick={() => {
-                  onClearName();
-                  setNameInput("");
-                }}
-              >
-                Change name
+              <button type="button" className="home-btn-ghost" onClick={onSignOut}>
+                Sign out
               </button>
             </div>
           ) : (
-            <form className="home-auth-form" onSubmit={saveName}>
-              <div className="home-auth-fields">
-                <input
-                  placeholder="Enter your name"
-                  value={nameInput}
-                  onChange={(e) => {
-                    setNameInput(e.target.value);
-                    setNameError(null);
-                  }}
-                  autoComplete="nickname"
-                  maxLength={32}
-                />
-                <button type="submit" className="home-btn-submit">
-                  Save name
-                </button>
-              </div>
-              {nameError && <p className="home-error">{nameError}</p>}
-              <p className="home-name-hint">Optional — scores save when you exit a run.</p>
-            </form>
+            <AuthPanel onSuccess={onAuthSuccess} variant="home" />
           )}
         </div>
 

@@ -1978,6 +1978,101 @@
   padding: 0.85rem 0.9rem;
 }
 
+.home-play-locked {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  margin: 0.25rem 0 0.5rem;
+  padding: 0.85rem 1rem;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px dashed rgba(245, 208, 96, 0.35);
+  text-align: center;
+}
+
+.home-play-locked__icon {
+  font-size: 1.5rem;
+}
+
+.home-play-locked p {
+  margin: 0;
+  font-size: 0.82rem;
+  opacity: 0.85;
+  line-height: 1.4;
+}
+
+.auth-panel__lead {
+  margin: 0 0 0.75rem;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  opacity: 0.8;
+  text-align: center;
+}
+
+.auth-panel--profile .auth-panel__lead {
+  display: none;
+}
+
+.auth-google {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 0.5rem;
+}
+
+.auth-google__btn {
+  width: 100%;
+  min-height: 44px;
+  display: flex;
+  justify-content: center;
+}
+
+.auth-google--disabled {
+  opacity: 0.55;
+  pointer-events: none;
+}
+
+.auth-google-hint {
+  margin: 0;
+  font-size: 0.72rem;
+  opacity: 0.65;
+  text-align: center;
+}
+
+.auth-google-hint--err {
+  color: #fca5a5;
+  opacity: 1;
+}
+
+.auth-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin: 0.65rem 0;
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.auth-divider::before,
+.auth-divider::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.auth-panel--profile .home-auth-tabs button {
+  font-size: 0.72rem;
+  padding: 0.38rem;
+}
+
+.auth-panel--profile .home-btn-submit {
+  font-size: 0.78rem;
+}
+
 .home-panel__header {
   display: flex;
   align-items: center;

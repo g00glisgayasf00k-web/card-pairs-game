@@ -4,6 +4,7 @@ import App from "./App";
 import { AdminApp } from "./admin/AdminApp";
 import { PortraitGate } from "./components/PortraitGate";
 import { initProgressSync } from "./lib/progressSync";
+import { isLoggedIn } from "./lib/session";
 import "./index.css";
 import "./styles/game-mobile.css";
 import "./styles/level-select.css";
@@ -18,7 +19,7 @@ if (isAdminRoute) {
     </StrictMode>
   );
 } else {
-  initProgressSync();
+  if (isLoggedIn()) initProgressSync();
   createRoot(document.getElementById("root")!).render(
     <StrictMode>
       <PortraitGate>

@@ -4,6 +4,8 @@ WORKDIR /app/frontend
 COPY frontend/package.json frontend/package-lock.json* ./
 RUN npm ci 2>/dev/null || npm install
 COPY frontend/ ./
+ARG GOOGLE_CLIENT_ID=""
+ENV VITE_GOOGLE_CLIENT_ID=$GOOGLE_CLIENT_ID
 RUN npm run build
 
 # Production image

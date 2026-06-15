@@ -2,34 +2,47 @@ import { useState } from "react";
 import { OnboardingScreen } from "./screens/OnboardingScreen";
 import { LevelSelectScreen } from "./screens/LevelSelectScreen";
 import { GameScreen } from "./screens/GameScreen";
+import { clearSession, getUsername, isLoggedIn, setSession } from "./lib/session";
+import { initProgressSync } from "./lib/progressSync";
 
 type Screen = "onboard" | "levels" | "game";
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("onboard");
   const [playLevel, setPlayLevel] = useState<number | undefined>(undefined);
-  const [username, setUsername] = useState<string | null>(() =>
-    localStorage.getItem("username")
-  );
+  const [loggedIn, setLoggedIn] = useState(() => isLoggedIn());
+  const [username, setUsername] = useState<string | null>(() => getUsername());
 
-  const onSetName = (u: string) => {
-    localStorage.setItem("username", u);
-    localStorage.removeItem("token");
-    setUsername(u);
+  const handleAuthSuccess = (name: string, token: string) => {
+    setSession(name, token);
+    setUsername(name);
+    setLoggedIn(true);
+    initProgressSync();
   };
 
-  const onClearName = () => {
-    localStorage.removeItem("username");
-    localStorage.removeItem("token");
+  const handleSignOut = () => {
+    clearSession();
     setUsername(null);
+    setLoggedIn(false);
+    setScreen("onboard");
+    setPlayLevel(undefined);
   };
 
   const startLevel = (globalLevel: number) => {
+    if (!isLoggedIn()) {
+      setScreen("onboard");
+      return;
+    }
     setPlayLevel(globalLevel);
     setScreen("game");
   };
 
-  if (screen === "game") {
+  const goToLevels = () => {
+    if (!isLoggedIn()) return;
+    setScreen("levels");
+  };
+
+  if (screen === "game" && loggedIn) {
     return (
       <div className="app app--game">
         <GameScreen
@@ -39,12 +52,13 @@ export default function App() {
             setPlayLevel(undefined);
             setScreen("levels");
           }}
+          onSignOut={handleSignOut}
         />
       </div>
     );
   }
 
-  if (screen === "levels") {
+  if (screen === "levels" && loggedIn) {
     return (
       <div className="app app--levels">
         <LevelSelectScreen
@@ -59,9 +73,10 @@ export default function App() {
     <div className="app app--home">
       <OnboardingScreen
         username={username}
-        onSetName={onSetName}
-        onClearName={onClearName}
-        onPlay={() => setScreen("levels")}
+        loggedIn={loggedIn}
+        onAuthSuccess={handleAuthSuccess}
+        onSignOut={handleSignOut}
+        onPlay={goToLevels}
       />
     </div>
   );

@@ -51,6 +51,7 @@ interface Props {
   /** Global level from map (e.g. 1-3 → 3). Omit to resume saved campaign. */
   startLevel?: number;
   onMenu: () => void;
+  onSignOut?: () => void;
 }
 
 type Phase = "playing" | "round_complete" | "campaign_complete" | "moves_failed";
@@ -140,7 +141,7 @@ function initRunState(startLevel?: number): RunState {
   };
 }
 
-export function GameScreen({ username, startLevel, onMenu }: Props) {
+export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
   const savedSnapshot = useRef(loadProgress());
   const isReplaySession = useRef(
     startLevel !== undefined &&
@@ -1024,7 +1025,11 @@ export function GameScreen({ username, startLevel, onMenu }: Props) {
       )}
 
       {showProfile && (
-        <ProfileModal username={username} onClose={() => setShowProfile(false)} />
+        <ProfileModal
+          username={username}
+          onClose={() => setShowProfile(false)}
+          onSignOut={onSignOut}
+        />
       )}
 
       {showGemShop && (

@@ -60,19 +60,116 @@ const HAND_LADDER: HandLabel[] = [
   "full_house",
   "four_of_a_kind",
   "straight_flush",
+  "royal_flush",
 ];
 
-function worldForLevel(level: number): number {
-  return Math.min(CAMPAIGN_TIERS.length, Math.ceil(level / 10));
+/** World 1 (display 0-x) hand requirements — steps 1–10. Step 1 is always 3× Pair for every world. */
+const STAGE_CHALLENGE_TEMPLATE: HandChallenge[][] = [
+  [{ hand: "pair", minCount: 3 }],
+  [
+    { hand: "pair", minCount: 3 },
+    { hand: "two_pair", minCount: 1 },
+  ],
+  [
+    { hand: "pair", minCount: 3 },
+    { hand: "two_pair", minCount: 2 },
+  ],
+  [
+    { hand: "pair", minCount: 3 },
+    { hand: "two_pair", minCount: 2 },
+    { hand: "three_of_a_kind", minCount: 1 },
+  ],
+  [
+    { hand: "pair", minCount: 3 },
+    { hand: "two_pair", minCount: 2 },
+    { hand: "three_of_a_kind", minCount: 2 },
+  ],
+  [
+    { hand: "two_pair", minCount: 3 },
+    { hand: "three_of_a_kind", minCount: 2 },
+    { hand: "straight", minCount: 1 },
+  ],
+  [
+    { hand: "two_pair", minCount: 3 },
+    { hand: "three_of_a_kind", minCount: 2 },
+    { hand: "straight", minCount: 1 },
+    { hand: "flush", minCount: 1 },
+  ],
+  [
+    { hand: "two_pair", minCount: 3 },
+    { hand: "three_of_a_kind", minCount: 2 },
+    { hand: "straight", minCount: 1 },
+    { hand: "flush", minCount: 1 },
+    { hand: "full_house", minCount: 1 },
+  ],
+  [
+    { hand: "three_of_a_kind", minCount: 3 },
+    { hand: "straight", minCount: 1 },
+    { hand: "flush", minCount: 1 },
+    { hand: "full_house", minCount: 1 },
+    { hand: "four_of_a_kind", minCount: 1 },
+  ],
+  [
+    { hand: "three_of_a_kind", minCount: 2 },
+    { hand: "straight", minCount: 1 },
+    { hand: "flush", minCount: 1 },
+    { hand: "full_house", minCount: 1 },
+    { hand: "four_of_a_kind", minCount: 2 },
+  ],
+];
+
+function mergeChallenge(list: HandChallenge[], hand: HandLabel, add: number): void {
+  if (add <= 0) return;
+  const existing = list.find((c) => c.hand === hand);
+  if (existing) existing.minCount += add;
+  else list.push({ hand, minCount: add });
+}
+
+function cloneChallenges(challenges: HandChallenge[]): HandChallenge[] {
+  return challenges.map((c) => ({ ...c }));
+}
+
+function sortChallengesByHand(challenges: HandChallenge[]): HandChallenge[] {
+  return [...challenges].sort(
+    (a, b) => HAND_LADDER.indexOf(a.hand) - HAND_LADDER.indexOf(b.hand)
+  );
 }
 
 /**
- * Allowed challenge hands per world:
- * 1 → pair, two pair · 2 → + three of a kind · 3 → + straight · 4 → + flush · 5+ → ladder continues
+ * Later worlds repeat the same stage shape with higher counts and premium hands.
+ * Every world's first stage stays at exactly 3× Pair.
  */
-function handPoolForWorld(world: number): HandLabel[] {
-  const size = Math.min(HAND_LADDER.length, world + 1);
-  return HAND_LADDER.slice(0, size);
+function scaleChallengesForWorld(challenges: HandChallenge[], world: number, step: number): HandChallenge[] {
+  if (world <= 1) return cloneChallenges(challenges);
+
+  const bump = world - 1;
+  const scaled = cloneChallenges(challenges).map((c) => ({
+    hand: c.hand,
+    minCount: c.minCount + bump,
+  }));
+
+  if (step >= 5) {
+    mergeChallenge(scaled, "straight_flush", Math.max(1, Math.ceil(bump / 2)));
+  }
+  if (step >= 7 && world >= 3) {
+    mergeChallenge(scaled, "four_of_a_kind", 1);
+  }
+  if (step >= 8 && world >= 4) {
+    mergeChallenge(scaled, "straight_flush", bump);
+  }
+  if (step >= 9 && world >= 5) {
+    mergeChallenge(scaled, "royal_flush", Math.max(1, Math.floor(bump / 2)));
+  }
+  if (step >= 10 && world >= 6) {
+    mergeChallenge(scaled, "royal_flush", 1);
+    mergeChallenge(scaled, "straight_flush", 1);
+  }
+
+  return sortChallengesByHand(scaled);
+}
+
+function worldForLevel(level: number): number {
+  return Math.min(CAMPAIGN_TIERS.length, Math.ceil(level / 10));
 }
 
 function tierForLevel(level: number): string {
@@ -119,13 +216,15 @@ export function computeEstimatedMoves(
   return baseMovesForTarget(targetPoints);
 }
 
-/** Max hands before game over — 1★ budget (+150% on base). */
+/** Max hands before game over — 1★ budget (+150% on base), at least room for all required hands. */
 export function computeMoveLimit(
   targetPoints: number,
-  _challenges: HandChallenge[] = [],
+  challenges: HandChallenge[] = [],
   _level: number = 1
 ): number {
-  return movesBudgetForStars(1, targetPoints);
+  const pointBudget = movesBudgetForStars(1, targetPoints);
+  const challengeSwipes = challenges.reduce((sum, c) => sum + c.minCount, 0);
+  return Math.max(pointBudget, Math.ceil(challengeSwipes * 1.35));
 }
 
 export function movesRemaining(moveLimit: number, handsUsed: number): number {
@@ -174,49 +273,17 @@ export function formatChallenge(c: HandChallenge): string {
   return c.minCount === 1 ? `1× ${name}` : `${c.minCount}× ${name}`;
 }
 
-/** Hand challenges ramp through the world's allowed pool (harder hands on later stages). */
+/** Progressive hand requirements per stage; worlds 2+ scale counts and add premium hands. */
 function challengesForLevel(level: number): HandChallenge[] {
   const world = worldForLevel(level);
   const step = stepInTier(level);
-  const pool = handPoolForWorld(world);
-  const topIndex = pool.length - 1;
 
-  // World 1 early stages — pairs only, then mix in two pair
-  if (world === 1 && step <= 4) {
-    return [{ hand: "pair", minCount: step }];
-  }
-  if (world === 1 && step <= 7) {
-    return [
-      { hand: "pair", minCount: 2 },
-      { hand: "two_pair", minCount: step >= 6 ? 2 : 1 },
-    ];
-  }
-  if (world === 1) {
-    return [
-      { hand: "pair", minCount: 3 },
-      { hand: "two_pair", minCount: step >= 10 ? 3 : 2 },
-    ];
+  if (step === 1) {
+    return [{ hand: "pair", minCount: 3 }];
   }
 
-  // Which hand tier this stage focuses on (low → high through the world)
-  const focusIndex = Math.min(topIndex, Math.floor(((step - 1) / 9) * topIndex));
-  const focusHand = pool[focusIndex]!;
-  const focusCount = 1 + Math.floor(step / 4);
-
-  const challenges: HandChallenge[] = [{ hand: focusHand, minCount: focusCount }];
-
-  // Support challenge from one step lower in the pool
-  if (step >= 4 && focusIndex > 0) {
-    const supportHand = pool[focusIndex - 1]!;
-    challenges.unshift({
-      hand: supportHand,
-      minCount: step >= 8 ? 2 : 1,
-    });
-  } else if (step >= 4) {
-    challenges.unshift({ hand: "pair", minCount: step >= 8 ? 3 : 2 });
-  }
-
-  return challenges;
+  const template = STAGE_CHALLENGE_TEMPLATE[step - 1] ?? STAGE_CHALLENGE_TEMPLATE[9]!;
+  return scaleChallengesForWorld(template, world, step);
 }
 
 function targetPointsForLevel(level: number, challenges: HandChallenge[]): number {

@@ -5,6 +5,7 @@ import {
   STAGES_PER_WORLD,
   stagesInWorld,
   toGlobalLevel,
+  displayWorld,
   TOTAL_LEVELS,
   worldTitle,
   type LevelNodeState,
@@ -72,6 +73,7 @@ function LevelChip({
   onSelect,
 }: LevelChipProps) {
   const locked = state === "locked";
+  const label = formatLevelId(globalLevel);
 
   return (
     <div className={`map-node${isMilestone ? " map-node--milestone" : ""}`}>
@@ -94,17 +96,17 @@ function LevelChip({
           .join(" ")}
         disabled={locked}
         onClick={() => onSelect(globalLevel)}
-        aria-label={locked ? `Level ${globalLevel} locked` : `Play level ${globalLevel}`}
+        aria-label={locked ? `${label} locked` : `Play level ${label}`}
       >
         <span className="level-chip__rim" aria-hidden />
         {locked ? (
           <span className="level-chip__lock" aria-hidden>
             <span className="level-chip__lock-icon">🔒</span>
-            <span className="level-chip__lock-label">{globalLevel}</span>
+            <span className="level-chip__lock-label">{label}</span>
           </span>
         ) : (
           <span className="level-chip__face">
-            <span className="level-chip__label">{globalLevel}</span>
+            <span className="level-chip__label">{label}</span>
           </span>
         )}
       </button>
@@ -259,7 +261,7 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
                 <span className="world-tab__suit" aria-hidden>
                   {world % 2 === 0 ? "♦" : "♣"}
                 </span>
-                <span className="world-tab__num">{world}</span>
+                <span className="world-tab__num">{displayWorld(world)}</span>
               </button>
             );
           })}
@@ -308,7 +310,7 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
             <span className="map-widget__boss-title">Defeat the boss!</span>
             <span className="map-widget__boss-level">
               {bossState === "locked" && "🔒 "}
-              Level {bossLevel}
+              {formatLevelId(bossLevel)}
             </span>
           </aside>
 
@@ -385,9 +387,7 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
             onClick={handleStart}
             disabled={!isLevelPlayable(currentLevel)}
           >
-            <span className="btn-royal-cta__main">
-              Play {formatLevelId(currentLevel)} · Lv {currentLevel}
-            </span>
+            <span className="btn-royal-cta__main">Play {formatLevelId(currentLevel)}</span>
             <span className="btn-royal-cta__sub">
               {completedCount} / {TOTAL_LEVELS} cleared
             </span>

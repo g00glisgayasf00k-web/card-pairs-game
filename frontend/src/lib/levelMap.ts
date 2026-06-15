@@ -17,9 +17,14 @@ export function fromGlobalLevel(global: number): { world: number; stage: number 
   return { world, stage };
 }
 
+/** World index shown in UI (0 = first world). Internal world numbers stay 1-based. */
+export function displayWorld(world: number): number {
+  return Math.max(0, Math.floor(world) - 1);
+}
+
 export function formatLevelId(global: number): string {
   const { world, stage } = fromGlobalLevel(global);
-  return `${world}-${stage}`;
+  return `${displayWorld(world)}-${stage}`;
 }
 
 const TIER_NAMES = [
@@ -38,7 +43,7 @@ const TIER_NAMES = [
 export function worldTitle(world: number): string {
   const n = Math.min(Math.max(1, Math.floor(world)), WORLDS);
   const tier = TIER_NAMES[n - 1] ?? "Elite";
-  return `${tier} ${n}`;
+  return `${tier} ${displayWorld(n)}`;
 }
 
 export function allWorlds(): number[] {
@@ -47,4 +52,8 @@ export function allWorlds(): number[] {
 
 export function stagesInWorld(_world: number): number[] {
   return Array.from({ length: STAGES_PER_WORLD }, (_, i) => i + 1);
+}
+
+export function worldForLevel(globalLevel: number): number {
+  return Math.ceil(Math.max(1, globalLevel) / STAGES_PER_WORLD);
 }

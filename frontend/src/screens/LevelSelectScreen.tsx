@@ -31,6 +31,7 @@ import { canBeginLevelAttempt } from "../lib/levelAttempt";
 import { MAX_ENERGY, syncEnergyState } from "../lib/energy";
 import { loadProgress } from "../lib/progress";
 import { GemShopModal } from "../components/GemShopModal";
+import { ResourceBar } from "../components/ResourceBar";
 
 interface Props {
   onBack: () => void;
@@ -203,24 +204,36 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
       <div className="level-select-sparkles" aria-hidden />
 
       <div className="mobile-shell mobile-shell--levels">
-        <header className="levels-hero">
+        <header className="levels-hero levels-hero--royal">
           <button type="button" className="levels-back" onClick={onBack} aria-label="Back">
             ←
           </button>
 
           <div className="levels-title-wrap">
-            <div className="levels-title-deco" aria-hidden>
-              <span className="levels-deco-card levels-deco-card--1">A♠</span>
-              <span className="levels-deco-card levels-deco-card--2">A♥</span>
-              <span className="levels-deco-coin">🪙</span>
+            <div className="royal-logo royal-logo--compact">
+              <div className="royal-logo__crown" aria-hidden>
+                👑
+              </div>
+              <div className="royal-logo__shield">
+                <span className="royal-logo__line royal-logo__line--main">Levels</span>
+                <div className="royal-logo__suits" aria-hidden>
+                  <span className="suit-spades">♠</span>
+                  <span className="suit-hearts">♥</span>
+                  <span className="suit-clubs">♣</span>
+                  <span className="suit-diamonds">♦</span>
+                </div>
+              </div>
             </div>
-            <div className="levels-title-banner">
-              <span className="levels-title-banner__wing levels-title-banner__wing--l">♠</span>
-              <h1 className="levels-title-banner__text">LEVELS</h1>
-              <span className="levels-title-banner__wing levels-title-banner__wing--r">♥</span>
-            </div>
+            <ResourceBar
+              gems={gems}
+              energy={energy}
+              maxEnergy={MAX_ENERGY}
+              stars={totalStars}
+              onGemsClick={() => setShowGemShop(true)}
+              onEnergyClick={() => setShowGemShop(true)}
+            />
             <p className="levels-subtitle">
-              {completedCount} / {TOTAL_LEVELS} cleared · {totalStars} ★ · ⚡ {energy}/{MAX_ENERGY} · 💎 {gems}
+              {completedCount} / {TOTAL_LEVELS} cleared · World {selectedWorld}
             </p>
           </div>
 
@@ -310,20 +323,21 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
               </div>
             </div>
           )}
+
+          <div className="levels-banner-foot">
+            <span className="levels-banner-foot__text">Unlock new puzzle lands</span>
+          </div>
         </div>
 
         <footer className="levels-footer">
           <button
             type="button"
-            className="levels-start-btn"
+            className="btn-royal-cta levels-start-btn--royal"
             onClick={handleStart}
             disabled={!isLevelPlayable(currentLevel)}
           >
-            <span className="levels-start-btn__glow" aria-hidden />
-            <span className="levels-start-btn__text">START</span>
-            <span className="levels-start-btn__sub">
-              Level {formatLevelId(currentLevel)}
-            </span>
+            <span className="btn-royal-cta__main">Play level {formatLevelId(currentLevel)}</span>
+            <span className="btn-royal-cta__sub">Compete & win rewards</span>
           </button>
         </footer>
       </div>

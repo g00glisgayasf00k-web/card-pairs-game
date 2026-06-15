@@ -6,6 +6,7 @@ import { PortraitGate } from "./components/PortraitGate";
 import { initProgressSync } from "./lib/progressSync";
 import { isLoggedIn } from "./lib/session";
 import "./index.css";
+import "./styles/royal-theme.css";
 import "./styles/game-mobile.css";
 import "./styles/level-select.css";
 

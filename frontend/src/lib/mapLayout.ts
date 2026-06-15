@@ -7,21 +7,21 @@ export interface MapPoint {
   y: number;
 }
 
-/** Horizontal anchor (% of map width) — matches chip positions. */
+/** Horizontal anchor (% of map width) — wider zigzag for island trail. */
 export function xForSide(side: MapSide): number {
-  if (side === "left") return 20;
+  if (side === "left") return 22;
   if (side === "center") return 50;
-  return 80;
+  return 78;
 }
 
 export function sideForStageIndex(index: number): MapSide {
   return index % 3 === 0 ? "left" : index % 3 === 1 ? "center" : "right";
 }
 
-/** Node centres for a world map (viewBox 0–100). */
+/** Node centres for a world map (viewBox 0–100). Extra vertical spacing for island platforms. */
 export function buildWorldMapPoints(stageCount: number = STAGES_PER_WORLD): MapPoint[] {
-  const topY = 6;
-  const stepY = 9.2;
+  const topY = 8;
+  const stepY = 10.5;
   return Array.from({ length: stageCount }, (_, i) => ({
     x: xForSide(sideForStageIndex(i)),
     y: topY + i * stepY,
@@ -43,7 +43,6 @@ export function smoothPathThrough(points: MapPoint[]): string {
   return d;
 }
 
-/** How far along the world path the player has reached (0–9, or -1 if before world). */
 export function progressIndexInWorld(world: number, currentLevel: number): number {
   const start = toGlobalLevel(world, 1);
   const end = toGlobalLevel(world, STAGES_PER_WORLD);
@@ -55,5 +54,5 @@ export function progressIndexInWorld(world: number, currentLevel: number): numbe
 export function mapViewBoxHeight(stageCount: number = STAGES_PER_WORLD): number {
   const points = buildWorldMapPoints(stageCount);
   const last = points[points.length - 1];
-  return Math.ceil((last?.y ?? 100) + 8);
+  return Math.ceil((last?.y ?? 100) + 12);
 }

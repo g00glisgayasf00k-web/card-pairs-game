@@ -71,11 +71,17 @@ function LevelChip({
   stars,
   onSelect,
 }: LevelChipProps) {
-  const label = formatLevelId(globalLevel);
   const locked = state === "locked";
 
   return (
     <div className={`map-node${isMilestone ? " map-node--milestone" : ""}`}>
+      {isCurrent && (
+        <div className="map-you-are-here" aria-hidden>
+          <span className="map-you-are-here__arrow">▼</span>
+          <span className="map-you-are-here__text">You are here!</span>
+        </div>
+      )}
+      <div className="map-island-pad" aria-hidden />
       <button
         type="button"
         className={[
@@ -88,17 +94,17 @@ function LevelChip({
           .join(" ")}
         disabled={locked}
         onClick={() => onSelect(globalLevel)}
-        aria-label={locked ? `${label} locked` : `Play level ${label}`}
+        aria-label={locked ? `Level ${globalLevel} locked` : `Play level ${globalLevel}`}
       >
         <span className="level-chip__rim" aria-hidden />
         {locked ? (
           <span className="level-chip__lock" aria-hidden>
             <span className="level-chip__lock-icon">🔒</span>
-            <span className="level-chip__lock-label">{label}</span>
+            <span className="level-chip__lock-label">{globalLevel}</span>
           </span>
         ) : (
           <span className="level-chip__face">
-            <span className="level-chip__label">{label}</span>
+            <span className="level-chip__label">{globalLevel}</span>
           </span>
         )}
       </button>
@@ -128,6 +134,7 @@ function WorldMapPath({
       preserveAspectRatio="xMidYMin meet"
       aria-hidden
     >
+      <path className="map-path map-path--shadow" d={fullPath} />
       <path className="map-path map-path--track" d={fullPath} />
       {progressPath && <path className="map-path map-path--active" d={progressPath} />}
     </svg>
@@ -145,8 +152,12 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
 
   const completedCount = countCompleted();
   const totalStars = countTotalStars();
+  const worldStars = countStarsInWorld(selectedWorld);
   const nextWorld = selectedWorld + 1;
   const nextWorldLocked = nextWorld <= 10 && !isWorldUnlocked(nextWorld);
+  const bossLevel = toGlobalLevel(selectedWorld, STAGES_PER_WORLD);
+  const bossState = getLevelNodeState(bossLevel);
+  const chestTarget = starsToUnlockWorld(nextWorld);
 
   const refresh = useCallback(() => setTick((t) => t + 1), []);
 
@@ -160,7 +171,7 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
     if (!el) return;
     const t = window.setTimeout(() => {
       el.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 150);
+    }, 200);
     return () => window.clearTimeout(t);
   }, [tick, currentLevel, selectedWorld]);
 
@@ -200,47 +211,40 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
   const pathProgress = progressIndexInWorld(selectedWorld, currentLevel);
 
   return (
-    <div className="level-select-screen">
-      <div className="level-select-sparkles" aria-hidden />
+    <div className="level-select-screen royal-map-screen">
+      <div className="royal-map-sky" aria-hidden>
+        <div className="royal-map-cloud royal-map-cloud--1" />
+        <div className="royal-map-cloud royal-map-cloud--2" />
+        <div className="royal-map-cloud royal-map-cloud--3" />
+        <div className="royal-map-castle-peak">
+          <span className="royal-map-castle-peak__icon">🏰</span>
+          <span className="royal-map-castle-peak__label">Castle Peak</span>
+        </div>
+        <div className="royal-map-dragon">🐉</div>
+        <div className="royal-map-balloon">🎈</div>
+      </div>
+
+      <div className="level-select-sparkles royal-map-confetti" aria-hidden />
 
       <div className="mobile-shell mobile-shell--levels">
-        <header className="levels-hero levels-hero--royal">
+        <header className="royal-map-hud">
           <button type="button" className="levels-back" onClick={onBack} aria-label="Back">
             ←
           </button>
-
-          <div className="levels-title-wrap">
-            <div className="royal-logo royal-logo--compact">
-              <div className="royal-logo__crown" aria-hidden>
-                👑
-              </div>
-              <div className="royal-logo__shield">
-                <span className="royal-logo__line royal-logo__line--main">Levels</span>
-                <div className="royal-logo__suits" aria-hidden>
-                  <span className="suit-spades">♠</span>
-                  <span className="suit-hearts">♥</span>
-                  <span className="suit-clubs">♣</span>
-                  <span className="suit-diamonds">♦</span>
-                </div>
-              </div>
-            </div>
-            <ResourceBar
-              gems={gems}
-              energy={energy}
-              maxEnergy={MAX_ENERGY}
-              stars={totalStars}
-              onGemsClick={() => setShowGemShop(true)}
-              onEnergyClick={() => setShowGemShop(true)}
-            />
-            <p className="levels-subtitle">
-              {completedCount} / {TOTAL_LEVELS} cleared · World {selectedWorld}
-            </p>
-          </div>
-
-          <div className="levels-hero__spacer" aria-hidden />
+          <ResourceBar
+            gems={gems}
+            energy={energy}
+            maxEnergy={MAX_ENERGY}
+            stars={totalStars}
+            onGemsClick={() => setShowGemShop(true)}
+            onEnergyClick={() => setShowGemShop(true)}
+          />
+          <button type="button" className="royal-map-menu" aria-label="Menu" onClick={onBack}>
+            ☰
+          </button>
         </header>
 
-        <nav className="world-tabs" aria-label="World selection">
+        <nav className="world-tabs world-tabs--map" aria-label="World selection">
           {allWorlds().map((world) => {
             const unlocked = isWorldUnlocked(world);
             return (
@@ -261,83 +265,132 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
           })}
         </nav>
 
-        <div className="world-ribbon">
+        <div className="world-ribbon world-ribbon--map">
           <span className="world-ribbon__fold world-ribbon__fold--l" aria-hidden />
           <h2 className="world-ribbon__text">{worldTitle(selectedWorld)}</h2>
           <span className="world-ribbon__fold world-ribbon__fold--r" aria-hidden />
         </div>
 
-        <div className="level-map-scroll">
-          <div className="level-map" style={{ aspectRatio: `100 / ${mapHeight}` }}>
-            <WorldMapPath
-              points={mapPoints}
-              progressIndex={pathProgress}
-              viewHeight={mapHeight}
-            />
+        <div className="royal-map-stage">
+          <aside className="map-widget map-widget--fest" aria-hidden>
+            <span className="map-widget__tag">Spring fest</span>
+            <span className="map-widget__icon">🎁</span>
+            <span className="map-widget__timer">Coming soon</span>
+          </aside>
 
-            <div className="map-nodes">
-              {stagesInWorld(selectedWorld).map((stage, index) => {
-                const globalLevel = toGlobalLevel(selectedWorld, stage);
-                const state = getLevelNodeState(globalLevel);
-                const isCurrent = globalLevel === currentLevel;
-                const isMilestone = stage === STAGES_PER_WORLD;
-                const pt = mapPoints[index]!;
-
-                return (
-                  <div
-                    key={globalLevel}
-                    ref={isCurrent ? currentRef : undefined}
-                    className="map-node-slot"
-                    style={{
-                      left: `${pt.x}%`,
-                      top: `${(pt.y / mapHeight) * 100}%`,
-                    }}
-                  >
-                    <LevelChip
-                      globalLevel={globalLevel}
-                      isMilestone={isMilestone}
-                      state={state}
-                      isCurrent={isCurrent}
-                      stars={getLevelStars(globalLevel)}
-                      onSelect={handleSelect}
-                    />
-                  </div>
-                );
-              })}
+          <aside className="map-widget map-widget--chest">
+            <span className="map-widget__tag">Star chest</span>
+            <span className="map-widget__icon">🎁</span>
+            <div className="map-widget__bar">
+              <div
+                className="map-widget__bar-fill"
+                style={{
+                  width: `${Math.min(100, (worldStars / Math.max(1, chestTarget)) * 100)}%`,
+                }}
+              />
             </div>
-          </div>
+            <span className="map-widget__progress">
+              {worldStars} / {chestTarget} ★
+            </span>
+          </aside>
 
-          {nextWorldLocked && selectedWorld < 10 && (
-            <div className="world-gate">
-              <div className="world-gate__icon" aria-hidden>
-                <span className="world-gate__shield">🛡️</span>
-                <span className="world-gate__lock">🔒</span>
-                <span className="world-gate__star">⭐</span>
-              </div>
-              <div className="world-gate__bar">
-                <span className="world-gate__bar-lock" aria-hidden>🔒</span>
-                <span className="world-gate__bar-text">
-                  {countStarsInWorld(selectedWorld)} / {starsToUnlockWorld(nextWorld)} ★ to unlock{" "}
-                  {worldTitle(nextWorld)}
-                </span>
+          <aside className="map-widget map-widget--portal" aria-hidden>
+            <span className="map-widget__tag">Magic portal</span>
+            <span className="map-widget__icon map-widget__icon--portal">🌀</span>
+            <span className="map-widget__timer">Soon</span>
+          </aside>
+
+          <aside
+            className={`map-widget map-widget--boss${bossState === "locked" ? " map-widget--boss-locked" : ""}`}
+          >
+            <span className="map-widget__tag">Boss level</span>
+            <span className="map-widget__boss-art">👹</span>
+            <span className="map-widget__boss-title">Defeat the boss!</span>
+            <span className="map-widget__boss-level">
+              {bossState === "locked" && "🔒 "}
+              Level {bossLevel}
+            </span>
+          </aside>
+
+          <div className="level-map-scroll royal-map-scroll">
+            <div className="level-map royal-map-trail" style={{ aspectRatio: `100 / ${mapHeight}` }}>
+              <WorldMapPath
+                points={mapPoints}
+                progressIndex={pathProgress}
+                viewHeight={mapHeight}
+              />
+
+              <div className="map-nodes">
+                {stagesInWorld(selectedWorld).map((stage, index) => {
+                  const globalLevel = toGlobalLevel(selectedWorld, stage);
+                  const state = getLevelNodeState(globalLevel);
+                  const isCurrent = globalLevel === currentLevel;
+                  const isMilestone = stage === STAGES_PER_WORLD;
+                  const pt = mapPoints[index]!;
+
+                  return (
+                    <div
+                      key={globalLevel}
+                      ref={isCurrent ? currentRef : undefined}
+                      className="map-node-slot"
+                      style={{
+                        left: `${pt.x}%`,
+                        top: `${(pt.y / mapHeight) * 100}%`,
+                      }}
+                    >
+                      <LevelChip
+                        globalLevel={globalLevel}
+                        isMilestone={isMilestone}
+                        state={state}
+                        isCurrent={isCurrent}
+                        stars={getLevelStars(globalLevel)}
+                        onSelect={handleSelect}
+                      />
+                    </div>
+                  );
+                })}
               </div>
             </div>
-          )}
 
-          <div className="levels-banner-foot">
-            <span className="levels-banner-foot__text">Unlock new puzzle lands</span>
+            {nextWorldLocked && selectedWorld < 10 && (
+              <div className="world-gate world-gate--map">
+                <div className="world-gate__bar">
+                  <span className="world-gate__bar-lock" aria-hidden>🔒</span>
+                  <span className="world-gate__bar-text">
+                    {worldStars} / {chestTarget} ★ to unlock {worldTitle(nextWorld)}
+                  </span>
+                </div>
+              </div>
+            )}
+
+            <div className="levels-banner-foot levels-banner-foot--map">
+              <span className="levels-banner-foot__ribbon" aria-hidden>🎀</span>
+              <span className="levels-banner-foot__text">Unlock new puzzle lands</span>
+              <span className="levels-banner-foot__suits" aria-hidden>
+                ♥ ♦ ♣ ♠
+              </span>
+            </div>
           </div>
         </div>
 
-        <footer className="levels-footer">
+        <footer className="levels-footer levels-footer--map">
+          <div className="levels-footer__chips" aria-hidden>
+            <span>🟢</span>
+            <span>🟣</span>
+            <span>🔴</span>
+          </div>
           <button
             type="button"
             className="btn-royal-cta levels-start-btn--royal"
             onClick={handleStart}
             disabled={!isLevelPlayable(currentLevel)}
           >
-            <span className="btn-royal-cta__main">Play level {formatLevelId(currentLevel)}</span>
-            <span className="btn-royal-cta__sub">Compete & win rewards</span>
+            <span className="btn-royal-cta__main">
+              Play {formatLevelId(currentLevel)} · Lv {currentLevel}
+            </span>
+            <span className="btn-royal-cta__sub">
+              {completedCount} / {TOTAL_LEVELS} cleared
+            </span>
           </button>
         </footer>
       </div>

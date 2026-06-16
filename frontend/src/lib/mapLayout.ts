@@ -7,43 +7,64 @@ export interface MapPoint {
   y: number;
 }
 
-/** Horizontal anchor (% of map width) — gentle serpentine sweep. */
+/** Horizontal anchor (% of map width) — tuned lanes for clean chip spacing. */
 export function xForSide(side: MapSide): number {
-  if (side === "left") return 28;
+  if (side === "left") return 30;
   if (side === "center") return 50;
-  return 72;
+  return 70;
 }
 
+const LANE_SEQUENCE: MapSide[] = [
+  "center",
+  "right",
+  "left",
+  "right",
+  "left",
+  "right",
+  "left",
+  "right",
+  "left",
+  "center",
+];
+
 export function sideForStageIndex(index: number): MapSide {
-  return index % 3 === 0 ? "left" : index % 3 === 1 ? "center" : "right";
+  if (index < LANE_SEQUENCE.length) return LANE_SEQUENCE[index]!;
+  return index % 2 === 0 ? "left" : "right";
 }
 
 /**
- * Node centres for a world map (viewBox 0–100). Uses a sine sweep so the
- * trail flows as one elegant S-curve rather than a hard zigzag.
+ * Node centres for a world map (viewBox 0–100). Explicit lane positions avoid
+ * overlaps and keep the route readable at mobile sizes.
  */
 export function buildWorldMapPoints(stageCount: number = STAGES_PER_WORLD): MapPoint[] {
-  const topY = 7;
-  const stepY = 9.6;
-  const amplitude = 24;
-  const center = 50;
+  const topY = 8;
+  const stepY = 9.4;
   return Array.from({ length: stageCount }, (_, i) => ({
-    x: center + amplitude * Math.sin((i / 2.4) * Math.PI),
+    x: xForSide(sideForStageIndex(i)),
     y: topY + i * stepY,
   }));
 }
 
-/** Smooth cubic curve through every stage node — rounded S-curves, no sharp corners. */
+/**
+ * Smooth Catmull-Rom spline converted to cubic Bezier so the path naturally
+ * passes through every chip center without hard elbows.
+ */
 export function smoothPathThrough(points: MapPoint[]): string {
   if (points.length === 0) return "";
   if (points.length === 1) return `M ${points[0]!.x} ${points[0]!.y}`;
 
   let d = `M ${points[0]!.x} ${points[0]!.y}`;
-  for (let i = 1; i < points.length; i++) {
-    const p0 = points[i - 1]!;
+  for (let i = 0; i < points.length - 1; i++) {
+    const p0 = i > 0 ? points[i - 1]! : points[i]!;
     const p1 = points[i]!;
-    const midY = (p0.y + p1.y) / 2;
-    d += ` C ${p0.x} ${midY}, ${p1.x} ${midY}, ${p1.x} ${p1.y}`;
+    const p2 = points[i + 1]!;
+    const p3 = i + 2 < points.length ? points[i + 2]! : p2;
+
+    const c1x = p1.x + (p2.x - p0.x) / 6;
+    const c1y = p1.y + (p2.y - p0.y) / 6;
+    const c2x = p2.x - (p3.x - p1.x) / 6;
+    const c2y = p2.y - (p3.y - p1.y) / 6;
+    d += ` C ${c1x} ${c1y}, ${c2x} ${c2y}, ${p2.x} ${p2.y}`;
   }
   return d;
 }

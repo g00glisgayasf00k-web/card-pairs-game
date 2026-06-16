@@ -13,7 +13,7 @@
   overflow: hidden;
   color: #f8fafc;
   background:
-    radial-gradient(ellipse 120% 70% at 50% -8%, rgba(255, 255, 255, 0.14), transparent 60%),
+    radial-gradient(ellipse 120% 70% at 50% -10%, rgba(253, 224, 71, 0.2), transparent 56%),
     radial-gradient(ellipse 130% 120% at 50% 55%, var(--world-felt, #0f5132), var(--world-felt-edge, #08321f) 92%);
 }
 
@@ -136,9 +136,9 @@
 
 .felt-world-tab--active {
   transform: scale(1.18);
-  border-color: #fde047;
+  border-color: #fbbf24;
   box-shadow:
-    0 0 0 2px rgba(253, 224, 71, 0.5),
+    0 0 0 2px rgba(251, 191, 36, 0.55),
     0 3px 10px rgba(0, 0, 0, 0.5);
 }
 
@@ -172,7 +172,7 @@
   font-size: 1rem;
   font-weight: 900;
   letter-spacing: 0.04em;
-  color: var(--world-light, #6ee7b7);
+  color: #f5d060;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.6);
   white-space: nowrap;
 }
@@ -258,28 +258,40 @@
   transform: translateY(0.6px);
 }
 
+.felt-path--trench {
+  stroke: rgba(0, 0, 0, 0.3);
+  stroke-width: 8;
+  opacity: 0.85;
+}
+
 .felt-path--base {
-  stroke: var(--world-dark, #065f46);
+  stroke: color-mix(in srgb, var(--world-main, #10b981) 20%, #0b1020);
   stroke-width: 7;
   opacity: 0.9;
 }
 
 .felt-path--dash {
-  stroke: rgba(255, 255, 255, 0.42);
-  stroke-width: 1.25;
-  stroke-dasharray: 0.8 3;
+  stroke: rgba(245, 208, 96, 0.58);
+  stroke-width: 1.15;
+  stroke-dasharray: 0.9 2.9;
 }
 
 .felt-path--active {
-  stroke: var(--world-main, #10b981);
-  stroke-width: 7;
-  filter: drop-shadow(0 0 8px var(--world-main, #10b981));
+  stroke: color-mix(in srgb, var(--world-main, #10b981) 70%, #fde68a);
+  stroke-width: 6.3;
+  filter: drop-shadow(0 0 9px color-mix(in srgb, var(--world-main, #10b981) 80%, white));
+}
+
+.felt-path--active-glow {
+  stroke: color-mix(in srgb, var(--world-light, #6ee7b7) 48%, #fbbf24);
+  stroke-width: 8.3;
+  opacity: 0.45;
 }
 
 .felt-path--active-dash {
   stroke: var(--world-light, #6ee7b7);
-  stroke-width: 1.6;
-  stroke-dasharray: 0.7 3;
+  stroke-width: 1.25;
+  stroke-dasharray: 1 2.6;
 }
 
 /* ── Nodes ─────────────────────────────────────────────────────────────────── */
@@ -310,8 +322,8 @@
   --chip-dark: var(--world-dark, #065f46);
   --chip-light: var(--world-light, #6ee7b7);
   position: relative;
-  width: 3.25rem;
-  height: 3.25rem;
+  width: 3.45rem;
+  height: 3.45rem;
   border: none;
   border-radius: 50%;
   padding: 0;
@@ -319,7 +331,7 @@
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   transition: transform 0.18s cubic-bezier(0.34, 1.4, 0.64, 1);
-  filter: drop-shadow(0 4px 7px rgba(0, 0, 0, 0.45));
+  filter: drop-shadow(0 5px 8px rgba(0, 0, 0, 0.46));
 }
 
 .poker-chip__edge {
@@ -327,10 +339,11 @@
   inset: 0;
   border-radius: 50%;
   background:
+    radial-gradient(circle at 50% 50%, transparent 58%, rgba(251, 191, 36, 0.55) 78%, rgba(146, 64, 14, 0.85) 100%),
     repeating-conic-gradient(
       from 0deg,
-      transparent 0deg 22deg,
-      rgba(255, 255, 255, 0.95) 22deg 36deg
+      transparent 0deg 19deg,
+      rgba(255, 255, 255, 0.92) 19deg 31deg
     ),
     radial-gradient(circle at 35% 30%, var(--chip-light), var(--chip-main) 60%, var(--chip-dark) 100%);
   box-shadow:
@@ -352,9 +365,27 @@
     0 0 0 1px rgba(0, 0, 0, 0.2);
 }
 
+.poker-chip__face::before {
+  content: "";
+  position: absolute;
+  inset: 12%;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+}
+
+.poker-chip__face::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: radial-gradient(circle at 28% 25%, rgba(255, 255, 255, 0.26), transparent 44%);
+}
+
 .poker-chip__label {
   font-family: "Cinzel", "Crimson Pro", Georgia, serif;
-  font-size: 0.7rem;
+  position: relative;
+  z-index: 2;
+  font-size: 0.8rem;
   font-weight: 900;
   color: #fff;
   letter-spacing: -0.02em;
@@ -364,6 +395,8 @@
 }
 
 .poker-chip__lock {
+  position: relative;
+  z-index: 2;
   font-size: 0.42rem;
   letter-spacing: 0.08em;
   font-weight: 800;
@@ -373,8 +406,8 @@
 
 /* completed → gold chip */
 .poker-chip--completed {
-  --chip-main: #eab308;
-  --chip-dark: #a16207;
+  --chip-main: #f59e0b;
+  --chip-dark: #92400e;
   --chip-light: #fde68a;
 }
 
@@ -411,12 +444,12 @@
 
 /* boss / milestone → larger chip */
 .poker-chip--boss {
-  width: 4rem;
-  height: 4rem;
+  width: 4.25rem;
+  height: 4.25rem;
 }
 
 .poker-chip--boss .poker-chip__label {
-  font-size: 0.92rem;
+  font-size: 0.96rem;
 }
 
 .poker-chip:not(:disabled):active {
@@ -460,14 +493,16 @@
 }
 
 .chip-star {
-  font-size: 0.6rem;
-  color: rgba(0, 0, 0, 0.4);
-  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.15);
+  font-size: 0.62rem;
+  color: rgba(15, 23, 42, 0.55);
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.18);
 }
 
 .chip-star--lit {
-  color: #fde047;
-  text-shadow: 0 0 4px rgba(253, 224, 71, 0.7);
+  color: #fbbf24;
+  text-shadow:
+    0 0 5px rgba(251, 191, 36, 0.75),
+    0 0 10px rgba(251, 191, 36, 0.35);
 }
 
 /* ── World gate ────────────────────────────────────────────────────────────── */
@@ -507,7 +542,11 @@
   padding: 0.7rem 1rem;
   border: none;
   border-radius: 16px;
-  background: linear-gradient(180deg, var(--world-main, #10b981), var(--world-dark, #065f46));
+  background: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--world-main, #10b981) 75%, #fbbf24),
+    color-mix(in srgb, var(--world-dark, #065f46) 88%, #111827)
+  );
   color: #fff;
   cursor: pointer;
   box-shadow:

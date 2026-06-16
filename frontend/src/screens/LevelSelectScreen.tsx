@@ -132,6 +132,8 @@ function WorldPath({
     >
       {/* soft shadow under the ribbon for depth */}
       <path className="felt-path felt-path--shadow" d={fullPath} />
+      {/* carved trench for the route */}
+      <path className="felt-path felt-path--trench" d={fullPath} />
       {/* full route — muted base in the world colour */}
       <path className="felt-path felt-path--base" d={fullPath} />
       {/* elegant dashed centre line */}
@@ -139,6 +141,7 @@ function WorldPath({
       {/* completed portion — bright glowing colour */}
       {progressPath && (
         <>
+          <path className="felt-path felt-path--active-glow" d={progressPath} />
           <path className="felt-path felt-path--active" d={progressPath} />
           <path className="felt-path felt-path--active-dash" d={progressPath} />
         </>

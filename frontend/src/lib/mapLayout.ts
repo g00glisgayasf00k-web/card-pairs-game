@@ -7,23 +7,28 @@ export interface MapPoint {
   y: number;
 }
 
-/** Horizontal anchor (% of map width) — wider zigzag for island trail. */
+/** Horizontal anchor (% of map width) — gentle serpentine sweep. */
 export function xForSide(side: MapSide): number {
-  if (side === "left") return 22;
+  if (side === "left") return 28;
   if (side === "center") return 50;
-  return 78;
+  return 72;
 }
 
 export function sideForStageIndex(index: number): MapSide {
   return index % 3 === 0 ? "left" : index % 3 === 1 ? "center" : "right";
 }
 
-/** Node centres for a world map (viewBox 0–100). Extra vertical spacing for island platforms. */
+/**
+ * Node centres for a world map (viewBox 0–100). Uses a sine sweep so the
+ * trail flows as one elegant S-curve rather than a hard zigzag.
+ */
 export function buildWorldMapPoints(stageCount: number = STAGES_PER_WORLD): MapPoint[] {
-  const topY = 8;
-  const stepY = 10.5;
+  const topY = 7;
+  const stepY = 9.6;
+  const amplitude = 24;
+  const center = 50;
   return Array.from({ length: stageCount }, (_, i) => ({
-    x: xForSide(sideForStageIndex(i)),
+    x: center + amplitude * Math.sin((i / 2.4) * Math.PI),
     y: topY + i * stepY,
   }));
 }

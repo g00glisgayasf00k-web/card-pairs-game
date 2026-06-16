@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from "react";
 import {
   allWorlds,
   formatLevelId,
@@ -8,6 +8,7 @@ import {
   displayWorld,
   TOTAL_LEVELS,
   worldTitle,
+  worldTheme,
   type LevelNodeState,
 } from "../lib/levelMap";
 import {
@@ -45,7 +46,7 @@ function StarRating({ stars }: { stars: number }) {
       {[1, 2, 3].map((i) => (
         <span
           key={i}
-          className={`chip-star${i <= stars ? " chip-star--lit" : ""}${i <= stars && stars === 3 ? " chip-star--gold" : ""}`}
+          className={`chip-star${i <= stars ? " chip-star--lit" : ""}`}
           aria-hidden
         >
           ★
@@ -64,17 +65,7 @@ interface LevelChipProps {
   onSelect: (globalLevel: number) => void;
 }
 
-function nodeSpriteVariant(
-  state: LevelNodeState,
-  isMilestone: boolean,
-  isCurrent: boolean
-): "gold" | "blue" | "purple" {
-  if (isMilestone || state === "completed") return "gold";
-  if (isCurrent) return "purple";
-  return "blue";
-}
-
-function LevelChip({
+function PokerChip({
   globalLevel,
   isMilestone,
   state,
@@ -84,26 +75,22 @@ function LevelChip({
 }: LevelChipProps) {
   const locked = state === "locked";
   const label = formatLevelId(globalLevel);
-  const sprite = nodeSpriteVariant(state, isMilestone, isCurrent);
 
   return (
     <div className={`map-node${isMilestone ? " map-node--milestone" : ""}`}>
       {isCurrent && (
-        <div className="map-you-are-here" aria-hidden>
-          <span className="map-you-are-here__arrow">▼</span>
-          <span className="map-you-are-here__text">You are here!</span>
+        <div className="map-here" aria-hidden>
+          <span className="map-here__text">You are here</span>
+          <span className="map-here__arrow">▼</span>
         </div>
       )}
-      <div className="map-island-pad map-island-pad--sprite" aria-hidden />
       <button
         type="button"
         className={[
-          "level-chip",
-          "level-chip--sprite",
-          `level-chip--sprite-${sprite}`,
-          isMilestone ? "level-chip--milestone" : "",
-          `level-chip--${state}`,
-          isCurrent ? "level-chip--current" : "",
+          "poker-chip",
+          isMilestone ? "poker-chip--boss" : "",
+          `poker-chip--${state}`,
+          isCurrent ? "poker-chip--current" : "",
         ]
           .filter(Boolean)
           .join(" ")}
@@ -111,21 +98,23 @@ function LevelChip({
         onClick={() => onSelect(globalLevel)}
         aria-label={locked ? `${label} locked` : `Play level ${label}`}
       >
-        <span className="level-chip__sprite" aria-hidden />
-        {locked ? (
-          <span className="level-chip__lock" aria-hidden>
-            <span className="level-chip__lock-icon">🔒</span>
-          </span>
-        ) : (
-          <span className="level-chip__label">{label}</span>
-        )}
+        <span className="poker-chip__edge" aria-hidden />
+        <span className="poker-chip__face">
+          {locked ? (
+            <span className="poker-chip__lock" aria-hidden>
+              🔒
+            </span>
+          ) : (
+            <span className="poker-chip__label">{label}</span>
+          )}
+        </span>
       </button>
       {!locked && <StarRating stars={stars} />}
     </div>
   );
 }
 
-function WorldMapPath({
+function WorldPath({
   points,
   progressIndex,
   viewHeight,
@@ -141,14 +130,24 @@ function WorldMapPath({
 
   return (
     <svg
-      className="map-path-svg"
+      className="felt-path-svg"
       viewBox={`0 0 100 ${viewHeight}`}
       preserveAspectRatio="xMidYMin meet"
       aria-hidden
     >
-      <path className="map-path map-path--shadow" d={fullPath} />
-      <path className="map-path map-path--track" d={fullPath} />
-      {progressPath && <path className="map-path map-path--active" d={progressPath} />}
+      {/* soft shadow under the ribbon for depth */}
+      <path className="felt-path felt-path--shadow" d={fullPath} />
+      {/* full route — muted base in the world colour */}
+      <path className="felt-path felt-path--base" d={fullPath} />
+      {/* elegant dashed centre line */}
+      <path className="felt-path felt-path--dash" d={fullPath} />
+      {/* completed portion — bright glowing colour */}
+      {progressPath && (
+        <>
+          <path className="felt-path felt-path--active" d={progressPath} />
+          <path className="felt-path felt-path--active-dash" d={progressPath} />
+        </>
+      )}
     </svg>
   );
 }
@@ -167,9 +166,8 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
   const worldStars = countStarsInWorld(selectedWorld);
   const nextWorld = selectedWorld + 1;
   const nextWorldLocked = nextWorld <= 10 && !isWorldUnlocked(nextWorld);
-  const bossLevel = toGlobalLevel(selectedWorld, STAGES_PER_WORLD);
-  const bossState = getLevelNodeState(bossLevel);
   const chestTarget = starsToUnlockWorld(nextWorld);
+  const theme = worldTheme(selectedWorld);
 
   const refresh = useCallback(() => setTick((t) => t + 1), []);
 
@@ -222,189 +220,126 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
   const mapHeight = mapViewBoxHeight();
   const pathProgress = progressIndexInWorld(selectedWorld, currentLevel);
 
+  const feltStyle = {
+    "--world-main": theme.main,
+    "--world-dark": theme.dark,
+    "--world-light": theme.light,
+    "--world-felt": theme.felt,
+    "--world-felt-edge": theme.feltEdge,
+  } as CSSProperties;
+
   return (
-    <div className="level-select-screen royal-map-screen">
-      <div className="royal-map-sky" aria-hidden>
-        <div className="royal-map-cloud royal-map-cloud--1" />
-        <div className="royal-map-cloud royal-map-cloud--2" />
-        <div className="royal-map-cloud royal-map-cloud--3" />
-        <div className="royal-map-castle-peak">
-          <span className="royal-map-castle-peak__icon">🏰</span>
-          <span className="royal-map-castle-peak__label">Castle Peak</span>
+    <div className="felt-screen" style={feltStyle}>
+      <header className="felt-hud">
+        <button type="button" className="felt-icon-btn" onClick={onBack} aria-label="Back">
+          ←
+        </button>
+        <ResourceBar
+          gems={gems}
+          energy={energy}
+          maxEnergy={MAX_ENERGY}
+          stars={totalStars}
+          onGemsClick={() => setShowGemShop(true)}
+          onEnergyClick={() => setShowGemShop(true)}
+        />
+        <button type="button" className="felt-icon-btn" aria-label="Menu" onClick={onBack}>
+          ☰
+        </button>
+      </header>
+
+      <nav className="felt-world-tabs" aria-label="World selection">
+        {allWorlds().map((world) => {
+          const unlocked = isWorldUnlocked(world);
+          const wt = worldTheme(world);
+          return (
+            <button
+              key={world}
+              type="button"
+              className={`felt-world-tab${selectedWorld === world ? " felt-world-tab--active" : ""}${!unlocked ? " felt-world-tab--locked" : ""}`}
+              style={{ "--tab-color": wt.main } as CSSProperties}
+              disabled={!unlocked}
+              onClick={() => setSelectedWorld(world)}
+              aria-label={`${worldTitle(world)}${!unlocked ? " locked" : ""}`}
+            >
+              {unlocked ? displayWorld(world) : "🔒"}
+            </button>
+          );
+        })}
+      </nav>
+
+      <div className="felt-world-banner">
+        <h2 className="felt-world-banner__title">{worldTitle(selectedWorld)}</h2>
+        <div className="felt-chest">
+          <span className="felt-chest__icon" aria-hidden>🎁</span>
+          <div className="felt-chest__bar">
+            <div
+              className="felt-chest__fill"
+              style={{ width: `${Math.min(100, (worldStars / Math.max(1, chestTarget)) * 100)}%` }}
+            />
+          </div>
+          <span className="felt-chest__count">
+            {worldStars}/{chestTarget} ★
+          </span>
         </div>
-        <div className="royal-map-dragon">🐉</div>
-        <div className="royal-map-balloon">🎈</div>
       </div>
 
-      <div className="level-select-sparkles royal-map-confetti" aria-hidden />
+      <div className="felt-board-scroll">
+        <div className="felt-board" style={{ aspectRatio: `100 / ${mapHeight}` }}>
+          <WorldPath points={mapPoints} progressIndex={pathProgress} viewHeight={mapHeight} />
 
-      <div className="mobile-shell mobile-shell--levels">
-        <header className="royal-map-hud">
-          <button type="button" className="levels-back" onClick={onBack} aria-label="Back">
-            ←
-          </button>
-          <ResourceBar
-            gems={gems}
-            energy={energy}
-            maxEnergy={MAX_ENERGY}
-            stars={totalStars}
-            onGemsClick={() => setShowGemShop(true)}
-            onEnergyClick={() => setShowGemShop(true)}
-          />
-          <button type="button" className="royal-map-menu" aria-label="Menu" onClick={onBack}>
-            ☰
-          </button>
-        </header>
+          <div className="felt-nodes">
+            {stagesInWorld(selectedWorld).map((stage, index) => {
+              const globalLevel = toGlobalLevel(selectedWorld, stage);
+              const state = getLevelNodeState(globalLevel);
+              const isCurrent = globalLevel === currentLevel;
+              const isMilestone = stage === STAGES_PER_WORLD;
+              const pt = mapPoints[index]!;
 
-        <nav className="world-tabs world-tabs--map" aria-label="World selection">
-          {allWorlds().map((world) => {
-            const unlocked = isWorldUnlocked(world);
-            return (
-              <button
-                key={world}
-                type="button"
-                className={`world-tab${selectedWorld === world ? " world-tab--active" : ""}${!unlocked ? " world-tab--locked" : ""}`}
-                disabled={!unlocked}
-                onClick={() => setSelectedWorld(world)}
-                aria-label={`${worldTitle(world)}${!unlocked ? " locked" : ""}`}
-              >
-                <span className="world-tab__suit" aria-hidden>
-                  {world % 2 === 0 ? "♦" : "♣"}
-                </span>
-                <span className="world-tab__num">{displayWorld(world)}</span>
-              </button>
-            );
-          })}
-        </nav>
-
-        <div className="world-ribbon world-ribbon--map">
-          <span className="world-ribbon__fold world-ribbon__fold--l" aria-hidden />
-          <h2 className="world-ribbon__text">{worldTitle(selectedWorld)}</h2>
-          <span className="world-ribbon__fold world-ribbon__fold--r" aria-hidden />
-        </div>
-
-        <div className="royal-map-stage">
-          <aside className="map-widget map-widget--fest" aria-hidden>
-            <span className="map-widget__tag">Spring fest</span>
-            <span className="map-widget__icon">🎁</span>
-            <span className="map-widget__timer">Coming soon</span>
-          </aside>
-
-          <aside className="map-widget map-widget--chest">
-            <span className="map-widget__tag">Star chest</span>
-            <span className="map-widget__icon">🎁</span>
-            <div className="map-widget__bar">
-              <div
-                className="map-widget__bar-fill"
-                style={{
-                  width: `${Math.min(100, (worldStars / Math.max(1, chestTarget)) * 100)}%`,
-                }}
-              />
-            </div>
-            <span className="map-widget__progress">
-              {worldStars} / {chestTarget} ★
-            </span>
-          </aside>
-
-          <aside className="map-widget map-widget--portal" aria-hidden>
-            <span className="map-widget__tag">Magic portal</span>
-            <span className="map-widget__icon map-widget__icon--portal">🌀</span>
-            <span className="map-widget__timer">Soon</span>
-          </aside>
-
-          <aside
-            className={`map-widget map-widget--boss${bossState === "locked" ? " map-widget--boss-locked" : ""}`}
-          >
-            <span className="map-widget__tag">Boss level</span>
-            <span className="map-widget__boss-art">👹</span>
-            <span className="map-widget__boss-title">Defeat the boss!</span>
-            <span className="map-widget__boss-level">
-              {bossState === "locked" && "🔒 "}
-              {formatLevelId(bossLevel)}
-            </span>
-          </aside>
-
-          <div className="level-map-scroll royal-map-scroll">
-            <div className="level-map royal-map-trail" style={{ aspectRatio: `100 / ${mapHeight}` }}>
-              <div className="map-path-sprite-bg" aria-hidden />
-              <WorldMapPath
-                points={mapPoints}
-                progressIndex={pathProgress}
-                viewHeight={mapHeight}
-              />
-
-              <div className="map-nodes">
-                {stagesInWorld(selectedWorld).map((stage, index) => {
-                  const globalLevel = toGlobalLevel(selectedWorld, stage);
-                  const state = getLevelNodeState(globalLevel);
-                  const isCurrent = globalLevel === currentLevel;
-                  const isMilestone = stage === STAGES_PER_WORLD;
-                  const pt = mapPoints[index]!;
-
-                  return (
-                    <div
-                      key={globalLevel}
-                      ref={isCurrent ? currentRef : undefined}
-                      className="map-node-slot"
-                      style={{
-                        left: `${pt.x}%`,
-                        top: `${(pt.y / mapHeight) * 100}%`,
-                      }}
-                    >
-                      <LevelChip
-                        globalLevel={globalLevel}
-                        isMilestone={isMilestone}
-                        state={state}
-                        isCurrent={isCurrent}
-                        stars={getLevelStars(globalLevel)}
-                        onSelect={handleSelect}
-                      />
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-
-            {nextWorldLocked && selectedWorld < 10 && (
-              <div className="world-gate world-gate--map">
-                <div className="world-gate__bar">
-                  <span className="world-gate__bar-lock" aria-hidden>🔒</span>
-                  <span className="world-gate__bar-text">
-                    {worldStars} / {chestTarget} ★ to unlock {worldTitle(nextWorld)}
-                  </span>
+              return (
+                <div
+                  key={globalLevel}
+                  ref={isCurrent ? currentRef : undefined}
+                  className="felt-node-slot"
+                  style={{
+                    left: `${pt.x}%`,
+                    top: `${(pt.y / mapHeight) * 100}%`,
+                  }}
+                >
+                  <PokerChip
+                    globalLevel={globalLevel}
+                    isMilestone={isMilestone}
+                    state={state}
+                    isCurrent={isCurrent}
+                    stars={getLevelStars(globalLevel)}
+                    onSelect={handleSelect}
+                  />
                 </div>
-              </div>
-            )}
-
-            <div className="levels-banner-foot levels-banner-foot--map">
-              <span className="levels-banner-foot__ribbon" aria-hidden>🎀</span>
-              <span className="levels-banner-foot__text">Unlock new puzzle lands</span>
-              <span className="levels-banner-foot__suits" aria-hidden>
-                ♥ ♦ ♣ ♠
-              </span>
-            </div>
+              );
+            })}
           </div>
         </div>
 
-        <footer className="levels-footer levels-footer--map">
-          <div className="levels-footer__chips" aria-hidden>
-            <span>🟢</span>
-            <span>🟣</span>
-            <span>🔴</span>
+        {nextWorldLocked && selectedWorld < 10 && (
+          <div className="felt-gate">
+            <span aria-hidden>🔒</span>
+            {worldStars} / {chestTarget} ★ to unlock {worldTitle(nextWorld)}
           </div>
-          <button
-            type="button"
-            className="btn-royal-cta levels-start-btn--royal"
-            onClick={handleStart}
-            disabled={!isLevelPlayable(currentLevel)}
-          >
-            <span className="btn-royal-cta__main">Play {formatLevelId(currentLevel)}</span>
-            <span className="btn-royal-cta__sub">
-              {completedCount} / {TOTAL_LEVELS} cleared
-            </span>
-          </button>
-        </footer>
+        )}
       </div>
+
+      <footer className="felt-footer">
+        <button
+          type="button"
+          className="felt-play-btn"
+          onClick={handleStart}
+          disabled={!isLevelPlayable(currentLevel)}
+        >
+          <span className="felt-play-btn__main">Play {formatLevelId(currentLevel)}</span>
+          <span className="felt-play-btn__sub">
+            {completedCount} / {TOTAL_LEVELS} cleared
+          </span>
+        </button>
+      </footer>
 
       {showGemShop && (
         <GemShopModal

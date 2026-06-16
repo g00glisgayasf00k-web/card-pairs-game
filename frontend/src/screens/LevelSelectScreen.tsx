@@ -11,12 +11,7 @@ import {
   worldTheme,
   type LevelNodeState,
 } from "../lib/levelMap";
-import {
-  buildWorldMapPoints,
-  mapViewBoxHeight,
-  progressIndexInWorld,
-  segmentedPathThrough,
-} from "../lib/mapLayout";
+import { buildWorldMapPoints, mapViewBoxHeight } from "../lib/mapLayout";
 import {
   countCompleted,
   countStarsInWorld,
@@ -109,57 +104,6 @@ function PokerChip({
   );
 }
 
-function WorldPath({
-  points,
-  progressIndex,
-  viewHeight,
-}: {
-  points: ReturnType<typeof buildWorldMapPoints>;
-  progressIndex: number;
-  viewHeight: number;
-}) {
-  const fullSegments = segmentedPathThrough(points, 2.25);
-  const litCount = progressIndex >= 0 ? progressIndex + 1 : 0;
-  const activeSegments = fullSegments.slice(0, Math.max(0, litCount - 1));
-
-  return (
-    <svg
-      className="felt-path-svg"
-      viewBox={`0 0 100 ${viewHeight}`}
-      preserveAspectRatio="xMidYMin meet"
-      aria-hidden
-    >
-      {fullSegments.map((d, idx) => (
-        <path key={`shadow-${idx}`} className="felt-path felt-path--shadow" d={d} />
-      ))}
-      {fullSegments.map((d, idx) => (
-        <path key={`trench-${idx}`} className="felt-path felt-path--trench" d={d} />
-      ))}
-      {fullSegments.map((d, idx) => (
-        <path key={`base-${idx}`} className="felt-path felt-path--base" d={d} />
-      ))}
-      {fullSegments.map((d, idx) => (
-        <path key={`lane-${idx}`} className="felt-path felt-path--lane" d={d} />
-      ))}
-      {fullSegments.map((d, idx) => (
-        <path key={`bulbs-${idx}`} className="felt-path felt-path--bulbs" d={d} />
-      ))}
-      {activeSegments.map((d, idx) => (
-        <path key={`active-glow-${idx}`} className="felt-path felt-path--active-glow" d={d} />
-      ))}
-      {activeSegments.map((d, idx) => (
-        <path key={`active-${idx}`} className="felt-path felt-path--active" d={d} />
-      ))}
-      {activeSegments.map((d, idx) => (
-        <path key={`active-lane-${idx}`} className="felt-path felt-path--active-lane" d={d} />
-      ))}
-      {activeSegments.map((d, idx) => (
-        <path key={`active-bulbs-${idx}`} className="felt-path felt-path--active-bulbs" d={d} />
-      ))}
-    </svg>
-  );
-}
-
 export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
   const currentLevel = getCurrentLevel();
   const [selectedWorld, setSelectedWorld] = useState(() => worldForLevel(currentLevel));
@@ -226,7 +170,6 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
 
   const mapPoints = buildWorldMapPoints();
   const mapHeight = mapViewBoxHeight();
-  const pathProgress = progressIndexInWorld(selectedWorld, currentLevel);
 
   const feltStyle = {
     "--world-main": theme.main,
@@ -294,9 +237,7 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
       </div>
 
       <div className="felt-board-scroll">
-        <div className="felt-board" style={{ aspectRatio: `100 / ${mapHeight}` }}>
-          <WorldPath points={mapPoints} progressIndex={pathProgress} viewHeight={mapHeight} />
-
+        <div className="felt-board felt-board--chips-only" style={{ aspectRatio: `100 / ${mapHeight}` }}>
           <div className="felt-nodes">
             {stagesInWorld(selectedWorld).map((stage, index) => {
               const globalLevel = toGlobalLevel(selectedWorld, stage);

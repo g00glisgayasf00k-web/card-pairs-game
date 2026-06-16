@@ -266,40 +266,53 @@
 
 .felt-path--trench {
   stroke: rgba(0, 0, 0, 0.3);
-  stroke-width: 8.5;
+  stroke-width: 10.2;
   opacity: 0.85;
 }
 
 .felt-path--base {
-  stroke: color-mix(in srgb, var(--world-main, #10b981) 72%, #65a30d);
-  stroke-width: 6.8;
+  stroke: #7ddc1f;
+  stroke-width: 8.6;
+  opacity: 0.98;
+}
+
+.felt-path--lane {
+  stroke: #4d9c1c;
+  stroke-width: 4.8;
+  opacity: 0.92;
+}
+
+.felt-path--bulbs {
+  stroke: #fef08a;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+  stroke-dasharray: 0.2 3.1;
   opacity: 0.95;
 }
 
-.felt-path--dash {
-  stroke: rgba(254, 252, 232, 0.88);
-  stroke-width: 1.45;
-  stroke-linecap: round;
-  stroke-dasharray: 0.25 3.2;
-}
-
 .felt-path--active {
-  stroke: color-mix(in srgb, var(--world-main, #10b981) 75%, #d9f99d);
-  stroke-width: 6.9;
-  filter: drop-shadow(0 0 11px color-mix(in srgb, var(--world-main, #10b981) 80%, #d9f99d));
+  stroke: #a8ff5f;
+  stroke-width: 8.8;
+  filter: drop-shadow(0 0 12px rgba(174, 255, 109, 0.9));
 }
 
 .felt-path--active-glow {
-  stroke: color-mix(in srgb, var(--world-light, #6ee7b7) 66%, #bef264);
-  stroke-width: 9.5;
+  stroke: #d9ff8f;
+  stroke-width: 11.8;
   opacity: 0.5;
 }
 
-.felt-path--active-dash {
-  stroke: #fefce8;
-  stroke-width: 1.55;
+.felt-path--active-lane {
+  stroke: #67b62e;
+  stroke-width: 5.2;
+}
+
+.felt-path--active-bulbs {
+  stroke: #fff9c4;
+  stroke-width: 2.9;
   stroke-linecap: round;
-  stroke-dasharray: 0.25 3;
+  stroke-dasharray: 0.2 3;
+  filter: drop-shadow(0 0 5px rgba(255, 249, 196, 0.55));
 }
 
 /* ── Nodes ─────────────────────────────────────────────────────────────────── */

@@ -139,7 +139,10 @@ function WorldPath({
         <path key={`base-${idx}`} className="felt-path felt-path--base" d={d} />
       ))}
       {fullSegments.map((d, idx) => (
-        <path key={`dash-${idx}`} className="felt-path felt-path--dash" d={d} />
+        <path key={`lane-${idx}`} className="felt-path felt-path--lane" d={d} />
+      ))}
+      {fullSegments.map((d, idx) => (
+        <path key={`bulbs-${idx}`} className="felt-path felt-path--bulbs" d={d} />
       ))}
       {activeSegments.map((d, idx) => (
         <path key={`active-glow-${idx}`} className="felt-path felt-path--active-glow" d={d} />
@@ -148,7 +151,10 @@ function WorldPath({
         <path key={`active-${idx}`} className="felt-path felt-path--active" d={d} />
       ))}
       {activeSegments.map((d, idx) => (
-        <path key={`active-dash-${idx}`} className="felt-path felt-path--active-dash" d={d} />
+        <path key={`active-lane-${idx}`} className="felt-path felt-path--active-lane" d={d} />
+      ))}
+      {activeSegments.map((d, idx) => (
+        <path key={`active-bulbs-${idx}`} className="felt-path felt-path--active-bulbs" d={d} />
       ))}
     </svg>
   );

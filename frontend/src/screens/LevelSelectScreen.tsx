@@ -97,7 +97,7 @@ function PokerChip({
         <span className="poker-chip__face">
           {locked ? (
             <span className="poker-chip__lock" aria-hidden>
-              LOCK
+              🔒
             </span>
           ) : (
             <span className="poker-chip__label">{label}</span>
@@ -231,13 +231,13 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
   } as CSSProperties;
 
   return (
-    <div className="felt-screen" style={feltStyle}>
+    <div className="felt-screen levels-reference" style={feltStyle}>
       <header className="felt-hud">
         <button type="button" className="felt-icon-btn" onClick={onBack} aria-label="Back">
           ←
         </button>
         <div className="felt-hud__center">
-          <p className="felt-hud__eyebrow">Royal Match Table</p>
+          <p className="felt-hud__eyebrow">Levels</p>
           <ResourceBar
             gems={gems}
             energy={energy}
@@ -282,7 +282,7 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
             />
           </div>
           <span className="felt-chest__count">
-            Stars {worldStars}/{chestTarget}
+            {worldStars}/{chestTarget} Stars
           </span>
         </div>
       </div>
@@ -332,15 +332,20 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
       </div>
 
       <footer className="felt-footer">
+        <div className="felt-stars-preview" aria-hidden>
+          <span className="felt-stars-preview__star">☆</span>
+          <span className="felt-stars-preview__star felt-stars-preview__star--lit">★</span>
+          <span className="felt-stars-preview__star felt-stars-preview__star--lit">★</span>
+        </div>
         <button
           type="button"
           className="felt-play-btn"
           onClick={handleStart}
           disabled={!isLevelPlayable(currentLevel)}
         >
-          <span className="felt-play-btn__main">Play {formatLevelId(currentLevel)}</span>
+          <span className="felt-play-btn__main">START</span>
           <span className="felt-play-btn__sub">
-            {completedCount} / {TOTAL_LEVELS} cleared
+            {formatLevelId(currentLevel)} · {completedCount} / {TOTAL_LEVELS} cleared
           </span>
         </button>
       </footer>

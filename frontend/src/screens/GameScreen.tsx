@@ -730,8 +730,8 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
                   <span className="perk-icon">💡</span>
                   <span>
                     {(completedStats?.stars ?? 0) < 2
-                      ? `Use ≤${twoStarMoveTarget} moves for 2★`
-                      : `Use ≤${starMoveTarget} moves and finish challenges for 3★`}
+                      ? `Hit ${completedCfg.targetPoints.toLocaleString()} pts, finish all challenges, and use ≤${twoStarMoveTarget} moves for 2★`
+                      : `Hit ${completedCfg.targetPoints.toLocaleString()} pts, finish all challenges, and use ≤${starMoveTarget} moves for 3★`}
                   </span>
                 </div>
               )}
@@ -865,14 +865,14 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
               </span>
             </div>
 
-            <h3 className="specials-subtitle">Star rating — move budgets</h3>
+            <h3 className="specials-subtitle">Star rating — points, challenges, and move budgets</h3>
             <ul className="star-criteria-list star-criteria-list--modal">
               <li
                 className={`star-criteria${pointsMet && challengesComplete && levelHands <= oneStarMoveTarget ? " star-criteria--done" : ""}`}
               >
                 <span className="star-criteria__stars">★</span>
                 <span>
-                  <strong>Clear the level</strong> — hit {cfg.targetPoints.toLocaleString()} pts, finish
+                  <strong>Clear the level</strong> — score {cfg.targetPoints.toLocaleString()} pts, finish
                   all hand challenges, within {oneStarMoveTarget} moves.
                 </span>
               </li>
@@ -881,8 +881,8 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
               >
                 <span className="star-criteria__stars">★★</span>
                 <span>
-                  <strong>Speed run</strong> — same goals in {twoStarMoveTarget} moves or fewer
-                  ({cfg.challengeHands} challenge hands + {twoStarMoveTarget - cfg.challengeHands} buffer).
+                  <strong>Speed run</strong> — hit {cfg.targetPoints.toLocaleString()} pts, complete every
+                  challenge, in {twoStarMoveTarget} moves or fewer.
                 </span>
               </li>
               <li
@@ -890,8 +890,8 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
               >
                 <span className="star-criteria__stars">★★★</span>
                 <span>
-                  <strong>Perfect run</strong> — complete everything in {starMoveTarget} moves or fewer
-                  ({cfg.challengeHands} challenge hands + {starMoveTarget - cfg.challengeHands} buffer).
+                  <strong>Perfect run</strong> — hit {cfg.targetPoints.toLocaleString()} pts, complete every
+                  challenge, in {starMoveTarget} moves or fewer.
                 </span>
               </li>
             </ul>

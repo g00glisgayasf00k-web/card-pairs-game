@@ -30,21 +30,18 @@ export type HandCounts = Partial<Record<HandLabel, number>>;
 
 export const MAX_LEVEL = 100;
 
-/** Typical points earned per hand/swipe (used for estimates only). */
+/** Typical points earned per hand/swipe (used for move budgets). */
 export const AVG_PTS_PER_MOVE = 300;
 
-/**
- * Point goal as a fraction of challenge base score.
- * Completing every required hand clears the bar; set below 100% so combos
- * from one lucky hand alone rarely finish the level before missions are done.
- */
-const TARGET_POINT_RATIO = 0.88;
+/** World N starts at N×1000 pts; ~8% growth per stage within a world. */
+const WORLD_BASE_POINTS = 1000;
+const STAGE_TARGET_GROWTH = 1.08;
 
-/** Extra moves beyond required challenge hands, per star tier. */
-const STAR_HAND_BUFFER = {
-  threeStar: 0.2,
-  twoStar: 0.38,
-  oneStar: 0.62,
+/** Move budget multipliers on target ÷ 300: 3★ +50%, 2★ +100%, 1★ +150%. */
+export const STAR_MOVE_MULTIPLIER = {
+  threeStar: 1.5,
+  twoStar: 2,
+  oneStar: 2.5,
 } as const;
 
 const CAMPAIGN_TIERS = [
@@ -213,24 +210,31 @@ export function challengeMetrics(challenges: HandChallenge[]): {
   };
 }
 
-/** Move budgets tied to required hands — not point target ÷ 300. */
-export function starMoveLimitsForChallenges(challenges: HandChallenge[]): {
+/** Move budgets tied to the point target (~300 pts per move). */
+export function movesBudgetForStars(stars: 1 | 2 | 3, targetPoints: number): number {
+  const mult =
+    stars === 3
+      ? STAR_MOVE_MULTIPLIER.threeStar
+      : stars === 2
+        ? STAR_MOVE_MULTIPLIER.twoStar
+        : STAR_MOVE_MULTIPLIER.oneStar;
+  return Math.ceil((targetPoints / AVG_PTS_PER_MOVE) * mult);
+}
+
+export function starMoveLimitsForTarget(targetPoints: number): {
   one: number;
   two: number;
   three: number;
 } {
-  const hands = Math.max(1, challengeHandCount(challenges));
-  let three = Math.ceil(hands * (1 + STAR_HAND_BUFFER.threeStar));
-  let two = Math.ceil(hands * (1 + STAR_HAND_BUFFER.twoStar));
-  let one = Math.ceil(hands * (1 + STAR_HAND_BUFFER.oneStar));
-  two = Math.max(two, three + 1);
-  one = Math.max(one, two + 2);
-  return { one, two, three };
+  return {
+    three: movesBudgetForStars(3, targetPoints),
+    two: movesBudgetForStars(2, targetPoints),
+    one: movesBudgetForStars(1, targetPoints),
+  };
 }
 
-export function starMoveLimit(stars: 1 | 2 | 3, challenges: HandChallenge[]): number {
-  const limits = starMoveLimitsForChallenges(challenges);
-  return stars === 3 ? limits.three : stars === 2 ? limits.two : limits.one;
+export function starMoveLimit(stars: 1 | 2 | 3, targetPoints: number): number {
+  return movesBudgetForStars(stars, targetPoints);
 }
 
 /** Theoretical minimum moves to reach the point target at ~300 pts/move. */
@@ -239,23 +243,22 @@ export function baseMovesForTarget(targetPoints: number): number {
 }
 
 /**
- * Estimate swipes — minimum challenge hands plus a small filler allowance.
+ * Estimate swipes to reach the point target (~300 pts per move).
  */
 export function computeEstimatedMoves(
-  _targetPoints: number,
-  challenges: HandChallenge[] = []
+  targetPoints: number,
+  _challenges: HandChallenge[] = []
 ): number {
-  const { challengeHands } = challengeMetrics(challenges);
-  return Math.ceil(challengeHands * 1.2);
+  return baseMovesForTarget(targetPoints);
 }
 
-/** Max hands before game over — 1★ budget from challenge hand count. */
+/** Max hands before game over — 1★ budget (+150% on base). */
 export function computeMoveLimit(
-  _targetPoints: number,
-  challenges: HandChallenge[] = [],
+  targetPoints: number,
+  _challenges: HandChallenge[] = [],
   _level: number = 1
 ): number {
-  return starMoveLimitsForChallenges(challenges).one;
+  return movesBudgetForStars(1, targetPoints);
 }
 
 export function movesRemaining(moveLimit: number, handsUsed: number): number {
@@ -317,16 +320,20 @@ function challengesForLevel(level: number): HandChallenge[] {
   return scaleChallengesForWorld(template, world, step);
 }
 
-function targetPointsForLevel(challenges: HandChallenge[]): number {
-  const { challengePoints } = challengeMetrics(challenges);
-  return Math.max(200, Math.round(challengePoints * TARGET_POINT_RATIO));
+function targetPointsForLevel(level: number, challenges: HandChallenge[]): number {
+  const world = worldForLevel(level);
+  const stage = stepInTier(level);
+  const worldStart = world * WORLD_BASE_POINTS;
+  const scaled = Math.round(worldStart * STAGE_TARGET_GROWTH ** (stage - 1));
+  const floor = challengePointsFloor(challenges);
+  return Math.max(scaled, floor + 300);
 }
 
 function buildLevelConfig(level: number): LevelConfig {
   const challenges = challengesForLevel(level);
   const { challengePoints, challengeHands } = challengeMetrics(challenges);
-  const starMoveLimits = starMoveLimitsForChallenges(challenges);
-  const targetPoints = targetPointsForLevel(challenges);
+  const targetPoints = targetPointsForLevel(level, challenges);
+  const starMoveLimits = starMoveLimitsForTarget(targetPoints);
   return {
     level,
     tier: tierForLevel(level),
@@ -357,7 +364,7 @@ export function levelPointsMet(levelScore: number, cfg: LevelConfig): boolean {
 
 /**
  * Star rating for a cleared level:
- * 1★ reach target within 1★ move budget · 2★ within 2★ budget · 3★ within 3★ budget and all challenges
+ * Requires point target + all hand challenges; then move budget sets 1★ / 2★ / 3★.
  */
 export function computeLevelStars(
   levelScore: number,
@@ -366,11 +373,11 @@ export function computeLevelStars(
   cfg: LevelConfig
 ): number {
   if (!levelPointsMet(levelScore, cfg)) return 0;
+  if (!challengesMet(handCounts, cfg.challenges)) return 0;
 
-  const challengesDone = challengesMet(handCounts, cfg.challenges);
   const { three, two } = cfg.starMoveLimits;
 
-  if (handsUsed <= three && challengesDone) return 3;
+  if (handsUsed <= three) return 3;
   if (handsUsed <= two) return 2;
   return 1;
 }

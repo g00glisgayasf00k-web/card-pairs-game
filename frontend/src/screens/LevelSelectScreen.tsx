@@ -78,12 +78,7 @@ function PokerChip({
 
   return (
     <div className={`map-node${isMilestone ? " map-node--milestone" : ""}`}>
-      {isCurrent && (
-        <div className="map-here" aria-hidden>
-          <span className="map-here__text">You are here</span>
-          <span className="map-here__arrow">▼</span>
-        </div>
-      )}
+      {isCurrent && <span className="map-current-beacon" aria-hidden />}
       <button
         type="button"
         className={[
@@ -102,7 +97,7 @@ function PokerChip({
         <span className="poker-chip__face">
           {locked ? (
             <span className="poker-chip__lock" aria-hidden>
-              🔒
+              LOCK
             </span>
           ) : (
             <span className="poker-chip__label">{label}</span>
@@ -234,16 +229,19 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
         <button type="button" className="felt-icon-btn" onClick={onBack} aria-label="Back">
           ←
         </button>
-        <ResourceBar
-          gems={gems}
-          energy={energy}
-          maxEnergy={MAX_ENERGY}
-          stars={totalStars}
-          onGemsClick={() => setShowGemShop(true)}
-          onEnergyClick={() => setShowGemShop(true)}
-        />
+        <div className="felt-hud__center">
+          <p className="felt-hud__eyebrow">Royal Match Table</p>
+          <ResourceBar
+            gems={gems}
+            energy={energy}
+            maxEnergy={MAX_ENERGY}
+            stars={totalStars}
+            onGemsClick={() => setShowGemShop(true)}
+            onEnergyClick={() => setShowGemShop(true)}
+          />
+        </div>
         <button type="button" className="felt-icon-btn" aria-label="Menu" onClick={onBack}>
-          ☰
+          ≡
         </button>
       </header>
 
@@ -270,7 +268,6 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
       <div className="felt-world-banner">
         <h2 className="felt-world-banner__title">{worldTitle(selectedWorld)}</h2>
         <div className="felt-chest">
-          <span className="felt-chest__icon" aria-hidden>🎁</span>
           <div className="felt-chest__bar">
             <div
               className="felt-chest__fill"
@@ -278,7 +275,7 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
             />
           </div>
           <span className="felt-chest__count">
-            {worldStars}/{chestTarget} ★
+            Stars {worldStars}/{chestTarget}
           </span>
         </div>
       </div>

@@ -36,6 +36,8 @@ export const AVG_PTS_PER_MOVE = 300;
 /** World N starts at N×1000 pts; ~8% growth per stage within a world. */
 const WORLD_BASE_POINTS = 1000;
 const STAGE_TARGET_GROWTH = 1.08;
+/** Slight bump applied after world scale / challenge floor. */
+const TARGET_POINT_BOOST = 1.12;
 
 /** Move budget multipliers on target ÷ 300: 3★ +50%, 2★ +100%, 1★ +150%. */
 export const STAR_MOVE_MULTIPLIER = {
@@ -326,7 +328,7 @@ function targetPointsForLevel(level: number, challenges: HandChallenge[]): numbe
   const worldStart = world * WORLD_BASE_POINTS;
   const scaled = Math.round(worldStart * STAGE_TARGET_GROWTH ** (stage - 1));
   const floor = challengePointsFloor(challenges);
-  return Math.max(scaled, floor + 300);
+  return Math.round(Math.max(scaled, floor + 300) * TARGET_POINT_BOOST);
 }
 
 function buildLevelConfig(level: number): LevelConfig {

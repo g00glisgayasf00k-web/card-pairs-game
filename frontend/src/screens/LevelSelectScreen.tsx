@@ -15,7 +15,7 @@ import {
   buildWorldMapPoints,
   mapViewBoxHeight,
   progressIndexInWorld,
-  smoothPathThrough,
+  segmentedPathThrough,
 } from "../lib/mapLayout";
 import {
   countCompleted,
@@ -118,10 +118,9 @@ function WorldPath({
   progressIndex: number;
   viewHeight: number;
 }) {
-  const fullPath = smoothPathThrough(points);
+  const fullSegments = segmentedPathThrough(points, 2.25);
   const litCount = progressIndex >= 0 ? progressIndex + 1 : 0;
-  const litPoints = points.slice(0, Math.min(litCount, points.length));
-  const progressPath = litPoints.length >= 2 ? smoothPathThrough(litPoints) : "";
+  const activeSegments = fullSegments.slice(0, Math.max(0, litCount - 1));
 
   return (
     <svg
@@ -130,22 +129,27 @@ function WorldPath({
       preserveAspectRatio="xMidYMin meet"
       aria-hidden
     >
-      {/* soft shadow under the ribbon for depth */}
-      <path className="felt-path felt-path--shadow" d={fullPath} />
-      {/* carved trench for the route */}
-      <path className="felt-path felt-path--trench" d={fullPath} />
-      {/* full route — muted base in the world colour */}
-      <path className="felt-path felt-path--base" d={fullPath} />
-      {/* elegant dashed centre line */}
-      <path className="felt-path felt-path--dash" d={fullPath} />
-      {/* completed portion — bright glowing colour */}
-      {progressPath && (
-        <>
-          <path className="felt-path felt-path--active-glow" d={progressPath} />
-          <path className="felt-path felt-path--active" d={progressPath} />
-          <path className="felt-path felt-path--active-dash" d={progressPath} />
-        </>
-      )}
+      {fullSegments.map((d, idx) => (
+        <path key={`shadow-${idx}`} className="felt-path felt-path--shadow" d={d} />
+      ))}
+      {fullSegments.map((d, idx) => (
+        <path key={`trench-${idx}`} className="felt-path felt-path--trench" d={d} />
+      ))}
+      {fullSegments.map((d, idx) => (
+        <path key={`base-${idx}`} className="felt-path felt-path--base" d={d} />
+      ))}
+      {fullSegments.map((d, idx) => (
+        <path key={`dash-${idx}`} className="felt-path felt-path--dash" d={d} />
+      ))}
+      {activeSegments.map((d, idx) => (
+        <path key={`active-glow-${idx}`} className="felt-path felt-path--active-glow" d={d} />
+      ))}
+      {activeSegments.map((d, idx) => (
+        <path key={`active-${idx}`} className="felt-path felt-path--active" d={d} />
+      ))}
+      {activeSegments.map((d, idx) => (
+        <path key={`active-dash-${idx}`} className="felt-path felt-path--active-dash" d={d} />
+      ))}
     </svg>
   );
 }

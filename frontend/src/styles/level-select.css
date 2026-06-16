@@ -322,8 +322,8 @@
   --chip-dark: var(--world-dark, #065f46);
   --chip-light: var(--world-light, #6ee7b7);
   position: relative;
-  width: 3.45rem;
-  height: 3.45rem;
+  width: 3.75rem;
+  height: 3.75rem;
   border: none;
   border-radius: 50%;
   padding: 0;
@@ -444,8 +444,8 @@
 
 /* boss / milestone → larger chip */
 .poker-chip--boss {
-  width: 4.25rem;
-  height: 4.25rem;
+  width: 4.55rem;
+  height: 4.55rem;
 }
 
 .poker-chip--boss .poker-chip__label {

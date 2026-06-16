@@ -15,6 +15,7 @@
 
 .royal-map-screen {
   background:
+    url("/assets/map-sky-day.png") center top / cover no-repeat,
     linear-gradient(180deg, #6ec5ff 0%, #a8daf5 22%, transparent 45%),
     linear-gradient(180deg, transparent 35%, #3d8b5f 55%, #1e5631 85%, #0d2818 100%);
 }
@@ -180,6 +181,45 @@
 .royal-map-trail {
   min-height: 40rem;
   max-height: 48rem;
+  padding: 0;
+  overflow: hidden;
+  border-radius: 12px;
+}
+
+/* Sprite sheet — cliff path strip (cropped from royal-map-sprites.png) */
+.map-path-sprite-bg {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background:
+    url("/assets/map-path-cliff.png") center top / min(100%, 22rem) auto repeat-y;
+  opacity: 0.98;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.25));
+}
+
+.map-island-pad--sprite {
+  display: none;
+}
+
+.royal-map-trail .map-path-svg {
+  opacity: 0.55;
+  mix-blend-mode: multiply;
+}
+
+.royal-map-trail .map-path--track {
+  stroke: rgba(139, 115, 85, 0.45);
+  stroke-width: 4;
+}
+
+.royal-map-trail .map-path--shadow {
+  display: none;
+}
+
+.royal-map-trail .map-path--active {
+  stroke: rgba(255, 215, 80, 0.85);
+  stroke-width: 4;
+  filter: drop-shadow(0 0 8px rgba(255, 200, 60, 0.55));
 }
 
 /* Side widgets */
@@ -769,12 +809,12 @@
   gap: 0.25rem;
 }
 
-/* ── Poker chip nodes ───────────────────────────────────────────────────── */
+/* ── Sprite sheet level nodes (map-node-*.png) ──────────────────────────── */
 
-.level-chip {
+.level-chip--sprite {
   position: relative;
-  width: 4rem;
-  height: 4rem;
+  width: 3.75rem;
+  height: 3.75rem;
   border: none;
   border-radius: 50%;
   padding: 0;
@@ -782,6 +822,114 @@
   background: transparent;
   -webkit-tap-highlight-color: transparent;
   transition: transform 0.2s cubic-bezier(0.34, 1.4, 0.64, 1);
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.35));
+}
+
+.level-chip__sprite {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  pointer-events: none;
+}
+
+.level-chip--sprite-blue .level-chip__sprite {
+  background-image: url("/assets/map-node-blue.png");
+}
+
+.level-chip--sprite-gold .level-chip__sprite {
+  background-image: url("/assets/map-node-gold.png");
+}
+
+.level-chip--sprite-purple .level-chip__sprite {
+  background-image: url("/assets/map-node-purple.png");
+}
+
+.level-chip__label {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  font-family: "Cinzel", "Crimson Pro", Georgia, serif;
+  font-size: 0.72rem;
+  font-weight: 900;
+  color: #fff;
+  text-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.85),
+    0 0 6px rgba(0, 0, 0, 0.45);
+  letter-spacing: -0.03em;
+  pointer-events: none;
+}
+
+.level-chip__lock {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.42);
+}
+
+.level-chip__lock-icon {
+  font-size: 1.35rem;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.6));
+}
+
+.level-chip--completed.level-chip--sprite-gold .level-chip__label {
+  color: #422006;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.level-chip--current {
+  transform: scale(1.14);
+  z-index: 2;
+  animation: chip-current-glow 1.6s ease-in-out infinite;
+}
+
+@keyframes chip-current-glow {
+  0%,
+  100% {
+    filter: drop-shadow(0 0 8px rgba(167, 139, 250, 0.55));
+  }
+  50% {
+    filter: drop-shadow(0 0 20px rgba(196, 181, 253, 0.95));
+  }
+}
+
+.level-chip--locked {
+  cursor: not-allowed;
+  filter: grayscale(0.55) brightness(0.75);
+}
+
+.level-chip--milestone.level-chip--sprite {
+  width: 4.35rem;
+  height: 4.35rem;
+}
+
+.level-chip--milestone .level-chip__label {
+  font-size: 0.82rem;
+}
+
+.level-chip:not(:disabled):active {
+  transform: scale(0.94);
+}
+
+.level-chip--current:not(:disabled):active {
+  transform: scale(1.06);
+}
+
+/* Legacy chip styles (fallback if sprites fail to load) */
+.level-chip:not(.level-chip--sprite) {
+  position: relative;
+  width: 4rem;
+  height: 4rem;
 }
 
 .level-chip__rim {

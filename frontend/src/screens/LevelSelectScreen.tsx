@@ -64,6 +64,16 @@ interface LevelChipProps {
   onSelect: (globalLevel: number) => void;
 }
 
+function nodeSpriteVariant(
+  state: LevelNodeState,
+  isMilestone: boolean,
+  isCurrent: boolean
+): "gold" | "blue" | "purple" {
+  if (isMilestone || state === "completed") return "gold";
+  if (isCurrent) return "purple";
+  return "blue";
+}
+
 function LevelChip({
   globalLevel,
   isMilestone,
@@ -74,6 +84,7 @@ function LevelChip({
 }: LevelChipProps) {
   const locked = state === "locked";
   const label = formatLevelId(globalLevel);
+  const sprite = nodeSpriteVariant(state, isMilestone, isCurrent);
 
   return (
     <div className={`map-node${isMilestone ? " map-node--milestone" : ""}`}>
@@ -83,11 +94,13 @@ function LevelChip({
           <span className="map-you-are-here__text">You are here!</span>
         </div>
       )}
-      <div className="map-island-pad" aria-hidden />
+      <div className="map-island-pad map-island-pad--sprite" aria-hidden />
       <button
         type="button"
         className={[
           "level-chip",
+          "level-chip--sprite",
+          `level-chip--sprite-${sprite}`,
           isMilestone ? "level-chip--milestone" : "",
           `level-chip--${state}`,
           isCurrent ? "level-chip--current" : "",
@@ -98,16 +111,13 @@ function LevelChip({
         onClick={() => onSelect(globalLevel)}
         aria-label={locked ? `${label} locked` : `Play level ${label}`}
       >
-        <span className="level-chip__rim" aria-hidden />
+        <span className="level-chip__sprite" aria-hidden />
         {locked ? (
           <span className="level-chip__lock" aria-hidden>
             <span className="level-chip__lock-icon">🔒</span>
-            <span className="level-chip__lock-label">{label}</span>
           </span>
         ) : (
-          <span className="level-chip__face">
-            <span className="level-chip__label">{label}</span>
-          </span>
+          <span className="level-chip__label">{label}</span>
         )}
       </button>
       {!locked && <StarRating stars={stars} />}
@@ -316,6 +326,7 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
 
           <div className="level-map-scroll royal-map-scroll">
             <div className="level-map royal-map-trail" style={{ aspectRatio: `100 / ${mapHeight}` }}>
+              <div className="map-path-sprite-bg" aria-hidden />
               <WorldMapPath
                 points={mapPoints}
                 progressIndex={pathProgress}

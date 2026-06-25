@@ -186,10 +186,19 @@
 .felt-chest {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.45rem;
   flex: 1 1 auto;
   min-width: 0;
-  max-width: 11rem;
+  max-width: 12rem;
+}
+
+.felt-chest__icon {
+  flex: 0 0 auto;
+  width: 1.75rem;
+  height: 1.75rem;
+  object-fit: contain;
+  image-rendering: pixelated;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.55));
 }
 
 .felt-chest__bar {
@@ -234,11 +243,24 @@
   min-height: 38rem;
   margin: 0 auto;
   border-radius: 18px;
-  border: 1px solid rgba(163, 230, 53, 0.2);
+  border: 2px solid rgba(251, 191, 36, 0.35);
+  background-color: #0a2f18;
+  background-position: center;
+  background-size: cover;
+  background-repeat: no-repeat;
   box-shadow:
-    inset 0 0 70px rgba(0, 0, 0, 0.62),
-    inset 0 0 0 1px rgba(163, 230, 53, 0.14),
-    0 12px 28px rgba(0, 0, 0, 0.35);
+    inset 0 0 40px rgba(0, 0, 0, 0.55),
+    inset 0 0 0 2px rgba(163, 230, 53, 0.12),
+    0 12px 28px rgba(0, 0, 0, 0.45);
+}
+
+.felt-board--pixel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  box-shadow: inset 0 0 80px rgba(0, 0, 0, 0.35);
 }
 
 /* ── Nodes ─────────────────────────────────────────────────────────────────── */
@@ -281,95 +303,54 @@
   filter: drop-shadow(0 5px 8px rgba(0, 0, 0, 0.46));
 }
 
-.poker-chip__edge {
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 50% 50%, transparent 55%, rgba(251, 191, 36, 0.65) 76%, rgba(133, 77, 14, 0.9) 100%),
-    repeating-conic-gradient(
-      from 0deg,
-      transparent 0deg 19deg,
-      rgba(254, 240, 138, 0.92) 19deg 31deg
-    ),
-    radial-gradient(circle at 35% 30%, var(--chip-light), var(--chip-main) 60%, var(--chip-dark) 100%);
-  box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.22),
-    inset 0 -3px 6px rgba(0, 0, 0, 0.4);
+.poker-chip--pixel {
+  display: grid;
+  place-items: center;
 }
 
+.poker-chip__art {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  image-rendering: pixelated;
+  pointer-events: none;
+  user-select: none;
+}
+
+.poker-chip__edge,
 .poker-chip__face {
-  position: absolute;
-  inset: 17%;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: radial-gradient(circle at 38% 32%, var(--chip-light), var(--chip-main) 65%, var(--chip-dark) 100%);
-  box-shadow:
-    inset 0 2px 5px rgba(255, 255, 255, 0.35),
-    inset 0 -3px 7px rgba(0, 0, 0, 0.4),
-    0 0 0 1px rgba(0, 0, 0, 0.2);
-}
-
-.poker-chip__face::before {
-  content: "";
-  position: absolute;
-  inset: 12%;
-  border-radius: 50%;
-  border: 1px solid rgba(255, 255, 255, 0.22);
-}
-
-.poker-chip__face::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: 50%;
-  background: radial-gradient(circle at 28% 25%, rgba(255, 255, 255, 0.26), transparent 44%);
+  display: none;
 }
 
 .poker-chip__label {
-  font-family: "Cinzel", "Crimson Pro", Georgia, serif;
   position: relative;
   z-index: 2;
-  font-size: 0.8rem;
+  font-family: "Cinzel", "Crimson Pro", Georgia, serif;
+  font-size: 0.72rem;
   font-weight: 900;
   color: #fff;
   letter-spacing: -0.02em;
   text-shadow:
-    0 1px 0 rgba(0, 0, 0, 0.55),
-    0 0 5px rgba(0, 0, 0, 0.4);
+    0 1px 0 rgba(0, 0, 0, 0.85),
+    0 0 6px rgba(0, 0, 0, 0.65),
+    0 0 2px rgba(0, 0, 0, 0.9);
+  pointer-events: none;
 }
 
-.poker-chip__lock {
-  position: relative;
-  z-index: 2;
-  font-size: 0.42rem;
-  letter-spacing: 0.08em;
-  font-weight: 800;
-  color: rgba(255, 255, 255, 0.9);
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.7);
-}
-
-/* completed → gold chip */
-.poker-chip--completed {
-  --chip-main: #f59e0b;
-  --chip-dark: #92400e;
-  --chip-light: #fde68a;
-}
-
+/* completed → gold chip tint */
 .poker-chip--completed .poker-chip__label {
   color: #422006;
-  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.5);
+  text-shadow:
+    0 1px 0 rgba(255, 255, 255, 0.65),
+    0 0 4px rgba(255, 255, 255, 0.35);
 }
 
-/* locked → grey chip */
+/* locked → muted */
 .poker-chip--locked {
-  --chip-main: #6b7280;
-  --chip-dark: #1f2937;
-  --chip-light: #9ca3af;
   cursor: not-allowed;
-  filter: grayscale(0.35) drop-shadow(0 3px 5px rgba(0, 0, 0, 0.4));
+  filter: grayscale(0.15) brightness(0.92) drop-shadow(0 3px 5px rgba(0, 0, 0, 0.4));
 }
 
 /* current → glowing, scaled */
@@ -382,10 +363,10 @@
 @keyframes chip-pulse {
   0%,
   100% {
-    filter: drop-shadow(0 0 6px var(--chip-light)) drop-shadow(0 4px 7px rgba(0, 0, 0, 0.45));
+    filter: drop-shadow(0 0 6px rgba(134, 239, 172, 0.85)) drop-shadow(0 4px 7px rgba(0, 0, 0, 0.45));
   }
   50% {
-    filter: drop-shadow(0 0 16px var(--chip-light)) drop-shadow(0 4px 7px rgba(0, 0, 0, 0.45));
+    filter: drop-shadow(0 0 16px rgba(190, 242, 100, 0.95)) drop-shadow(0 4px 7px rgba(0, 0, 0, 0.45));
   }
 }
 
@@ -396,7 +377,7 @@
 }
 
 .poker-chip--boss .poker-chip__label {
-  font-size: 0.96rem;
+  font-size: 0.88rem;
 }
 
 .poker-chip:not(:disabled):active {

@@ -35,6 +35,20 @@ interface Props {
   onSelectLevel: (globalLevel: number) => void;
 }
 
+const MAP_ASSETS = {
+  chipUnlocked: "/assets/pixellab/chip-unlocked.png",
+  chipCompleted: "/assets/pixellab/chip-completed.png",
+  chipLocked: "/assets/pixellab/chip-locked.png",
+  feltPanel: "/assets/map-felt-panel.png",
+  starChest: "/assets/pixellab/star-chest.png",
+} as const;
+
+function chipArtForState(state: LevelNodeState): string {
+  if (state === "locked") return MAP_ASSETS.chipLocked;
+  if (state === "completed") return MAP_ASSETS.chipCompleted;
+  return MAP_ASSETS.chipUnlocked;
+}
+
 function StarRating({ stars }: { stars: number }) {
   return (
     <div className="chip-stars" aria-label={`${stars} of 3 stars`}>
@@ -78,6 +92,7 @@ function PokerChip({
         type="button"
         className={[
           "poker-chip",
+          "poker-chip--pixel",
           isMilestone ? "poker-chip--boss" : "",
           `poker-chip--${state}`,
           isCurrent ? "poker-chip--current" : "",
@@ -88,16 +103,14 @@ function PokerChip({
         onClick={() => onSelect(globalLevel)}
         aria-label={locked ? `${label} locked` : `Play level ${label}`}
       >
-        <span className="poker-chip__edge" aria-hidden />
-        <span className="poker-chip__face">
-          {locked ? (
-            <span className="poker-chip__lock" aria-hidden>
-              🔒
-            </span>
-          ) : (
-            <span className="poker-chip__label">{label}</span>
-          )}
-        </span>
+        <img
+          className="poker-chip__art"
+          src={chipArtForState(state)}
+          alt=""
+          aria-hidden
+          draggable={false}
+        />
+        {!locked && <span className="poker-chip__label">{label}</span>}
       </button>
       {!locked && <StarRating stars={stars} />}
     </div>
@@ -224,6 +237,7 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
       <div className="felt-world-banner">
         <h2 className="felt-world-banner__title">{worldTitle(selectedWorld)}</h2>
         <div className="felt-chest">
+          <img className="felt-chest__icon" src={MAP_ASSETS.starChest} alt="" aria-hidden />
           <div className="felt-chest__bar">
             <div
               className="felt-chest__fill"
@@ -237,7 +251,13 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
       </div>
 
       <div className="felt-board-scroll">
-        <div className="felt-board felt-board--chips-only" style={{ aspectRatio: `100 / ${mapHeight}` }}>
+        <div
+          className="felt-board felt-board--chips-only felt-board--pixel"
+          style={{
+            aspectRatio: `100 / ${mapHeight}`,
+            backgroundImage: `url(${MAP_ASSETS.feltPanel})`,
+          }}
+        >
           <div className="felt-nodes">
             {stagesInWorld(selectedWorld).map((stage, index) => {
               const globalLevel = toGlobalLevel(selectedWorld, stage);

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { submitScore } from "../lib/api";
 import {
   HAND_DISPLAY,
@@ -72,6 +73,11 @@ interface RunState {
 }
 
 const ROUND_COMPLETE_MS = 2200;
+
+function gamePortal(node: ReactNode) {
+  if (typeof document === "undefined") return null;
+  return createPortal(node, document.body);
+}
 
 function initRunState(startLevel?: number): RunState {
   const saved = loadProgress();
@@ -271,8 +277,6 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
 
   const advanceLevel = useCallback(() => {
     advancingRef.current = false;
-    setCompletedLevel(null);
-    setCompletedStats(null);
     clearEnergyPaidLevel();
     const nextLevel = levelRef.current + 1;
     if (!beginLevelAttempt(nextLevel)) {
@@ -282,23 +286,23 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
       return;
     }
     setEnergyBlocked(false);
-    setRun((prev) => {
-      const next: RunState = {
-        ...prev,
-        level: prev.level + 1,
-        levelScore: 0,
-        levelHands: 0,
-        levelHandCounts: {},
-        bonusMoves: 0,
-        tutorialStep: 0,
-      };
-      levelScoreRef.current = 0;
-      levelHandsRef.current = 0;
-      levelHandCountsRef.current = {};
-      return next;
-    });
-    setPhase("playing");
+    levelScoreRef.current = 0;
+    levelHandsRef.current = 0;
+    levelHandCountsRef.current = {};
+    setRun((prev) => ({
+      ...prev,
+      level: prev.level + 1,
+      levelScore: 0,
+      levelHands: 0,
+      levelHandCounts: {},
+      bonusMoves: 0,
+      tutorialStep: 0,
+    }));
+    setBoardFeedback(null);
     setBoardKey((k) => k + 1);
+    setCompletedLevel(null);
+    setCompletedStats(null);
+    setPhase("playing");
   }, []);
 
   const retryLevel = useCallback(() => {
@@ -346,6 +350,7 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
       if (!levelRequirementsMet(score, handCounts, cfg)) return false;
 
       advancingRef.current = true;
+      setBoardFeedback(null);
       const stars = markLevelComplete(
         level,
         computeLevelStars(score, handCounts, hands, cfg)
@@ -405,8 +410,9 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
           bestHand: nextBest,
         };
       });
-      tryAdvanceLevel(nextScore, nextHandCounts, nextHands);
+      const advanced = tryAdvanceLevel(nextScore, nextHandCounts, nextHands);
       if (
+        !advanced &&
         !levelPointsMet(nextScore, cfg) &&
         outOfMoves(effectiveMoveLimit, nextHands)
       ) {
@@ -644,6 +650,72 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
           )}
         </header>
 
+        <div className="mobile-shell__play">
+          <nav className="action-bar action-bar--rail" aria-label="Game actions">
+            <button
+              type="button"
+              className="action-btn action-btn--restart"
+              onClick={retryLevel}
+              disabled={boardLocked || tutorialActive}
+              title={tutorialActive ? "Finish the lesson first" : "Restart this level"}
+            >
+              <span className="action-btn__icon">↺</span>
+              <span className="action-btn__label">Restart</span>
+            </button>
+            <button
+              type="button"
+              className="action-btn action-btn--hint"
+              onClick={handleHint}
+              disabled={boardLocked || tutorialActive}
+              title={tutorialActive ? "Finish the lesson first" : "Show a card to start toward a goal hand"}
+            >
+              <span className="action-btn__icon">💡</span>
+              <span className="action-btn__label">Hint</span>
+            </button>
+            <button
+              type="button"
+              className="action-btn action-btn--shuffle"
+              onClick={() => boardRef.current?.shuffle()}
+              disabled={boardLocked || tutorialActive}
+              title={tutorialActive ? "Finish the lesson first" : "Shuffle the board"}
+            >
+              <span className="action-btn__icon">🔀</span>
+              <span className="action-btn__label">Shuffle</span>
+            </button>
+            <button
+              type="button"
+              className="action-btn action-btn--specials"
+              onClick={() => setShowSpecials(true)}
+              title="How arrow, bomb, joker, and rainbow power-ups work"
+            >
+              <span className="action-btn__icon">✨</span>
+              <span className="action-btn__label">Powers</span>
+            </button>
+            <button
+              type="button"
+              className="action-btn action-btn--scores"
+              onClick={() => setShowScores(true)}
+              title="Points awarded for each poker hand"
+            >
+              <span className="action-btn__icon">📋</span>
+              <span className="action-btn__label">Payouts</span>
+            </button>
+            {showChallengeUi && (
+              <button
+                type="button"
+                className={`action-btn action-btn--goals${pointsMet && !challengesComplete ? " action-btn--goals-alert" : ""}`}
+                onClick={() => setShowChallenges(true)}
+                title="Mission goals — point target and hand challenges"
+              >
+                <span className="action-btn__icon">🎯</span>
+                <span className="action-btn__label">Goals</span>
+                <span className="action-btn__cost">
+                  {challengesDone}/{challengesTotal}
+                </span>
+              </button>
+            )}
+          </nav>
+
         <main className={`board-stage${boardLocked ? " board-stage--locked" : ""}`}>
           <div className="board-stage__glow" aria-hidden />
           <div className="board-stage__frame">
@@ -699,74 +771,11 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
             )
           )}
         </main>
-
-        <nav className="action-bar">
-          <button
-            type="button"
-            className="action-btn action-btn--restart"
-            onClick={retryLevel}
-            disabled={boardLocked || tutorialActive}
-            title={tutorialActive ? "Finish the lesson first" : "Restart this level"}
-          >
-            <span className="action-btn__icon">↺</span>
-            <span className="action-btn__label">Restart</span>
-          </button>
-          <button
-            type="button"
-            className="action-btn action-btn--hint"
-            onClick={handleHint}
-            disabled={boardLocked || tutorialActive}
-            title={tutorialActive ? "Finish the lesson first" : "Show a card to start toward a goal hand"}
-          >
-            <span className="action-btn__icon">💡</span>
-            <span className="action-btn__label">Hint</span>
-          </button>
-          <button
-            type="button"
-            className="action-btn action-btn--shuffle"
-            onClick={() => boardRef.current?.shuffle()}
-            disabled={boardLocked || tutorialActive}
-            title={tutorialActive ? "Finish the lesson first" : "Shuffle the board"}
-          >
-            <span className="action-btn__icon">🔀</span>
-            <span className="action-btn__label">Shuffle</span>
-          </button>
-          <button
-            type="button"
-            className="action-btn action-btn--specials"
-            onClick={() => setShowSpecials(true)}
-            title="How arrow, bomb, joker, and rainbow power-ups work"
-          >
-            <span className="action-btn__icon">✨</span>
-            <span className="action-btn__label">Powers</span>
-          </button>
-          <button
-            type="button"
-            className="action-btn action-btn--scores"
-            onClick={() => setShowScores(true)}
-            title="Points awarded for each poker hand"
-          >
-            <span className="action-btn__icon">📋</span>
-            <span className="action-btn__label">Payouts</span>
-          </button>
-          {showChallengeUi && (
-            <button
-              type="button"
-              className={`action-btn action-btn--goals${pointsMet && !challengesComplete ? " action-btn--goals-alert" : ""}`}
-              onClick={() => setShowChallenges(true)}
-              title="Mission goals — point target and hand challenges"
-            >
-              <span className="action-btn__icon">🎯</span>
-              <span className="action-btn__label">Goals</span>
-              <span className="action-btn__cost">
-                {challengesDone}/{challengesTotal}
-              </span>
-            </button>
-          )}
-        </nav>
+        </div>
       </div>
 
-      {phase === "round_complete" && completedLevel !== null && completedCfg && (
+      {phase === "round_complete" && completedLevel !== null && completedCfg &&
+        gamePortal(
         <div className="modal-overlay levelup-overlay round-complete-overlay">
           <div className="modal levelup-modal round-complete-modal">
             <div className="levelup-badge round-complete-badge">ROUND COMPLETE!</div>
@@ -823,9 +832,10 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
             </button>
           </div>
         </div>
-      )}
+        )}
 
-      {phase === "moves_failed" && (
+      {phase === "moves_failed" &&
+        gamePortal(
         <div className="modal-overlay levelup-overlay">
           <div className="modal levelup-modal moves-failed-modal game-over-modal">
             <div className="levelup-badge moves-failed-badge game-over-badge">OUT OF MOVES</div>
@@ -885,9 +895,10 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
             </button>
           </div>
         </div>
-      )}
+        )}
 
-      {phase === "campaign_complete" && (
+      {phase === "campaign_complete" &&
+        gamePortal(
         <div className="modal-overlay levelup-overlay">
           <div className="modal levelup-modal">
             <div className="levelup-badge">YOU WIN!</div>
@@ -912,7 +923,7 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
             </button>
           </div>
         </div>
-      )}
+        )}
 
       {showChallenges && (
         <div

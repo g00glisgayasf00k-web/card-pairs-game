@@ -8,3 +8,13 @@ venv/
 *.db
 .DS_Store
 *.log
+
+# Capacitor / Android
+frontend/android/.gradle/
+frontend/android/app/build/
+frontend/android/build/
+frontend/android/local.properties
+frontend/android/.idea/
+*.keystore
+*.jks
+mobile/output/

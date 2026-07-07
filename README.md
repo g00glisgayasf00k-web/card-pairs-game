@@ -76,6 +76,8 @@ Submit scores with `Authorization: Bearer <token>` after login.
 backend/app/blueprints/   # Flask blueprints for Render
 backend/app/services/     # Poker hand evaluation
 frontend/src/             # React game UI
+frontend/android/         # Capacitor Android project (APK)
+mobile/                   # Android build scripts + APK output
 render.yaml               # Render blueprint
 Dockerfile                # Single-container production build
 ```

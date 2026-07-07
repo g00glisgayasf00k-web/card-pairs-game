@@ -11,7 +11,7 @@
     "cap:sync": "npm run build:mobile && npx cap sync android",
     "cap:open": "npx cap open android",
     "cap:run": "npm run cap:sync && npx cap run android",
-    "icons:android": "node scripts/generate-android-icons.mjs && npx @capacitor/assets generate --android --assetPath resources/assets"
+    "icons:android": "node scripts/generate-android-icons.mjs"
   },
   "dependencies": {
     "@capacitor/core": "^7.4.2",

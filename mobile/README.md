@@ -68,6 +68,10 @@ adb install -r mobile\output\royal-match-poker-debug.apk
 
 If the old icon still shows, uninstall the app first, then install again (Android caches launcher icons).
 
+**Important:** The website (browser / “Add to home screen”) and the **APK app** use different icons. Pushing to GitHub updates the website; the phone home-screen icon for the native app only changes when you reinstall the APK built locally.
+
+To confirm you have the new app, check version **1.2.0** in Android Settings → Apps → Royal Match Poker.
+
 ## Open in Android Studio
 
 ```powershell

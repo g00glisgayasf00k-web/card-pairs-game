@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => ({
     react(),
     VitePWA({
       registerType: "autoUpdate",
-      includeAssets: ["favicon.svg"],
+      includeAssets: ["favicon.svg", "icon-192.png", "icon-512.png"],
       manifest: {
         name: "Royal Match Poker",
         short_name: "Royal Match",
@@ -17,7 +17,11 @@ export default defineConfig(({ mode }) => ({
         background_color: "#0a3522",
         display: "standalone",
         orientation: "portrait",
-        icons: [{ src: "favicon.svg", sizes: "any", type: "image/svg+xml" }],
+        icons: [
+          { src: "icon-192.png", sizes: "192x192", type: "image/png" },
+          { src: "icon-512.png", sizes: "512x512", type: "image/png" },
+          { src: "favicon.svg", sizes: "any", type: "image/svg+xml" },
+        ],
       },
     }),
   ],

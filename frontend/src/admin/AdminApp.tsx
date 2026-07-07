@@ -6,6 +6,7 @@ import {
   fetchAdminUserDetail,
   fetchAdminUsers,
   fetchAdminMe,
+  grantAdminUserResources,
   login,
   resetAdminUser,
   type AdminUserRow,
@@ -52,6 +53,8 @@ export function AdminApp() {
   const [userDetail, setUserDetail] = useState<Awaited<ReturnType<typeof fetchAdminUserDetail>> | null>(
     null
   );
+  const [grantGems, setGrantGems] = useState("100");
+  const [grantEnergy, setGrantEnergy] = useState("5");
 
   const loadStats = useCallback(async () => {
     const data = await fetchAdminStats();
@@ -242,6 +245,47 @@ export function AdminApp() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGrantResources = async (gems?: number, energy?: number) => {
+    if (!userDetail) return;
+    if (!gems && !energy) return;
+
+    setLoading(true);
+    setError(null);
+    try {
+      await grantAdminUserResources(userDetail.id, {
+        ...(gems ? { gems } : {}),
+        ...(energy ? { energy } : {}),
+      });
+      setUserDetail(await fetchAdminUserDetail(userDetail.id));
+      await loadUsers(userOffset, search);
+      await loadStats();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Grant failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const submitGrantGems = (e: FormEvent) => {
+    e.preventDefault();
+    const amount = parseInt(grantGems, 10);
+    if (!Number.isFinite(amount) || amount < 1) {
+      setError("Enter a valid gem amount (1 or more)");
+      return;
+    }
+    void handleGrantResources(amount, undefined);
+  };
+
+  const submitGrantEnergy = (e: FormEvent) => {
+    e.preventDefault();
+    const amount = parseInt(grantEnergy, 10);
+    if (!Number.isFinite(amount) || amount < 1) {
+      setError("Enter a valid energy amount (1 or more)");
+      return;
+    }
+    void handleGrantResources(undefined, amount);
   };
 
   if (!authed) {
@@ -647,6 +691,83 @@ export function AdminApp() {
               </div>
             ) : (
               <p className="admin-muted">No cloud save on record.</p>
+            )}
+
+            {!userDetail.is_admin && (
+              <div className="admin-grant">
+                <h3>Grant resources</h3>
+                <p className="admin-muted">
+                  Adds gems or energy to the player&apos;s cloud save. They receive it on next sync or refresh.
+                  {!userDetail.progress_summary && " A new cloud save will be created if needed."}
+                </p>
+                <div className="admin-grant__grid">
+                  <form className="admin-grant__form" onSubmit={submitGrantGems}>
+                    <label className="admin-grant__label" htmlFor="grant-gems">
+                      💎 Gems to add
+                    </label>
+                    <div className="admin-grant__row">
+                      <input
+                        id="grant-gems"
+                        type="number"
+                        min={1}
+                        max={100000}
+                        value={grantGems}
+                        onChange={(e) => setGrantGems(e.target.value)}
+                        disabled={loading}
+                      />
+                      <button type="submit" className="admin-btn admin-btn--primary admin-btn--sm" disabled={loading}>
+                        Add gems
+                      </button>
+                    </div>
+                    <div className="admin-grant__quick">
+                      {[100, 500, 1000].map((n) => (
+                        <button
+                          key={n}
+                          type="button"
+                          className="admin-btn admin-btn--ghost admin-btn--xs"
+                          disabled={loading}
+                          onClick={() => void handleGrantResources(n, undefined)}
+                        >
+                          +{n}
+                        </button>
+                      ))}
+                    </div>
+                  </form>
+
+                  <form className="admin-grant__form" onSubmit={submitGrantEnergy}>
+                    <label className="admin-grant__label" htmlFor="grant-energy">
+                      ⚡ Energy to add
+                    </label>
+                    <div className="admin-grant__row">
+                      <input
+                        id="grant-energy"
+                        type="number"
+                        min={1}
+                        max={10}
+                        value={grantEnergy}
+                        onChange={(e) => setGrantEnergy(e.target.value)}
+                        disabled={loading}
+                      />
+                      <button type="submit" className="admin-btn admin-btn--primary admin-btn--sm" disabled={loading}>
+                        Add energy
+                      </button>
+                    </div>
+                    <div className="admin-grant__quick">
+                      {[1, 5, 10].map((n) => (
+                        <button
+                          key={n}
+                          type="button"
+                          className="admin-btn admin-btn--ghost admin-btn--xs"
+                          disabled={loading}
+                          onClick={() => void handleGrantResources(undefined, n)}
+                        >
+                          +{n}
+                        </button>
+                      ))}
+                    </div>
+                  </form>
+                </div>
+              </div>
             )}
 
             <h3>Score history</h3>

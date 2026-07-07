@@ -1,6 +1,7 @@
 import json
 from datetime import datetime, timedelta, timezone
 from functools import wraps
+from zoneinfo import ZoneInfo
 
 from flask import Blueprint, current_app, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
@@ -10,6 +11,75 @@ from app.leaderboards import build_leaderboards
 from app.models import PlayerProgress, Score, User, db
 
 admin_bp = Blueprint("admin", __name__)
+
+PROGRESS_VERSION = 8
+MAX_ENERGY = 10
+STARTING_CREDITS = 200
+MAX_GEM_GRANT = 100_000
+MAX_ENERGY_GRANT = 10
+
+
+def _uk_date_key() -> str:
+    return datetime.now(ZoneInfo("Europe/London")).strftime("%Y-%m-%d")
+
+
+def _now_ms() -> int:
+    return int(datetime.now(timezone.utc).timestamp() * 1000)
+
+
+def _default_progress_payload() -> dict:
+    now = _now_ms()
+    return {
+        "v": PROGRESS_VERSION,
+        "highestUnlocked": 1,
+        "completedLevels": [],
+        "levelStars": {},
+        "level": 1,
+        "levelScore": 0,
+        "levelHands": 0,
+        "levelHandCounts": {},
+        "lifetimeHandCounts": {},
+        "handsCleared": 0,
+        "bestHand": "pair",
+        "credits": STARTING_CREDITS,
+        "energy": MAX_ENERGY,
+        "energyUkDate": _uk_date_key(),
+        "energyPaidLevel": None,
+        "streak": 0,
+        "tutorialStep": 0,
+        "updatedAt": now,
+    }
+
+
+def _load_progress_payload(row: PlayerProgress | None) -> dict:
+    if not row:
+        return _default_progress_payload()
+    try:
+        payload = json.loads(row.payload)
+        if isinstance(payload, dict):
+            return payload
+    except json.JSONDecodeError:
+        pass
+    return _default_progress_payload()
+
+
+def _save_progress_payload(user_id: int, payload: dict, client_updated_at: int) -> PlayerProgress:
+    payload_text = json.dumps(payload)
+    row = PlayerProgress.query.filter_by(user_id=user_id).first()
+    if not row:
+        row = PlayerProgress(
+            user_id=user_id,
+            payload=payload_text,
+            client_updated_at=client_updated_at,
+            updated_at=datetime.now(timezone.utc),
+        )
+        db.session.add(row)
+    else:
+        row.payload = payload_text
+        row.client_updated_at = client_updated_at
+        row.updated_at = datetime.now(timezone.utc)
+    db.session.commit()
+    return row
 
 
 def admin_required(fn):
@@ -280,3 +350,67 @@ def admin_delete_user(user_id: int):
     db.session.delete(user)
     db.session.commit()
     return jsonify({"deleted": True, "username": username}), 200
+
+
+@admin_bp.post("/users/<int:user_id>/grant")
+@admin_required
+def admin_grant_resources(user_id: int):
+    """Add gems and/or energy to a player's cloud save."""
+    user = db.session.get(User, user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    if user.is_admin:
+        return jsonify({"error": "Cannot grant resources to admin accounts"}), 400
+
+    data = request.get_json(silent=True) or {}
+    gems_raw = data.get("gems")
+    energy_raw = data.get("energy")
+
+    if gems_raw is None and energy_raw is None:
+        return jsonify({"error": "Provide gems and/or energy to grant"}), 400
+
+    gems_add = 0
+    energy_add = 0
+
+    if gems_raw is not None:
+        try:
+            gems_add = int(gems_raw)
+        except (TypeError, ValueError):
+            return jsonify({"error": "gems must be an integer"}), 400
+        if gems_add < 1 or gems_add > MAX_GEM_GRANT:
+            return jsonify({"error": f"gems must be between 1 and {MAX_GEM_GRANT}"}), 400
+
+    if energy_raw is not None:
+        try:
+            energy_add = int(energy_raw)
+        except (TypeError, ValueError):
+            return jsonify({"error": "energy must be an integer"}), 400
+        if energy_add < 1 or energy_add > MAX_ENERGY_GRANT:
+            return jsonify({"error": f"energy must be between 1 and {MAX_ENERGY_GRANT}"}), 400
+
+    row = PlayerProgress.query.filter_by(user_id=user.id).first()
+    payload = _load_progress_payload(row)
+    now = _now_ms()
+
+    if gems_add:
+        payload["credits"] = max(0, int(payload.get("credits") or STARTING_CREDITS) + gems_add)
+
+    if energy_add:
+        current_energy = int(payload.get("energy") if payload.get("energy") is not None else MAX_ENERGY)
+        payload["energy"] = min(MAX_ENERGY, max(0, current_energy + energy_add))
+        payload["energyUkDate"] = _uk_date_key()
+
+    payload["updatedAt"] = now
+    _save_progress_payload(user.id, payload, now)
+
+    summary = _progress_summary(payload)
+    return jsonify(
+        {
+            "granted": True,
+            "username": user.username,
+            "gems_added": gems_add,
+            "energy_added": energy_add,
+            "progress_summary": summary,
+            "client_updated_at": now,
+        }
+    ), 200

@@ -570,6 +570,66 @@ body {
   margin-top: 0.85rem;
 }
 
+.admin-grant {
+  margin: 1.75rem 0;
+  padding: 1.15rem 1.25rem;
+  border-radius: 12px;
+  background: rgba(37, 99, 235, 0.08);
+  border: 1px solid rgba(96, 165, 250, 0.28);
+}
+
+.admin-grant h3 {
+  margin-top: 0;
+  color: #bfdbfe;
+}
+
+.admin-grant__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+  margin-top: 0.85rem;
+}
+
+.admin-grant__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.admin-grant__label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #cbd5e1;
+}
+
+.admin-grant__row {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.admin-grant__row input {
+  flex: 1;
+  min-width: 0;
+  padding: 0.55rem 0.65rem;
+  border-radius: 8px;
+  border: 1px solid #334155;
+  background: #0b1220;
+  color: #e2e8f0;
+  font: inherit;
+  font-size: 0.9rem;
+}
+
+.admin-grant__row input:focus {
+  outline: none;
+  border-color: #3b82f6;
+}
+
+.admin-grant__quick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
 @media (max-width: 768px) {
   .admin-shell {
     flex-direction: column;

@@ -212,3 +212,20 @@ export async function deleteAdminUser(userId: number) {
     method: "DELETE",
   });
 }
+
+export async function grantAdminUserResources(
+  userId: number,
+  body: { gems?: number; energy?: number }
+) {
+  return request<{
+    granted: boolean;
+    username: string;
+    gems_added: number;
+    energy_added: number;
+    progress_summary: AdminUserRow["progress"];
+    client_updated_at: number;
+  }>(`/api/admin/users/${userId}/grant`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}

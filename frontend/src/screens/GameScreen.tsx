@@ -777,8 +777,8 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
                   <span className="perk-icon">💡</span>
                   <span>
                     {(completedStats?.stars ?? 0) < 2
-                      ? `Hit ${completedCfg.targetPoints.toLocaleString()} pts, finish all challenges, and use ≤${twoStarMoveTarget} moves for 2★`
-                      : `Hit ${completedCfg.targetPoints.toLocaleString()} pts, finish all challenges, and use ≤${starMoveTarget} moves for 3★`}
+                      ? `Hit ${completedCfg.targetPoints.toLocaleString()} pts with milestones in ≤${twoStarMoveTarget} moves for 2★`
+                      : `Hit ${completedCfg.targetPoints.toLocaleString()} pts with milestones in ≤${starMoveTarget} moves for 3★`}
                   </span>
                 </div>
               )}
@@ -904,23 +904,25 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
             <div className="challenges-modal__points">
               <span className="challenges-modal__points-label">Main goal</span>
               <span className="challenges-modal__points-val">
-                Score {cfg.targetPoints.toLocaleString()} pts and complete every hand challenge
+                Score {cfg.targetPoints.toLocaleString()} pts within {oneStarMoveTarget} moves
               </span>
               <span className="challenges-modal__points-sub">
-                Challenges worth {cfg.challengePoints.toLocaleString()} pts base ·{" "}
-                {cfg.challengeHands} hands required · {cfg.moveLimit} max moves · {movesLeft} left
+                {cfg.moveLimit} max moves · {movesLeft} left
+                {cfg.challenges.length > 0
+                  ? ` · ${cfg.challenges.length} milestone hand${cfg.challenges.length === 1 ? "" : "s"} along the way`
+                  : ""}
               </span>
             </div>
 
-            <h3 className="specials-subtitle">Star rating — points, challenges, and move budgets</h3>
+            <h3 className="specials-subtitle">Star rating — score target and move budget</h3>
             <ul className="star-criteria-list star-criteria-list--modal">
               <li
                 className={`star-criteria${pointsMet && challengesComplete && levelHands <= oneStarMoveTarget ? " star-criteria--done" : ""}`}
               >
                 <span className="star-criteria__stars">★</span>
                 <span>
-                  <strong>Clear the level</strong> — score {cfg.targetPoints.toLocaleString()} pts, finish
-                  all hand challenges, within {oneStarMoveTarget} moves.
+                  <strong>Clear the level</strong> — score {cfg.targetPoints.toLocaleString()} pts, hit every
+                  milestone hand, within {oneStarMoveTarget} moves.
                 </span>
               </li>
               <li
@@ -928,8 +930,8 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
               >
                 <span className="star-criteria__stars">★★</span>
                 <span>
-                  <strong>Speed run</strong> — hit {cfg.targetPoints.toLocaleString()} pts, complete every
-                  challenge, in {twoStarMoveTarget} moves or fewer.
+                  <strong>Speed run</strong> — hit {cfg.targetPoints.toLocaleString()} pts and milestones in{" "}
+                  {twoStarMoveTarget} moves or fewer.
                 </span>
               </li>
               <li
@@ -937,15 +939,15 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
               >
                 <span className="star-criteria__stars">★★★</span>
                 <span>
-                  <strong>Perfect run</strong> — hit {cfg.targetPoints.toLocaleString()} pts, complete every
-                  challenge, in {starMoveTarget} moves or fewer.
+                  <strong>Perfect run</strong> — hit {cfg.targetPoints.toLocaleString()} pts and milestones in{" "}
+                  {starMoveTarget} moves or fewer.
                 </span>
               </li>
             </ul>
 
             {cfg.challenges.length > 0 && (
               <>
-                <h3 className="specials-subtitle">Hand challenges (required)</h3>
+                <h3 className="specials-subtitle">Milestone hands</h3>
                 <ul className="challenge-list challenge-list--modal">
                   {cfg.challenges.map((c) => {
                     const have = levelHandCounts[c.hand] ?? 0;
@@ -973,7 +975,7 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
 
             {pointsMet && !challengesComplete && (
               <p className="challenges-modal__warn">
-                Points reached — finish the hand challenges below to clear the level.
+                Points reached — finish the milestone hands below to clear the level.
               </p>
             )}
 

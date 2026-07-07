@@ -36,8 +36,25 @@ export const AVG_PTS_PER_MOVE = 300;
 /** World N starts at N×1000 pts; ~8% growth per stage within a world. */
 const WORLD_BASE_POINTS = 1000;
 const STAGE_TARGET_GROWTH = 1.08;
-/** Slight bump applied after world scale / challenge floor. */
+/** Applied after world × stage scale. */
 const TARGET_POINT_BOOST = 1.12;
+
+/**
+ * Each world introduces one new hand type for milestone goals.
+ * World 1 = Pair + Two Pair only; world 2 adds Three of a Kind; and so on.
+ */
+const WORLD_INTRO_HAND: HandLabel[] = [
+  "two_pair",
+  "three_of_a_kind",
+  "straight",
+  "flush",
+  "full_house",
+  "four_of_a_kind",
+  "straight_flush",
+  "royal_flush",
+  "royal_flush",
+  "royal_flush",
+];
 
 /** Move budget multipliers on target ÷ 300: 3★ +50%, 2★ +100%, 1★ +150%. */
 export const STAR_MOVE_MULTIPLIER = {
@@ -71,109 +88,53 @@ const HAND_LADDER: HandLabel[] = [
   "royal_flush",
 ];
 
-/** World 1 (display 0-x) hand requirements — steps 1–10. Step 1 is always 3× Pair for every world. */
-const STAGE_CHALLENGE_TEMPLATE: HandChallenge[][] = [
-  [{ hand: "pair", minCount: 3 }],
-  [
-    { hand: "pair", minCount: 3 },
-    { hand: "two_pair", minCount: 1 },
-  ],
-  [
-    { hand: "pair", minCount: 3 },
-    { hand: "two_pair", minCount: 2 },
-  ],
-  [
-    { hand: "pair", minCount: 3 },
-    { hand: "two_pair", minCount: 2 },
-    { hand: "three_of_a_kind", minCount: 1 },
-  ],
-  [
-    { hand: "pair", minCount: 3 },
-    { hand: "two_pair", minCount: 2 },
-    { hand: "three_of_a_kind", minCount: 2 },
-  ],
-  [
-    { hand: "two_pair", minCount: 3 },
-    { hand: "three_of_a_kind", minCount: 2 },
-    { hand: "straight", minCount: 1 },
-  ],
-  [
-    { hand: "two_pair", minCount: 3 },
-    { hand: "three_of_a_kind", minCount: 2 },
-    { hand: "straight", minCount: 1 },
-    { hand: "flush", minCount: 1 },
-  ],
-  [
-    { hand: "two_pair", minCount: 3 },
-    { hand: "three_of_a_kind", minCount: 2 },
-    { hand: "straight", minCount: 1 },
-    { hand: "flush", minCount: 1 },
-    { hand: "full_house", minCount: 1 },
-  ],
-  [
-    { hand: "three_of_a_kind", minCount: 3 },
-    { hand: "straight", minCount: 1 },
-    { hand: "flush", minCount: 1 },
-    { hand: "full_house", minCount: 1 },
-    { hand: "four_of_a_kind", minCount: 1 },
-  ],
-  [
-    { hand: "three_of_a_kind", minCount: 2 },
-    { hand: "straight", minCount: 1 },
-    { hand: "flush", minCount: 1 },
-    { hand: "full_house", minCount: 1 },
-    { hand: "four_of_a_kind", minCount: 2 },
-  ],
-];
-
-function mergeChallenge(list: HandChallenge[], hand: HandLabel, add: number): void {
-  if (add <= 0) return;
-  const existing = list.find((c) => c.hand === hand);
-  if (existing) existing.minCount += add;
-  else list.push({ hand, minCount: add });
-}
-
-function cloneChallenges(challenges: HandChallenge[]): HandChallenge[] {
-  return challenges.map((c) => ({ ...c }));
-}
-
 function sortChallengesByHand(challenges: HandChallenge[]): HandChallenge[] {
   return [...challenges].sort(
     (a, b) => HAND_LADDER.indexOf(a.hand) - HAND_LADDER.indexOf(b.hand)
   );
 }
 
-/**
- * Later worlds repeat the same stage shape with higher counts and premium hands.
- * Every world's first stage stays at exactly 3× Pair.
- */
-function scaleChallengesForWorld(challenges: HandChallenge[], world: number, step: number): HandChallenge[] {
-  if (world <= 1) return cloneChallenges(challenges);
+/** Light milestone hands — points target is the main goal; 1–2 hands per level max. */
+function challengesForLevel(level: number): HandChallenge[] {
+  const world = worldForLevel(level);
+  const step = stepInTier(level);
+  const introHand = WORLD_INTRO_HAND[world - 1] ?? "royal_flush";
 
-  const bump = world - 1;
-  const scaled = cloneChallenges(challenges).map((c) => ({
-    hand: c.hand,
-    minCount: c.minCount + bump,
-  }));
-
-  if (step >= 5) {
-    mergeChallenge(scaled, "straight_flush", Math.max(1, Math.ceil(bump / 2)));
-  }
-  if (step >= 7 && world >= 3) {
-    mergeChallenge(scaled, "four_of_a_kind", 1);
-  }
-  if (step >= 8 && world >= 4) {
-    mergeChallenge(scaled, "straight_flush", bump);
-  }
-  if (step >= 9 && world >= 5) {
-    mergeChallenge(scaled, "royal_flush", Math.max(1, Math.floor(bump / 2)));
-  }
-  if (step >= 10 && world >= 6) {
-    mergeChallenge(scaled, "royal_flush", 1);
-    mergeChallenge(scaled, "straight_flush", 1);
+  if (step === 1) {
+    return [{ hand: "pair", minCount: 2 }];
   }
 
-  return sortChallengesByHand(scaled);
+  if (world === 1) {
+    if (step <= 5) {
+      return [{ hand: "pair", minCount: step <= 3 ? 2 : 3 }];
+    }
+    if (step <= 7) {
+      return [{ hand: "two_pair", minCount: 1 }];
+    }
+    return sortChallengesByHand([
+      { hand: "pair", minCount: 2 },
+      { hand: "two_pair", minCount: 1 },
+    ]);
+  }
+
+  const prevHand =
+    HAND_LADDER.indexOf(introHand) > 0
+      ? HAND_LADDER[HAND_LADDER.indexOf(introHand) - 1]!
+      : "pair";
+
+  if (step <= 5) {
+    return [{ hand: introHand, minCount: 1 }];
+  }
+  if (step <= 8) {
+    return sortChallengesByHand([
+      { hand: "pair", minCount: 2 },
+      { hand: introHand, minCount: 1 },
+    ]);
+  }
+  return sortChallengesByHand([
+    { hand: prevHand, minCount: 1 },
+    { hand: introHand, minCount: 2 },
+  ]);
 }
 
 function worldForLevel(level: number): number {
@@ -309,32 +270,18 @@ export function formatChallenge(c: HandChallenge): string {
   return c.minCount === 1 ? `1× ${name}` : `${c.minCount}× ${name}`;
 }
 
-/** Progressive hand requirements per stage; worlds 2+ scale counts and add premium hands. */
-function challengesForLevel(level: number): HandChallenge[] {
-  const world = worldForLevel(level);
-  const step = stepInTier(level);
-
-  if (step === 1) {
-    return [{ hand: "pair", minCount: 3 }];
-  }
-
-  const template = STAGE_CHALLENGE_TEMPLATE[step - 1] ?? STAGE_CHALLENGE_TEMPLATE[9]!;
-  return scaleChallengesForWorld(template, world, step);
-}
-
-function targetPointsForLevel(level: number, challenges: HandChallenge[]): number {
+function targetPointsForLevel(level: number): number {
   const world = worldForLevel(level);
   const stage = stepInTier(level);
   const worldStart = world * WORLD_BASE_POINTS;
   const scaled = Math.round(worldStart * STAGE_TARGET_GROWTH ** (stage - 1));
-  const floor = challengePointsFloor(challenges);
-  return Math.round(Math.max(scaled, floor + 300) * TARGET_POINT_BOOST);
+  return Math.round(scaled * TARGET_POINT_BOOST);
 }
 
 function buildLevelConfig(level: number): LevelConfig {
   const challenges = challengesForLevel(level);
   const { challengePoints, challengeHands } = challengeMetrics(challenges);
-  const targetPoints = targetPointsForLevel(level, challenges);
+  const targetPoints = targetPointsForLevel(level);
   const starMoveLimits = starMoveLimitsForTarget(targetPoints);
   return {
     level,
@@ -366,7 +313,7 @@ export function levelPointsMet(levelScore: number, cfg: LevelConfig): boolean {
 
 /**
  * Star rating for a cleared level:
- * Requires point target + all hand challenges; then move budget sets 1★ / 2★ / 3★.
+ * Hit the point target + milestone hands; move budget sets 1★ / 2★ / 3★.
  */
 export function computeLevelStars(
   levelScore: number,

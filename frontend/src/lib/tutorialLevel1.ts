@@ -7,6 +7,8 @@ export interface TutorialStepConfig {
   id: "pair" | "two_pair" | "three_of_a_kind";
   lesson: number;
   title: string;
+  /** One-line instruction always visible in the compact lesson banner. */
+  summary: string;
   message: string;
   /** Short swipe-direction cue shown under the main instruction. */
   directionHint: string;
@@ -91,6 +93,7 @@ export const TUTORIAL_STEPS: TutorialStepConfig[] = [
     id: "pair",
     lesson: 1,
     title: "Make a Pair",
+    summary: "Swipe the glowing row ↔ — the two 9s are your Pair.",
     message:
       "Hold and drag through exactly 5 cards that touch side-by-side. A Pair is two cards of the same rank plus three kickers — don't lift your finger until all five are linked.",
     directionHint: "Swipe in a straight line left ↔ right",
@@ -109,6 +112,7 @@ export const TUTORIAL_STEPS: TutorialStepConfig[] = [
     id: "two_pair",
     lesson: 2,
     title: "Make Two Pair",
+    summary: "Swipe the glowing column ↕ — J-J and 4-4 are your pairs.",
     message:
       "Two Pair needs two different matching pairs plus one kicker. Paths can run up and down the board — each card must still touch the previous one edge-to-edge.",
     directionHint: "Swipe in a straight line up ↕ down",
@@ -127,6 +131,7 @@ export const TUTORIAL_STEPS: TutorialStepConfig[] = [
     id: "three_of_a_kind",
     lesson: 3,
     title: "Three of a Kind",
+    summary: "Follow the L-shaped glow ↳ — three 8s are your trips.",
     message:
       "Three of a Kind uses three cards of the same rank plus two kickers. Your swipe can turn corners — as long as every card touches the last, any shape works.",
     directionHint: "Swipe around the corner ↳ (path can bend)",
@@ -182,7 +187,7 @@ export function getLevel1SeedBoard(tutorialStep: number): Card[][] {
 }
 
 export function tutorialFreePlayMessage(): string {
-  return "Nice work! Now swipe any path — horizontal, vertical, or around corners — through 5 touching cards to reach 1,000 points.";
+  return "Reach 1,000 pts — swipe any path through 5 touching cards.";
 }
 
 export function pathMatchesGuide(

@@ -488,7 +488,7 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
   return (
     <div className="game-screen">
       <div className="mobile-shell">
-        <header className="game-hud">
+        <header className={`game-hud${tutorialActive || tutorialFreePlay ? " game-hud--lesson" : ""}`}>
           <div
             className={`moves-banner${movesLow ? " moves-banner--low" : ""}${movesCritical || phase === "moves_failed" ? " moves-banner--critical" : ""}`}
             role="status"
@@ -561,24 +561,27 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
           </div>
 
           {(tutorialActive || tutorialFreePlay) && (
-            <div className={`tutorial-banner${tutorialFreePlay ? " tutorial-banner--free" : ""}`}>
-              <span className="tutorial-banner__tag">
-                {tutorialFreePlay ? "🎯 Your turn" : `🎓 Lesson ${tutorialConfig?.lesson ?? 1}/3`}
-              </span>
-              <p className="tutorial-banner__text">
-                {tutorialFreePlay
-                  ? tutorialFreePlayMessage()
-                  : tutorialConfig?.message}
-              </p>
-              {tutorialConfig && (
-                <>
-                  <span className="tutorial-banner__direction">{tutorialConfig.directionHint}</span>
-                  <span className="tutorial-banner__hand">{tutorialConfig.title}</span>
-                </>
-              )}
-            </div>
+            tutorialFreePlay ? (
+              <div className="tutorial-banner tutorial-banner--free tutorial-banner--compact">
+                <span className="tutorial-banner__tag">🎯 Your turn</span>
+                <p className="tutorial-banner__summary">{tutorialFreePlayMessage()}</p>
+              </div>
+            ) : tutorialConfig ? (
+              <div className="tutorial-banner tutorial-banner--compact">
+                <div className="tutorial-banner__summary-row">
+                  <span className="tutorial-banner__tag">🎓 Lesson {tutorialConfig.lesson}/3</span>
+                  <span className="tutorial-banner__title">{tutorialConfig.title}</span>
+                </div>
+                <p className="tutorial-banner__summary">{tutorialConfig.summary}</p>
+                <details className="tutorial-banner__details">
+                  <summary className="tutorial-banner__more">More tips</summary>
+                  <p className="tutorial-banner__text">{tutorialConfig.message}</p>
+                </details>
+              </div>
+            ) : null
           )}
 
+          {!tutorialActive && (
           <div className="stat-chips">
             <div className="stat-chip" title="Total hands this run">
               <span className="stat-chip__icon">🎯</span>
@@ -607,6 +610,7 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
               </button>
             )}
           </div>
+          )}
         </header>
 
         <main className={`board-stage${boardLocked ? " board-stage--locked" : ""}`}>

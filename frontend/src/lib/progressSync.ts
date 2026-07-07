@@ -5,6 +5,9 @@ import {
 } from "./api";
 import {
   applyImportedProgress,
+  clearProgress,
+  defaultProgress,
+  getProgressOwner,
   loadProgress,
   saveProgress,
   setProgressSyncHook,
@@ -52,8 +55,10 @@ export async function pullRemoteProgress(): Promise<boolean> {
     const local = loadProgress();
 
     if (!remote.progress) {
-      if (local) await pushProgress(local);
-      return false;
+      const fresh = defaultProgress();
+      saveProgress(fresh, { skipSync: true });
+      await pushProgress(fresh);
+      return true;
     }
 
     const remoteTs = remote.client_updated_at ?? 0;
@@ -75,6 +80,22 @@ export async function pullRemoteProgress(): Promise<boolean> {
 export function initProgressSync(): void {
   setProgressSyncHook(queueSync);
   void pullRemoteProgress();
+}
+
+/** Drop local save when switching to a different account. */
+export function prepareProgressForAccount(username: string): void {
+  const owner = getProgressOwner();
+  if (owner !== null && owner !== username) {
+    clearProgress();
+  }
+}
+
+export function stopProgressSync(): void {
+  if (syncTimer) {
+    clearTimeout(syncTimer);
+    syncTimer = null;
+  }
+  setProgressSyncHook(null);
 }
 
 export function flushProgressSync(): Promise<void> {

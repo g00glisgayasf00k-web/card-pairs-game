@@ -3,7 +3,8 @@ import { OnboardingScreen } from "./screens/OnboardingScreen";
 import { LevelSelectScreen } from "./screens/LevelSelectScreen";
 import { GameScreen } from "./screens/GameScreen";
 import { clearSession, getUsername, isLoggedIn, setSession } from "./lib/session";
-import { initProgressSync } from "./lib/progressSync";
+import { clearProgress } from "./lib/progress";
+import { initProgressSync, stopProgressSync } from "./lib/progressSync";
 
 type Screen = "onboard" | "levels" | "game";
 
@@ -21,6 +22,8 @@ export default function App() {
   };
 
   const handleSignOut = () => {
+    stopProgressSync();
+    clearProgress();
     clearSession();
     setUsername(null);
     setLoggedIn(false);

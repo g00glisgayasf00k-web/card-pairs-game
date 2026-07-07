@@ -1,7 +1,8 @@
 import { useState, type FormEvent } from "react";
 import { login, loginWithGoogle, register } from "../lib/api";
-import { flushProgressSync, pullRemoteProgress } from "../lib/progressSync";
-import { googleSignInEnabled } from "../lib/session";
+import { flushProgressSync, prepareProgressForAccount, pullRemoteProgress } from "../lib/progressSync";
+import { setProgressOwner } from "../lib/progress";
+import { googleSignInEnabled, setSession } from "../lib/session";
 import { GoogleSignInButton } from "./GoogleSignInButton";
 
 type AuthMode = "signup" | "login";
@@ -22,8 +23,11 @@ export function AuthPanel({ onSuccess, initialUsername = "", variant = "home" }:
 
   const finishAuth = async (name: string, token: string) => {
     setError(null);
+    setSession(name, token);
+    prepareProgressForAccount(name);
     await pullRemoteProgress();
     await flushProgressSync();
+    setProgressOwner(name);
     onSuccess(name, token);
     setPassword("");
   };

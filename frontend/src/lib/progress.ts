@@ -5,6 +5,7 @@ import { STARTING_CREDITS } from "./credits";
 import { MAX_ENERGY, applyDailyEnergyRefresh, ukDateKey } from "./energy";
 
 const STORAGE_KEY = "royalMatchProgress";
+const PROGRESS_USER_KEY = "royalMatchProgressUser";
 const VERSION = 8;
 
 type ProgressSyncHook = (payload: SavedProgress) => void;
@@ -207,6 +208,16 @@ export function applyImportedProgress(data: unknown): boolean {
 
 export function clearProgress(): void {
   localStorage.removeItem(STORAGE_KEY);
+  localStorage.removeItem(PROGRESS_USER_KEY);
+}
+
+/** Username that last wrote local progress — used to detect account switches. */
+export function getProgressOwner(): string | null {
+  return localStorage.getItem(PROGRESS_USER_KEY);
+}
+
+export function setProgressOwner(username: string): void {
+  localStorage.setItem(PROGRESS_USER_KEY, username);
 }
 
 export function defaultProgress(): Omit<SavedProgress, "v" | "updatedAt"> {

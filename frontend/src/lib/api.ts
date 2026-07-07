@@ -128,6 +128,7 @@ export async function fetchAdminMe() {
 export async function fetchAdminStats() {
   return request<{
     users: number;
+    players: number;
     scores: number;
     synced_players: number;
     signups_7d: number;

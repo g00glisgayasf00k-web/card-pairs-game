@@ -60,6 +60,7 @@ def admin_stats():
     week_ago = now - timedelta(days=7)
 
     user_count = User.query.count()
+    player_count = User.query.filter(User.is_admin.is_(False)).count()
     score_count = Score.query.count()
     synced_count = PlayerProgress.query.count()
     signups_7d = User.query.filter(User.created_at >= week_ago).count()
@@ -78,6 +79,7 @@ def admin_stats():
     return jsonify(
         {
             "users": user_count,
+            "players": player_count,
             "scores": score_count,
             "synced_players": synced_count,
             "users_pending_sync": max(0, user_count - synced_count),

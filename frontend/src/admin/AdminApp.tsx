@@ -272,7 +272,7 @@ export function AdminApp() {
             </h1>
             <p className="admin-muted">
               {tab === "overview" && "Live stats from your game database"}
-              {tab === "players" && !userDetail && `${totalUsers} registered accounts`}
+              {tab === "players" && !userDetail && `${totalUsers} accounts (${Math.max(0, totalUsers - 1)} players + admin)`}
               {tab === "players" && userDetail && `Joined ${fmtDate(userDetail.created_at)}`}
               {tab === "leaderboard" && "Top scores across all players"}
             </p>
@@ -288,9 +288,14 @@ export function AdminApp() {
           <>
             <div className="admin-stat-grid">
               <div className="admin-stat-card">
-                <span className="admin-stat-card__val">{stats.users}</span>
-                <span className="admin-stat-card__label">Total users</span>
+                <span className="admin-stat-card__val">{stats.players}</span>
+                <span className="admin-stat-card__label">Registered players</span>
                 <span className="admin-stat-card__sub">+{stats.signups_7d} this week</span>
+              </div>
+              <div className="admin-stat-card">
+                <span className="admin-stat-card__val">{stats.users}</span>
+                <span className="admin-stat-card__label">Total accounts</span>
+                <span className="admin-stat-card__sub">Includes admin</span>
               </div>
               <div className="admin-stat-card">
                 <span className="admin-stat-card__val">{stats.synced_players}</span>
@@ -386,6 +391,18 @@ export function AdminApp() {
                 </button>
               )}
             </form>
+
+            {users.length === 0 && (
+              <p className="admin-muted admin-empty-hint">
+                No accounts yet. Players appear here after they sign up on the live game site (same URL as admin, not localhost).
+              </p>
+            )}
+
+            {users.length === 1 && users[0]?.is_admin && (
+              <p className="admin-muted admin-empty-hint">
+                Only the admin account exists. New sign-ups on the deployed game URL will appear here. If you tested locally, those accounts live in your local database, not production.
+              </p>
+            )}
 
             <div className="admin-table-wrap">
               <table className="admin-table admin-table--players">

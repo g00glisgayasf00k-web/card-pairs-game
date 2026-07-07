@@ -1,6 +1,13 @@
 # https://render.com/docs/blueprint-spec
 version: "1"
 
+# Persistent Postgres — free /tmp SQLite is wiped on every deploy (only admin survives).
+databases:
+  - name: royal-match-db
+    plan: free
+    databaseName: royalmatch
+    user: royalmatch
+
 services:
   - type: web
     name: royal-match-poker
@@ -13,7 +20,9 @@ services:
     autoDeploy: true
     envVars:
       - key: DATABASE_URL
-        value: sqlite:////tmp/poker_pairs.db
+        fromDatabase:
+          name: royal-match-db
+          property: connectionString
       - key: SECRET_KEY
         generateValue: true
       - key: JWT_SECRET_KEY

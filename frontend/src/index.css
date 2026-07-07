@@ -304,6 +304,7 @@ header h1 {
   gap: 3px;
   padding: 5px;
   width: 100%;
+  height: 100%;
   max-width: min(100vw - 0.7rem, 440px);
   margin: 0 auto;
   background:
@@ -330,6 +331,28 @@ header h1 {
   aspect-ratio: 5 / 7;
   min-height: 0;
   min-width: 0;
+}
+
+.grid-fx-wrap {
+  position: relative;
+  width: 100%;
+  max-width: min(100vw - 0.7rem, 440px);
+  margin: 0 auto;
+  --grid-pad: 5px;
+  --grid-gap: 3px;
+  --grid-rows: 8;
+  --grid-cols: 8;
+  --cell-h: calc(
+    (100% - 2 * var(--grid-pad) - (var(--grid-rows) - 1) * var(--grid-gap)) / var(--grid-rows)
+  );
+  --cell-w: calc(
+    (100% - 2 * var(--grid-pad) - (var(--grid-cols) - 1) * var(--grid-gap)) / var(--grid-cols)
+  );
+}
+
+.grid-fx-wrap > .grid {
+  max-width: none;
+  margin: 0;
 }
 
 .cell > div {
@@ -650,6 +673,28 @@ header h1 {
     0 0 0 2px #7dffba,
     0 0 14px rgba(125, 255, 186, 0.65),
     0 3px 8px rgba(0, 0, 0, 0.35);
+}
+
+.playing-card.hinted {
+  z-index: 5;
+  animation: hint-pop 1.2s ease-in-out 2;
+  box-shadow:
+    0 0 0 3px #c4b5fd,
+    0 0 20px rgba(167, 139, 250, 0.85),
+    0 6px 16px rgba(0, 0, 0, 0.45);
+}
+
+@keyframes hint-pop {
+  0%,
+  100% {
+    transform: scale(1) translateZ(0);
+  }
+  40% {
+    transform: scale(1.2) translateZ(0);
+  }
+  70% {
+    transform: scale(1) translateZ(0);
+  }
 }
 
 @keyframes guided-pulse {
@@ -1542,19 +1587,27 @@ section h2 {
 }
 
 /* Arrow sweep FX — flying arrow + light trail across row/column */
-.arrow-swoosh-layer {
-  position: relative;
-  z-index: 12;
+.arrow-swoosh-overlay {
+  position: absolute;
   pointer-events: none;
+  z-index: 12;
   overflow: visible;
 }
 
-.arrow-swoosh-layer--row {
+.arrow-swoosh-overlay--row {
+  left: var(--grid-pad);
+  right: var(--grid-pad);
+  height: var(--cell-h);
+  top: calc(var(--grid-pad) + var(--line) * (var(--cell-h) + var(--grid-gap)));
   display: flex;
   align-items: center;
 }
 
-.arrow-swoosh-layer--col {
+.arrow-swoosh-overlay--col {
+  top: var(--grid-pad);
+  bottom: var(--grid-pad);
+  width: var(--cell-w);
+  left: calc(var(--grid-pad) + var(--line) * (var(--cell-w) + var(--grid-gap)));
   display: flex;
   justify-content: center;
 }
@@ -1665,11 +1718,15 @@ section h2 {
 }
 
 /* Bomb burst overlay at detonation cell */
-.bomb-burst-layer {
-  position: relative;
-  z-index: 15;
+.bomb-burst-overlay {
+  position: absolute;
   pointer-events: none;
+  z-index: 15;
   overflow: visible;
+  width: var(--cell-w);
+  height: var(--cell-h);
+  left: calc(var(--grid-pad) + var(--col) * (var(--cell-w) + var(--grid-gap)));
+  top: calc(var(--grid-pad) + var(--row) * (var(--cell-h) + var(--grid-gap)));
 }
 
 .bomb-burst-flash {

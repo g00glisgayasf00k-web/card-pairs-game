@@ -10,7 +10,7 @@ from app.models import PlayerProgress, User, db
 progress_bp = Blueprint("progress", __name__)
 
 STARTING_CREDITS = 200
-MAX_ENERGY = 10
+MAX_ENERGY = 12
 
 
 def _merge_resource_grants(existing: dict, incoming: dict) -> dict:

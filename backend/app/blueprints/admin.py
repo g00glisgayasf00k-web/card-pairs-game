@@ -13,11 +13,11 @@ from app.password_util import generate_temp_password, hash_password
 
 admin_bp = Blueprint("admin", __name__)
 
-PROGRESS_VERSION = 8
-MAX_ENERGY = 10
+PROGRESS_VERSION = 9
+MAX_ENERGY = 12
 STARTING_CREDITS = 200
 MAX_GEM_GRANT = 100_000
-MAX_ENERGY_GRANT = 10
+MAX_ENERGY_GRANT = 12
 
 
 def _uk_date_key() -> str:
@@ -44,7 +44,7 @@ def _default_progress_payload() -> dict:
         "bestHand": "pair",
         "credits": STARTING_CREDITS,
         "energy": MAX_ENERGY,
-        "energyUkDate": _uk_date_key(),
+        "energyRegenAt": 0,
         "energyPaidLevel": None,
         "streak": 0,
         "tutorialStep": 0,
@@ -401,7 +401,8 @@ def admin_grant_resources(user_id: int):
     if energy_add:
         current_energy = int(payload.get("energy") if payload.get("energy") is not None else MAX_ENERGY)
         payload["energy"] = min(MAX_ENERGY, max(0, current_energy + energy_add))
-        payload["energyUkDate"] = _uk_date_key()
+        if payload["energy"] >= MAX_ENERGY:
+            payload["energyRegenAt"] = 0
 
     payload["updatedAt"] = now
     _save_progress_payload(user.id, payload, now)

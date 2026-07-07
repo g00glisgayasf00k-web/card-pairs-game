@@ -246,6 +246,9 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
       >
         {emphasizeEnergy ? "Need energy to play" : "Refill energy"}
       </h3>
+      <p className="royal-shop__section-note">
+        Max {MAX_ENERGY} energy · +1 every 2 hours · each level attempt costs 1
+      </p>
       <div className={`royal-shop-card royal-shop-card--row${!PURCHASES_ENABLED ? " royal-shop-card--locked" : ""}`}>
         <span className="royal-shop-card__icon">⚡</span>
         <div className="royal-shop-card__meta">

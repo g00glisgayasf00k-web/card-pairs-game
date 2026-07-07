@@ -2,12 +2,13 @@ import { HAND_DISPLAY } from "../lib/pokerHands";
 import { MAX_LEVEL } from "../lib/levels";
 import {
   MAX_ENERGY,
-  formatTimeUntilUkMidnight,
+  formatTimeUntilNextEnergy,
   syncEnergyState,
 } from "../lib/energy";
 import { countCompleted, countTotalStars } from "../lib/levelProgress";
 import { loadProgress } from "../lib/progress";
 import { ProfileAccountSection } from "./ProfileAccountSection";
+import { useEffect, useState } from "react";
 
 interface Props {
   username: string | null;
@@ -18,10 +19,19 @@ interface Props {
 
 export function ProfileModal({ username, onClose, onAccountChange, onSignOut }: Props) {
   const saved = loadProgress();
-  const { energy } = syncEnergyState();
+  const [energyState, setEnergyState] = useState(syncEnergyState);
+
+  useEffect(() => {
+    setEnergyState(syncEnergyState());
+    const id = window.setInterval(() => setEnergyState(syncEnergyState()), 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  const { energy, energyRegenAt } = energyState;
   const completed = countCompleted();
   const stars = countTotalStars();
-  const resetIn = formatTimeUntilUkMidnight();
+  const nextEnergyIn =
+    energy >= MAX_ENERGY ? null : formatTimeUntilNextEnergy(energyRegenAt);
 
   return (
     <div className="modal-overlay scores-overlay" onClick={onClose} role="presentation">
@@ -54,7 +64,11 @@ export function ProfileModal({ username, onClose, onAccountChange, onSignOut }: 
             <span className="profile-stats__icon">⚡</span>
             <span>
               <strong>{energy} / {MAX_ENERGY} energy</strong>
-              <span className="profile-stats__hint">Refills to {MAX_ENERGY} at midnight UK · {resetIn} left</span>
+              <span className="profile-stats__hint">
+                {nextEnergyIn
+                  ? `+1 every 2 hours · next in ${nextEnergyIn}`
+                  : "Full — each level attempt costs 1 energy"}
+              </span>
             </span>
           </li>
           <li>

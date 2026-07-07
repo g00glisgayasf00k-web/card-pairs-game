@@ -19,10 +19,11 @@ interface Props {
   blocker?: Blocker | null;
   selected?: boolean;
   guided?: boolean;
+  hinted?: boolean;
   popping?: boolean;
 }
 
-export function PlayingCard({ card, blocker, selected, guided, popping }: Props) {
+export function PlayingCard({ card, blocker, selected, guided, hinted, popping }: Props) {
   const suit = SUIT_SYMBOL[card.suit];
   const sp   = card.special;
   const isArrowOnly = sp === "arrow_h" || sp === "arrow_v";
@@ -35,7 +36,8 @@ export function PlayingCard({ card, blocker, selected, guided, popping }: Props)
           "arrow-power",
           SPECIAL_CLASS[sp],
           selected && !popping ? "selected" : "",
-          guided && !popping ? "guided" : "",
+          guided && !popping && !hinted ? "guided" : "",
+          hinted && !popping ? "hinted" : "",
           popping ? "pop" : "",
         ].filter(Boolean).join(" ")}
         aria-label={sp === "arrow_h" ? "Row arrow — tap to clear row" : "Column arrow — tap to clear column"}
@@ -69,7 +71,8 @@ export function PlayingCard({ card, blocker, selected, guided, popping }: Props)
         `suit-${card.suit}`,
         sp ? SPECIAL_CLASS[sp] : "",
         selected && !popping ? "selected" : "",
-        guided && !popping ? "guided" : "",
+        guided && !popping && !hinted ? "guided" : "",
+        hinted && !popping ? "hinted" : "",
         popping ? "pop" : "",
       ].filter(Boolean).join(" ")}
       aria-label={`${card.rank} of ${card.suit}${sp ? ` (${sp})` : ""}`}

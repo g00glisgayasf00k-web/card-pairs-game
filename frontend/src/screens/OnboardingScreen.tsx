@@ -171,7 +171,7 @@ export function OnboardingScreen({
               <li>Make poker hands to clear cards and score points.</li>
               <li>Reach the point goal before moves run out.</li>
               <li>Earn up to 3★ per level for speed and challenges.</li>
-              <li>Use gems for extra moves and energy when needed.</li>
+              <li>Use gems for extra moves; energy refills +1 every 2 hours (max 12).</li>
             </ul>
             <button type="button" className="btn scores-close" onClick={closeMenu}>
               Close

@@ -1,78 +1,81 @@
 import { loadProgress, saveProgress, defaultProgress, type SavedProgress } from "./progress";
 
-export const MAX_ENERGY = 10;
+export const MAX_ENERGY = 12;
 export const ENERGY_PER_ATTEMPT = 1;
+/** Milliseconds between each +1 energy while below max. */
+export const ENERGY_REGEN_MS = 120 * 60 * 1000;
 
-/** Gems to buy a full energy refill (10 ⚡). */
+/** Gems to buy a full energy refill. */
 export const ENERGY_BUY_TEN_COST = 100;
 
-/** UK calendar day key for midnight refresh (YYYY-MM-DD). */
+/** UK calendar day key — used by video-ad daily limits in treasuryAds. */
 export function ukDateKey(date = new Date()): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/London" }).format(date);
 }
 
-export function applyDailyEnergyRefresh(
+export function applyEnergyRegen(
   energy: number,
-  energyUkDate: string | undefined
-): { energy: number; energyUkDate: string } {
-  const today = ukDateKey();
-  if (!energyUkDate || energyUkDate !== today) {
-    return { energy: MAX_ENERGY, energyUkDate: today };
+  energyRegenAt: number,
+  now = Date.now()
+): { energy: number; energyRegenAt: number } {
+  let e = Math.min(MAX_ENERGY, Math.max(0, Math.floor(energy)));
+
+  if (e >= MAX_ENERGY) {
+    return { energy: MAX_ENERGY, energyRegenAt: 0 };
   }
-  return {
-    energy: Math.min(MAX_ENERGY, Math.max(0, Math.floor(energy))),
-    energyUkDate: today,
-  };
+
+  let nextAt = energyRegenAt > 0 ? energyRegenAt : now + ENERGY_REGEN_MS;
+
+  while (e < MAX_ENERGY && now >= nextAt) {
+    e += 1;
+    nextAt += ENERGY_REGEN_MS;
+  }
+
+  if (e >= MAX_ENERGY) {
+    return { energy: MAX_ENERGY, energyRegenAt: 0 };
+  }
+
+  return { energy: e, energyRegenAt: nextAt };
 }
 
-export function msUntilUkMidnight(from = new Date()): number {
-  const parts = new Intl.DateTimeFormat("en-GB", {
-    timeZone: "Europe/London",
-    hour: "numeric",
-    minute: "numeric",
-    second: "numeric",
-    hour12: false,
-  }).formatToParts(from);
-
-  const get = (type: Intl.DateTimeFormatPartTypes) =>
-    Number(parts.find((p) => p.type === type)?.value ?? 0);
-
-  const h = get("hour");
-  const m = get("minute");
-  const s = get("second");
-  const elapsed = (h * 3600 + m * 60 + s) * 1000;
-  return 86_400_000 - elapsed;
+export function msUntilNextEnergy(energyRegenAt: number, now = Date.now()): number {
+  if (!energyRegenAt || energyRegenAt <= 0) return 0;
+  return Math.max(0, energyRegenAt - now);
 }
 
-export function formatTimeUntilUkMidnight(from = new Date()): string {
-  let ms = msUntilUkMidnight(from);
+export function formatTimeUntilNextEnergy(energyRegenAt: number, now = Date.now()): string {
+  const ms = msUntilNextEnergy(energyRegenAt, now);
+  if (ms <= 0) return "0m";
   const h = Math.floor(ms / 3_600_000);
-  ms -= h * 3_600_000;
-  const m = Math.floor(ms / 60_000);
-  return `${h}h ${m}m`;
+  const m = Math.ceil((ms - h * 3_600_000) / 60_000);
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
 }
 
 function withRefreshedEnergy(saved: SavedProgress): SavedProgress {
-  const { energy, energyUkDate } = applyDailyEnergyRefresh(
+  const { energy, energyRegenAt } = applyEnergyRegen(
     saved.energy ?? MAX_ENERGY,
-    saved.energyUkDate
+    saved.energyRegenAt ?? 0
   );
-  return { ...saved, energy, energyUkDate };
+  return { ...saved, energy, energyRegenAt };
 }
 
-/** Load progress, apply UK midnight refresh, persist if changed. */
-export function syncEnergyState(): Pick<SavedProgress, "energy" | "energyUkDate" | "energyPaidLevel"> {
-  const base = loadProgress() ?? { ...defaultProgress(), v: 8 as const, updatedAt: Date.now() };
+/** Load progress, apply timed regen, persist if changed. */
+export function syncEnergyState(): Pick<
+  SavedProgress,
+  "energy" | "energyRegenAt" | "energyPaidLevel"
+> {
+  const base = loadProgress() ?? { ...defaultProgress(), v: 9 as const, updatedAt: Date.now() };
   const refreshed = withRefreshedEnergy(base as SavedProgress);
   if (
     refreshed.energy !== base.energy ||
-    refreshed.energyUkDate !== (base as SavedProgress).energyUkDate
+    refreshed.energyRegenAt !== (base as SavedProgress).energyRegenAt
   ) {
     saveProgress(refreshed);
   }
   return {
     energy: refreshed.energy,
-    energyUkDate: refreshed.energyUkDate,
+    energyRegenAt: refreshed.energyRegenAt,
     energyPaidLevel: refreshed.energyPaidLevel ?? null,
   };
 }
@@ -102,9 +105,19 @@ export function trySpendEnergyForLevel(globalLevel: number): boolean {
     return false;
   }
 
+  const wasFull = refreshed.energy >= MAX_ENERGY;
+  const newEnergy = refreshed.energy - ENERGY_PER_ATTEMPT;
+  const energyRegenAt =
+    newEnergy >= MAX_ENERGY
+      ? 0
+      : wasFull
+        ? Date.now() + ENERGY_REGEN_MS
+        : refreshed.energyRegenAt;
+
   saveProgress({
     ...refreshed,
-    energy: refreshed.energy - ENERGY_PER_ATTEMPT,
+    energy: newEnergy,
+    energyRegenAt,
     energyPaidLevel: globalLevel,
   });
   return true;
@@ -123,14 +136,16 @@ export function grantEnergyFromVideo(amount: number): boolean {
   const refreshed = withRefreshedEnergy(saved);
   if (refreshed.energy >= MAX_ENERGY) return false;
 
+  const newEnergy = Math.min(MAX_ENERGY, refreshed.energy + Math.floor(amount));
   saveProgress({
     ...refreshed,
-    energy: Math.min(MAX_ENERGY, refreshed.energy + Math.floor(amount)),
+    energy: newEnergy,
+    energyRegenAt: newEnergy >= MAX_ENERGY ? 0 : refreshed.energyRegenAt,
   });
   return true;
 }
 
-/** Buy a full energy bar (10 ⚡) for 100 gems. */
+/** Buy a full energy bar for gems. */
 export function buyTenEnergy(): boolean {
   const saved = loadProgress();
   if (!saved) return false;
@@ -142,6 +157,7 @@ export function buyTenEnergy(): boolean {
     ...refreshed,
     credits: refreshed.credits - ENERGY_BUY_TEN_COST,
     energy: MAX_ENERGY,
+    energyRegenAt: 0,
   });
   return true;
 }

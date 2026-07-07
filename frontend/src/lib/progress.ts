@@ -2,11 +2,11 @@ import { HAND_RANK_ORDER, type HandLabel } from "./pokerHands";
 import type { HandCounts } from "./levels";
 import { MAX_LEVEL } from "./levels";
 import { STARTING_CREDITS } from "./credits";
-import { MAX_ENERGY, applyDailyEnergyRefresh, ukDateKey } from "./energy";
+import { MAX_ENERGY, applyEnergyRegen } from "./energy";
 
 const STORAGE_KEY = "royalMatchProgress";
 const PROGRESS_USER_KEY = "royalMatchProgressUser";
-const VERSION = 8;
+const VERSION = 9;
 
 /** Fired when cloud progress is applied to local storage (admin grants, server sync). */
 export const PROGRESS_IMPORTED_EVENT = "royal-progress-imported";
@@ -40,10 +40,10 @@ export interface SavedProgress {
   bestHand: HandLabel;
   /** In-game currency for buying extra moves. */
   credits: number;
-  /** Play attempts remaining today (max 10, refreshes UK midnight). */
+  /** Play attempts remaining (max 12, +1 every 120 minutes). */
   energy: number;
-  /** Last UK date energy was synced (YYYY-MM-DD). */
-  energyUkDate: string;
+  /** Timestamp (ms) when the next +1 energy arrives; 0 when full. */
+  energyRegenAt: number;
   /** Level we already spent energy to enter this attempt. */
   energyPaidLevel: number | null;
   /** @deprecated Combo removed — kept for save migration. */
@@ -114,7 +114,7 @@ function parseProgress(raw: string | null): SavedProgress | null {
   if (!raw) return null;
   try {
     const data = JSON.parse(raw) as Partial<SavedProgress> & { totalScore?: number; v?: number };
-    if (data.v !== VERSION && data.v !== 7 && data.v !== 6 && data.v !== 5 && data.v !== 4 && data.v !== 3 && data.v !== 2 && data.v !== 1) {
+    if (data.v !== VERSION && data.v !== 8 && data.v !== 7 && data.v !== 6 && data.v !== 5 && data.v !== 4 && data.v !== 3 && data.v !== 2 && data.v !== 1) {
       return null;
     }
     if (typeof data.level !== "number" || data.level < 1 || data.level > MAX_LEVEL) return null;
@@ -134,7 +134,7 @@ function parseProgress(raw: string | null): SavedProgress | null {
     let highestUnlocked: number;
     let completedLevels: number[];
 
-    if (data.v === VERSION && typeof data.highestUnlocked === "number") {
+    if ((data.v === VERSION || data.v === 8) && typeof data.highestUnlocked === "number") {
       highestUnlocked = Math.min(MAX_LEVEL, Math.max(1, Math.floor(data.highestUnlocked)));
       completedLevels = parseCompletedLevels(data.completedLevels);
     } else {
@@ -150,9 +150,19 @@ function parseProgress(raw: string | null): SavedProgress | null {
 
     const energyRaw =
       typeof data.energy === "number" ? Math.max(0, Math.floor(data.energy)) : MAX_ENERGY;
-    const energyUkDate =
-      typeof data.energyUkDate === "string" ? data.energyUkDate : ukDateKey();
-    const { energy, energyUkDate: syncedDate } = applyDailyEnergyRefresh(energyRaw, energyUkDate);
+    const cappedEnergy = Math.min(MAX_ENERGY, energyRaw);
+
+    let energyRegenAt = 0;
+    if (data.v === VERSION && typeof data.energyRegenAt === "number") {
+      energyRegenAt = Math.max(0, Math.floor(data.energyRegenAt));
+    } else if (cappedEnergy < MAX_ENERGY) {
+      energyRegenAt = Date.now() + 120 * 60 * 1000;
+    }
+
+    const { energy, energyRegenAt: syncedRegenAt } = applyEnergyRegen(
+      cappedEnergy,
+      energyRegenAt
+    );
     const energyPaidLevel =
       typeof data.energyPaidLevel === "number" ? Math.floor(data.energyPaidLevel) : null;
 
@@ -170,7 +180,7 @@ function parseProgress(raw: string | null): SavedProgress | null {
       bestHand: data.bestHand,
       credits,
       energy,
-      energyUkDate: syncedDate,
+      energyRegenAt: syncedRegenAt,
       energyPaidLevel,
       streak: 0,
       tutorialStep,
@@ -228,7 +238,12 @@ export function mergeImportedResources(local: SavedProgress, remote: SavedProgre
       ...local,
       credits,
       energy,
-      energyUkDate: energy > local.energy ? remote.energyUkDate : local.energyUkDate,
+      energyRegenAt:
+        energy > local.energy
+          ? remote.energyRegenAt ?? local.energyRegenAt
+          : energy >= MAX_ENERGY
+            ? 0
+            : local.energyRegenAt,
     },
     { skipSync: true }
   );
@@ -264,7 +279,7 @@ export function defaultProgress(): Omit<SavedProgress, "v" | "updatedAt"> {
     bestHand: "pair",
     credits: STARTING_CREDITS,
     energy: MAX_ENERGY,
-    energyUkDate: ukDateKey(),
+    energyRegenAt: 0,
     energyPaidLevel: null,
     streak: 0,
     tutorialStep: 0,

@@ -185,6 +185,12 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
   const saved = loadProgress();
   const { energy } = syncEnergyState();
   void walletTick;
+
+  useEffect(() => {
+    if (energy >= MAX_ENERGY) return;
+    const id = window.setInterval(() => setWalletTick((t) => t + 1), 60_000);
+    return () => window.clearInterval(id);
+  }, [energy]);
   const gems = saved?.credits ?? 0;
 
   const mapPoints = buildWorldMapPoints();

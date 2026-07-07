@@ -32,6 +32,7 @@ import {
   type BlockerGrid,
   type BlockerSpawnConfig,
 } from "../lib/blockers";
+import { findHintPath, type HintPath } from "../lib/hintFinder";
 import { useSwipePath } from "../hooks/useSwipePath";
 import { PlayingCard } from "./PlayingCard";
 import { SpecialArt } from "./SpecialArt";
@@ -103,6 +104,7 @@ function computeGridFit(availW: number, availH: number): { width: number; height
 
 export interface GameBoardHandle {
   shuffle: () => void;
+  revealHint: (priorityHands: HandLabel[]) => HintPath | null;
 }
 
 interface Props {
@@ -245,6 +247,8 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
     const [blasting, setBlasting] = useState<Set<string>>(new Set());
     const [arrowSweep, setArrowSweep] = useState<ArrowSweep | null>(null);
     const [bombBurst, setBombBurst] = useState<BombBurst | null>(null);
+    const [hintCell, setHintCell] = useState<{ row: number; col: number } | null>(null);
+    const hintTimerRef = useRef<number | null>(null);
     const [dropMap, setDropMap] = useState<Map<string, number>>(new Map());
     const [newKeys, setNewKeys] = useState<Set<string>>(new Set());
     const [busy, setBusy] = useState(false);
@@ -253,6 +257,12 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
     const finishingSwipe = useRef(false);
     const [gridFit, setGridFit] = useState<{ width: number; height: number } | null>(null);
     const seedBoardKeyRef = useRef<string | null>(null);
+
+    useEffect(() => {
+      return () => {
+        if (hintTimerRef.current) window.clearTimeout(hintTimerRef.current);
+      };
+    }, []);
 
     useEffect(() => {
       if (!seedBoard) return;
@@ -357,7 +367,17 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
           );
         });
       },
-    }), [busy, locked]);
+      revealHint: (priorityHands: HandLabel[]) => {
+        if (busy || locked) return null;
+        const result = findHintPath(board, blockers, ROWS, COLS, priorityHands);
+        if (!result) return null;
+        const first = result.path[0]!;
+        setHintCell({ row: first.row, col: first.col });
+        if (hintTimerRef.current) window.clearTimeout(hintTimerRef.current);
+        hintTimerRef.current = window.setTimeout(() => setHintCell(null), 2400);
+        return result;
+      },
+    }), [busy, locked, board, blockers]);
 
     // ── Shared gravity commit ─────────────────────────────────────────────────
     const commitClear = useCallback(
@@ -772,23 +792,32 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
     const gridStyle: CSSProperties = {
       gridTemplateColumns: `repeat(${COLS}, 1fr)`,
       gridTemplateRows: `repeat(${ROWS}, 1fr)`,
+    };
+
+    const gridWrapStyle: CSSProperties = {
       ...(embedded && gridFit
         ? { width: gridFit.width, height: gridFit.height, maxWidth: "100%", maxHeight: "100%" }
         : {}),
-    };
+      "--grid-rows": ROWS,
+      "--grid-cols": COLS,
+    } as CSSProperties;
 
     const grid = (
       <div
-        ref={gridRef}
-        className="grid"
+        className="grid-fx-wrap"
         data-sized={embedded && gridFit ? "" : undefined}
-        data-locked={locked ? "" : undefined}
-        style={gridStyle}
-        onPointerDown={(e) => onPointerDown(e, gridRef.current)}
-        onPointerMove={(e) => onPointerMove(e, gridRef.current)}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
+        style={gridWrapStyle}
       >
+        <div
+          ref={gridRef}
+          className="grid"
+          data-locked={locked ? "" : undefined}
+          style={gridStyle}
+          onPointerDown={(e) => onPointerDown(e, gridRef.current)}
+          onPointerMove={(e) => onPointerMove(e, gridRef.current)}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+        >
         {board.map((row, r) =>
           row.map((cell, c) => {
             const key = pathKey(r, c);
@@ -801,6 +830,8 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
             const isPopping = popping.has(key);
             const isBlasting = blasting.has(key);
             const isBombOrigin = bombBurst?.row === r && bombBurst?.col === c;
+            const isHinted =
+              hintCell?.row === r && hintCell?.col === c && !busy && !locked && !blocked;
             const cardStyle: CSSProperties | undefined =
               drop > 0
                 ? { "--drop-n": drop }
@@ -832,6 +863,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
                       blocker={overlay}
                       selected={inPath(r, c) && !isPopping && !isBlasting && !blocked}
                       guided={isGuided(r, c) && !busy && !locked && !blocked}
+                      hinted={isHinted}
                       popping={isPopping}
                     />
                   </div>
@@ -840,13 +872,12 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
             );
           })
         )}
+        </div>
         {arrowSweep && (
           <div
-            className={`arrow-swoosh-layer arrow-swoosh-layer--${arrowSweep.axis}`}
+            className={`arrow-swoosh-overlay arrow-swoosh-overlay--${arrowSweep.axis}`}
             style={{
-              ...(arrowSweep.axis === "row"
-                ? { gridRow: arrowSweep.line + 1, gridColumn: "1 / -1" }
-                : { gridColumn: arrowSweep.line + 1, gridRow: "1 / -1" }),
+              "--line": arrowSweep.line,
               "--swoosh-from": arrowSweep.from,
             } as CSSProperties}
             aria-hidden
@@ -862,8 +893,11 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
         )}
         {bombBurst && (
           <div
-            className="bomb-burst-layer"
-            style={{ gridRow: bombBurst.row + 1, gridColumn: bombBurst.col + 1 }}
+            className="bomb-burst-overlay"
+            style={{
+              "--row": bombBurst.row,
+              "--col": bombBurst.col,
+            } as CSSProperties}
             aria-hidden
           >
             <div className="bomb-burst-flash" />

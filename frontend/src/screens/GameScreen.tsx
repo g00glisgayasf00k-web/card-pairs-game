@@ -210,7 +210,7 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
       bestHand: next.bestHand,
       credits: next.credits,
       energy: saved.energy,
-      energyUkDate: saved.energyUkDate,
+      energyRegenAt: saved.energyRegenAt,
       energyPaidLevel: saved.energyPaidLevel ?? null,
       streak: 0,
       tutorialStep: next.level === 1 ? next.tutorialStep : saved.tutorialStep,
@@ -255,6 +255,19 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
     if (boardFeedbackTimer.current) window.clearTimeout(boardFeedbackTimer.current);
     setBoardFeedback(null);
   }, []);
+
+  const handleHint = useCallback(() => {
+    const priorityHands = cfg.challenges
+      .filter((c) => (levelHandCounts[c.hand] ?? 0) < c.minCount)
+      .map((c) => c.hand);
+    const result = boardRef.current?.revealHint(priorityHands);
+    if (!result) {
+      handleBoardFeedback("No helpful hand found — try shuffle", true);
+      return;
+    }
+    const label = HAND_DISPLAY[result.hand] ?? result.hand.replace(/_/g, " ");
+    handleBoardFeedback(`Start here for a ${label}`, true);
+  }, [cfg.challenges, levelHandCounts, handleBoardFeedback]);
 
   const advanceLevel = useCallback(() => {
     advancingRef.current = false;
@@ -466,6 +479,12 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
   void walletTick;
 
   useEffect(() => {
+    if (energy >= MAX_ENERGY) return;
+    const id = window.setInterval(() => refreshWallet(), 60_000);
+    return () => window.clearInterval(id);
+  }, [energy, refreshWallet]);
+
+  useEffect(() => {
     if (startLevel === undefined) return;
     refreshWallet();
     if (!levelAttemptCostsEnergy(startLevel)) return;
@@ -558,7 +577,7 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
                 setGemShopEnergyFocus(true);
                 setShowGemShop(true);
               }}
-              title="Energy — refills to 10 at midnight UK time"
+              title="Energy — max 12, +1 every 2 hours"
             >
               <span className="hud-labeled-chip__label">Energy</span>
               <span className="hud-labeled-chip__body">
@@ -682,6 +701,16 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
           >
             <span className="action-btn__icon">↺</span>
             <span className="action-btn__label">Restart</span>
+          </button>
+          <button
+            type="button"
+            className="action-btn action-btn--hint"
+            onClick={handleHint}
+            disabled={boardLocked || tutorialActive}
+            title={tutorialActive ? "Finish the lesson first" : "Show a card to start toward a goal hand"}
+          >
+            <span className="action-btn__icon">💡</span>
+            <span className="action-btn__label">Hint</span>
           </button>
           <button
             type="button"

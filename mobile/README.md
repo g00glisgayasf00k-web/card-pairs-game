@@ -32,7 +32,19 @@ Or open the project in Android Studio once — it configures the SDK path in `fr
 
 ## Build a debug APK (install on your phone)
 
-Pushing to GitHub updates the **website only**. The home-screen icon changes when you **rebuild and reinstall the APK** on your phone.
+### Automatic build on every push
+
+Every push to `master` runs the **Android APK** GitHub Action. It builds a fresh debug APK and uploads it as a workflow artifact (kept 90 days).
+
+1. Open the repo on GitHub → **Actions** → latest **Android APK** run.
+2. Scroll to **Artifacts** → download `royal-match-poker-debug`.
+3. Copy to your phone and install (uninstall the old app first if the icon looks stale).
+
+CI sets `versionName` to `1.2.<run>` and bumps `versionCode` each build — check **Settings → Apps** on the phone to confirm you have the new build.
+
+### Local build (optional)
+
+Pushing to GitHub also triggers the CI APK above. Use a local build only if you need to test before push or CI is unavailable.
 
 From the repo root:
 

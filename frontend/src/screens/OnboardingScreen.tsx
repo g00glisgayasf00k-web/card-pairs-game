@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { AuthPanel } from "../components/AuthPanel";
 import { Leaderboard } from "../components/Leaderboard";
 import { ProfileModal } from "../components/ProfileModal";
 import { clearProgress, loadProgress } from "../lib/progress";
@@ -44,30 +45,36 @@ export function OnboardingScreen({
           <div className="home-toolbar__actions">
             <button
               type="button"
-              className={`home-icon-btn${menu === "leaderboard" ? " home-icon-btn--active" : ""}`}
+              className={`home-icon-btn home-icon-btn--labeled${menu === "leaderboard" ? " home-icon-btn--active" : ""}`}
               aria-label="High scores"
-              title="High scores"
               onClick={() => setMenu(menu === "leaderboard" ? null : "leaderboard")}
             >
-              🏆
+              <span className="home-icon-btn__label">Scores</span>
+              <span className="home-icon-btn__icon" aria-hidden>
+                🏆
+              </span>
             </button>
             <button
               type="button"
-              className={`home-icon-btn${menu === "rules" ? " home-icon-btn--active" : ""}`}
+              className={`home-icon-btn home-icon-btn--labeled${menu === "rules" ? " home-icon-btn--active" : ""}`}
               aria-label="How to play"
-              title="How to play"
               onClick={() => setMenu(menu === "rules" ? null : "rules")}
             >
-              📖
+              <span className="home-icon-btn__label">Rules</span>
+              <span className="home-icon-btn__icon" aria-hidden>
+                📖
+              </span>
             </button>
             <button
               type="button"
-              className={`home-icon-btn home-icon-btn--account${menu === "account" ? " home-icon-btn--active" : ""}${loggedIn ? " home-icon-btn--signed-in" : ""}`}
+              className={`home-icon-btn home-icon-btn--labeled home-icon-btn--account${menu === "account" ? " home-icon-btn--active" : ""}${loggedIn ? " home-icon-btn--signed-in" : ""}`}
               aria-label={loggedIn ? `Account: ${username ?? "player"}` : "Sign in or create account"}
-              title={loggedIn ? username ?? "Your account" : "Sign in"}
               onClick={() => setMenu(menu === "account" ? null : "account")}
             >
-              👤
+              <span className="home-icon-btn__label">Account</span>
+              <span className="home-icon-btn__icon" aria-hidden>
+                👤
+              </span>
               {loggedIn && <span className="home-icon-btn__dot" aria-hidden />}
             </button>
           </div>
@@ -127,11 +134,8 @@ export function OnboardingScreen({
             )}
           </>
         ) : (
-          <div className="home-play-locked">
-            <span className="home-play-locked__icon">🔒</span>
-            <p>
-              Tap <strong>👤</strong> above to sign in and take your seat at the royal table.
-            </p>
+          <div className="home-auth-inline">
+            <AuthPanel variant="home" onSuccess={() => handleAccountChange()} />
           </div>
         )}
       </div>

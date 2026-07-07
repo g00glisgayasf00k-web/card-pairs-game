@@ -533,11 +533,13 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
           </div>
 
           <div className="game-hud__row">
-            <div className="level-badge hud-labeled-chip" title={cfg.label}>
+            <div
+              className="level-badge hud-labeled-chip"
+              title={`Level ${level} of ${MAX_LEVEL} · ${cfg.label}`}
+            >
               <span className="hud-labeled-chip__label">Level</span>
               <span className="hud-labeled-chip__body">
-                <span className="level-badge__icon" aria-hidden>⭐</span>
-                <span className="level-badge__num">{level}/{MAX_LEVEL}</span>
+                <span className="level-badge__num">{formatLevelId(level)}</span>
               </span>
             </div>
 
@@ -580,13 +582,6 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
                 <span className="credits-chip__val">{credits}</span>
               </span>
             </button>
-
-            <div className="rank-chip hud-labeled-chip" title={cfg.label}>
-              <span className="hud-labeled-chip__label">Stage</span>
-              <span className="hud-labeled-chip__body">
-                <span className="rank-chip__label">{formatLevelId(level)}</span>
-              </span>
-            </div>
           </div>
 
           <div className="xp-track">

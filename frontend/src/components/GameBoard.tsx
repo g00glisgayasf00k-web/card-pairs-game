@@ -167,7 +167,11 @@ function applyGravity(
       if (!key) return;
       used.add(key);
       const [rr, cc] = key.split(",").map(Number) as [number, number];
-      newBoard[rr]![cc] = { ...newBoard[rr]![cc]!, special: sp };
+      if (sp === "arrow_h" || sp === "arrow_v") {
+        newBoard[rr]![cc] = { rank: "A", suit: "spades", special: sp };
+      } else {
+        newBoard[rr]![cc] = { ...newBoard[rr]![cc]!, special: sp };
+      }
     });
   }
 

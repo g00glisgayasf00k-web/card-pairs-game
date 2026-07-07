@@ -10,12 +10,23 @@ import {
   getProgressOwner,
   loadProgress,
   saveProgress,
+  setProgressOwner,
   setProgressSyncHook,
   type SavedProgress,
 } from "./progress";
 
 let syncTimer: ReturnType<typeof setTimeout> | null = null;
 let syncing = false;
+/** Bumped on sign-out / account switch so stale pulls cannot repopulate local storage. */
+let pullGeneration = 0;
+
+function isPullStale(generation: number): boolean {
+  return generation !== pullGeneration;
+}
+
+export function invalidateProgressPulls(): void {
+  pullGeneration += 1;
+}
 
 function hasAuthToken(): boolean {
   return Boolean(localStorage.getItem("token"));
@@ -50,14 +61,21 @@ async function pushProgress(payload?: SavedProgress): Promise<void> {
 export async function pullRemoteProgress(): Promise<boolean> {
   if (!hasAuthToken()) return false;
 
+  const generation = pullGeneration;
+
   try {
     const remote = await fetchMyProgress();
+    if (isPullStale(generation)) return false;
+
     const local = loadProgress();
 
     if (!remote.progress) {
+      clearProgress();
       const fresh = defaultProgress();
       saveProgress(fresh, { skipSync: true });
-      await pushProgress(fresh);
+      if (!isPullStale(generation)) {
+        await pushProgress(fresh);
+      }
       return true;
     }
 
@@ -65,10 +83,11 @@ export async function pullRemoteProgress(): Promise<boolean> {
     const localTs = local?.updatedAt ?? 0;
 
     if (!local || remoteTs > localTs) {
+      if (isPullStale(generation)) return false;
       return applyImportedProgress(remote.progress);
     }
 
-    if (localTs > remoteTs) {
+    if (localTs > remoteTs && !isPullStale(generation)) {
       await pushProgress(local);
     }
     return false;
@@ -84,13 +103,36 @@ export function initProgressSync(): void {
 
 /** Drop local save when switching to a different account. */
 export function prepareProgressForAccount(username: string): void {
-  const owner = getProgressOwner();
-  if (owner !== null && owner !== username) {
+  if (getProgressOwner() !== username) {
+    invalidateProgressPulls();
     clearProgress();
   }
 }
 
+/** Run after login/signup once the session token is stored. */
+export async function beginAccountSession(
+  username: string,
+  options: { isNewAccount: boolean }
+): Promise<void> {
+  if (options.isNewAccount) {
+    invalidateProgressPulls();
+    clearProgress();
+  } else {
+    prepareProgressForAccount(username);
+  }
+
+  await pullRemoteProgress();
+
+  if (options.isNewAccount && !loadProgress()) {
+    saveProgress(defaultProgress(), { skipSync: true });
+  }
+
+  await flushProgressSync();
+  setProgressOwner(username);
+}
+
 export function stopProgressSync(): void {
+  invalidateProgressPulls();
   if (syncTimer) {
     clearTimeout(syncTimer);
     syncTimer = null;

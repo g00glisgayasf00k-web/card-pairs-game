@@ -13,9 +13,10 @@ const GLYPH: Record<SpecialType, string> = {
   rainbow: "♠♥♦♣",
 };
 
-/** Renders power-up artwork for board cards and the guide modal */
+/** Renders power-up artwork for board cells and the guide modal */
 export function SpecialArt({ type, className }: Props) {
-  const useSprite = type === "bomb" || type === "joker";
+  const useSprite =
+    type === "bomb" || type === "joker" || type === "arrow_h" || type === "arrow_v";
 
   if (useSprite) {
     return (

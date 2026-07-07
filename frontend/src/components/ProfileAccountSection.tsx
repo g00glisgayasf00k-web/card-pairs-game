@@ -1,5 +1,5 @@
 import { AuthPanel } from "./AuthPanel";
-import { setSession, clearSession, getUsername, isLoggedIn } from "../lib/session";
+import { setSession, getUsername, isLoggedIn } from "../lib/session";
 
 interface Props {
   displayName: string | null;
@@ -17,7 +17,6 @@ export function ProfileAccountSection({ displayName, onAccountChange, onSignOut 
   };
 
   const handleLogout = () => {
-    clearSession();
     onSignOut?.();
     onAccountChange?.();
   };

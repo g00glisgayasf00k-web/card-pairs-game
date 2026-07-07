@@ -25,6 +25,42 @@ interface Props {
 export function PlayingCard({ card, blocker, selected, guided, popping }: Props) {
   const suit = SUIT_SYMBOL[card.suit];
   const sp   = card.special;
+  const isArrowOnly = sp === "arrow_h" || sp === "arrow_v";
+
+  if (isArrowOnly) {
+    return (
+      <div
+        className={[
+          "playing-card",
+          "arrow-power",
+          SPECIAL_CLASS[sp],
+          selected && !popping ? "selected" : "",
+          guided && !popping ? "guided" : "",
+          popping ? "pop" : "",
+        ].filter(Boolean).join(" ")}
+        aria-label={sp === "arrow_h" ? "Row arrow — tap to clear row" : "Column arrow — tap to clear column"}
+      >
+        <SpecialArt type={sp} className="special-art--arrow" />
+
+        {blocker && blocker.hp > 0 && (
+          <div
+            className={[
+              "blocker-overlay",
+              `blocker-overlay--${blocker.kind}`,
+              blocker.kind === "crate" && blocker.hp === 1 ? "blocker-overlay--damaged" : "",
+            ]
+              .filter(Boolean)
+              .join(" ")}
+            aria-hidden
+          >
+            <span className="blocker-overlay__icon">
+              {blocker.kind === "glass" ? "🧊" : "📦"}
+            </span>
+          </div>
+        )}
+      </div>
+    );
+  }
 
   return (
     <div

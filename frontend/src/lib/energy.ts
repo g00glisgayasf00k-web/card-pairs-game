@@ -116,6 +116,20 @@ export function trySpendEnergyForRetry(globalLevel: number): boolean {
   return trySpendEnergyForLevel(globalLevel);
 }
 
+/** Grant energy from a rewarded video (capped at MAX_ENERGY). */
+export function grantEnergyFromVideo(amount: number): boolean {
+  const saved = loadProgress();
+  if (!saved || amount <= 0) return false;
+  const refreshed = withRefreshedEnergy(saved);
+  if (refreshed.energy >= MAX_ENERGY) return false;
+
+  saveProgress({
+    ...refreshed,
+    energy: Math.min(MAX_ENERGY, refreshed.energy + Math.floor(amount)),
+  });
+  return true;
+}
+
 /** Buy a full energy bar (10 ⚡) for 100 gems. */
 export function buyTenEnergy(): boolean {
   const saved = loadProgress();

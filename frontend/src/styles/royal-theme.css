@@ -403,26 +403,109 @@ button.royal-resource:active {
 /* ── Gem / power-up shop cards ───────────────────────────────────────────── */
 
 .gem-shop-modal.royal-shop {
-  max-width: min(380px, calc(100vw - 1rem));
+  position: relative;
+  max-width: min(420px, calc(100vw - 1rem));
+  max-height: min(92dvh, 680px);
   padding: 0;
   overflow: hidden;
   text-align: left;
   border: 3px solid var(--royal-gold);
   background: linear-gradient(180deg, #0f3322 0%, #062818 100%);
+  display: flex;
+  flex-direction: column;
 }
 
 .royal-shop__header {
-  padding: 1rem 0.85rem 0.75rem;
+  flex-shrink: 0;
+  padding: 0.85rem 0.85rem 0.65rem;
   background:
     radial-gradient(ellipse 80% 60% at 50% 0%, rgba(125, 255, 186, 0.12), transparent),
     linear-gradient(180deg, #145a38, #0a3522);
   border-bottom: 2px solid rgba(232, 197, 71, 0.3);
 }
 
+.royal-shop__header .royal-frame--compact {
+  margin-bottom: 0.55rem;
+  padding: 0.5rem 0.65rem 0.55rem;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+}
+
+.royal-shop__header .royal-frame__crown {
+  top: -0.95rem;
+  font-size: 1.15rem;
+}
+
+.royal-shop__header .royal-frame__title {
+  margin-top: 0.2rem;
+  font-size: clamp(0.95rem, 3.8vw, 1.15rem);
+}
+
+.royal-shop__header .royal-frame__sub {
+  margin-bottom: 0;
+  font-size: 0.72rem;
+}
+
+.royal-shop__header .royal-resource-bar {
+  margin: 0 auto;
+  max-width: 100%;
+}
+
+.royal-shop-alert {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0.55rem 0.85rem;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  text-align: center;
+  color: #fde68a;
+  background: rgba(251, 191, 36, 0.12);
+  border-bottom: 1px solid rgba(251, 191, 36, 0.25);
+}
+
 .royal-shop__body {
-  padding: 0.75rem 0.85rem 1rem;
-  max-height: min(58dvh, 480px);
+  flex: 1;
+  min-height: 0;
+  padding: 0.65rem 0.85rem 0.85rem;
   overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.royal-shop-section {
+  margin-bottom: 0.85rem;
+}
+
+.royal-shop-section:last-child {
+  margin-bottom: 0;
+}
+
+.royal-shop__section-title {
+  margin: 0 0 0.35rem;
+  font-family: var(--royal-serif);
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--royal-gold);
+}
+
+.royal-shop__section-title--alert {
+  color: #fbbf24;
+}
+
+.royal-shop__section-note {
+  margin: 0 0 0.5rem;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  opacity: 0.7;
+}
+
+.royal-shop-rewards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
 }
 
 .royal-shop-grid {
@@ -431,56 +514,129 @@ button.royal-resource:active {
   padding: 0;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.45rem;
+  gap: 0.55rem;
 }
 
 .royal-shop-card {
+  position: relative;
   display: flex;
   flex-direction: column;
-  padding: 0.5rem;
+  align-items: stretch;
+  padding: 0.65rem 0.55rem;
   border-radius: 12px;
   border: 2px solid rgba(232, 197, 71, 0.35);
   background: rgba(0, 0, 0, 0.35);
   min-height: 100%;
 }
 
+.royal-shop-card--row {
+  flex-direction: row;
+  align-items: center;
+  gap: 0.55rem;
+  padding: 0.6rem 0.65rem;
+}
+
+.royal-shop-card--video {
+  border-color: rgba(96, 165, 250, 0.45);
+  background: linear-gradient(135deg, rgba(30, 58, 95, 0.55), rgba(0, 0, 0, 0.35));
+}
+
+.royal-shop-card--featured {
+  border-color: rgba(251, 191, 36, 0.65);
+  background: linear-gradient(180deg, rgba(120, 80, 20, 0.35), rgba(0, 0, 0, 0.4));
+  box-shadow: 0 0 12px rgba(251, 191, 36, 0.15);
+}
+
+.royal-shop-card__badge {
+  position: absolute;
+  top: -0.45rem;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 0.12rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: #1a1200;
+  background: linear-gradient(180deg, #fde68a, #fbbf24);
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
 .royal-shop-card__icon {
-  font-size: 1.75rem;
+  font-size: 1.85rem;
+  line-height: 1;
   text-align: center;
-  margin-bottom: 0.25rem;
+  margin-bottom: 0.3rem;
   filter: drop-shadow(0 0 8px rgba(232, 197, 71, 0.25));
+  flex-shrink: 0;
+}
+
+.royal-shop-card--row .royal-shop-card__icon {
+  margin-bottom: 0;
+  font-size: 1.65rem;
+}
+
+.royal-shop-card__meta {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
 }
 
 .royal-shop-card__label {
   font-family: var(--royal-serif);
-  font-size: 0.72rem;
+  font-size: 0.82rem;
   font-weight: 800;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  line-height: 1.2;
   text-align: center;
-  margin-bottom: 0.15rem;
+}
+
+.royal-shop-card--row .royal-shop-card__label {
+  text-align: left;
 }
 
 .royal-shop-card__detail {
   flex: 1;
-  font-size: 0.62rem;
+  font-size: 0.72rem;
   text-align: center;
-  opacity: 0.75;
+  opacity: 0.8;
   line-height: 1.35;
-  margin-bottom: 0.4rem;
+  margin-bottom: 0.45rem;
+}
+
+.royal-shop-card--row .royal-shop-card__detail {
+  text-align: left;
+  margin-bottom: 0;
 }
 
 .royal-shop-card__btn {
   width: 100%;
-  padding: 0.4rem 0.35rem;
+  padding: 0.48rem 0.5rem;
   border: none;
   border-radius: 8px;
-  font-size: 0.72rem;
+  font-size: 0.78rem;
   font-weight: 800;
   cursor: pointer;
   background: linear-gradient(180deg, #22a058, #145a38);
   color: #fff;
   border-bottom: 2px solid #0a3522;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.royal-shop-card--row .royal-shop-card__btn {
+  width: auto;
+  min-width: 4.25rem;
+  max-width: 5.5rem;
+}
+
+.royal-shop-card__btn--video {
+  background: linear-gradient(180deg, #3b82f6, #1d4ed8);
+  border-bottom-color: #1e3a8a;
 }
 
 .royal-shop-card__btn:disabled {
@@ -489,28 +645,131 @@ button.royal-resource:active {
 }
 
 .royal-shop-energy {
-  margin-bottom: 0.75rem;
-}
-
-.royal-shop-energy .royal-shop-card {
-  flex-direction: row;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.royal-shop-energy .royal-shop-card__icon {
-  margin: 0;
-  font-size: 1.5rem;
-}
-
-.royal-shop-energy .royal-shop-card__meta {
-  flex: 1;
-  min-width: 0;
+  margin-bottom: 0;
 }
 
 .royal-shop-close {
+  flex-shrink: 0;
   margin: 0 0.85rem 0.85rem;
   width: calc(100% - 1.7rem);
+}
+
+/* Mock rewarded video overlay */
+.royal-shop-ad {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(0, 0, 0, 0.82);
+  border-radius: inherit;
+}
+
+.royal-shop-ad__panel {
+  width: min(100%, 300px);
+  padding: 0.75rem;
+  border-radius: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  background: linear-gradient(180deg, #1e293b, #0f172a);
+  text-align: center;
+}
+
+.royal-shop-ad__badge {
+  display: inline-block;
+  margin-bottom: 0.5rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.75;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.royal-shop-ad__screen {
+  padding: 1.25rem 0.75rem;
+  margin-bottom: 0.65rem;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #145a38, #0a3522);
+  border: 1px solid rgba(232, 197, 71, 0.25);
+}
+
+.royal-shop-ad__play {
+  display: block;
+  font-size: 2rem;
+  margin-bottom: 0.35rem;
+  opacity: 0.9;
+}
+
+.royal-shop-ad__title {
+  margin: 0 0 0.25rem;
+  font-family: var(--royal-serif);
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--royal-gold);
+}
+
+.royal-shop-ad__tagline {
+  margin: 0;
+  font-size: 0.72rem;
+  opacity: 0.8;
+  line-height: 1.35;
+}
+
+.royal-shop-ad__progress {
+  height: 6px;
+  margin-bottom: 0.5rem;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255, 255, 255, 0.12);
+}
+
+.royal-shop-ad__progress-fill {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #22a058, #7cffa8);
+  transition: width 0.05s linear;
+}
+
+.royal-shop-ad__hint {
+  margin: 0;
+  font-size: 0.72rem;
+  opacity: 0.85;
+  line-height: 1.35;
+}
+
+.royal-shop-ad__skip {
+  margin-top: 0.55rem;
+  padding: 0.3rem 0.65rem;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 0.68rem;
+  cursor: pointer;
+}
+
+@media (max-width: 360px) {
+  .royal-shop-card--row {
+    flex-wrap: wrap;
+  }
+
+  .royal-shop-card--row .royal-shop-card__btn {
+    width: 100%;
+    max-width: none;
+  }
+
+  .royal-shop-grid {
+    gap: 0.45rem;
+  }
+
+  .royal-shop-card__label {
+    font-size: 0.78rem;
+  }
 }
 
 /* ── Map footer banner ───────────────────────────────────────────────────── */

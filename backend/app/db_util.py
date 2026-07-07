@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from sqlalchemy import inspect, text
 from sqlalchemy.exc import IntegrityError, OperationalError
 
-from app.blueprints.auth import _hash_password
+from app.password_util import hash_password
 from app.models import User, db
 
 
@@ -58,13 +58,13 @@ def ensure_admin_user():
         if not user:
             user = User(
                 username=username,
-                password_hash=_hash_password(password),
+                password_hash=hash_password(password),
                 is_admin=True,
             )
             db.session.add(user)
         else:
             user.is_admin = True
-            user.password_hash = _hash_password(password)
+            user.password_hash = hash_password(password)
         db.session.commit()
     except IntegrityError:
         db.session.rollback()

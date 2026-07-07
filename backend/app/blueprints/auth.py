@@ -4,12 +4,12 @@ import secrets
 from datetime import timedelta, timezone
 from typing import Optional
 
-import bcrypt
 from flask import Blueprint, current_app, jsonify, request
 from flask_jwt_extended import create_access_token
 
 from app.db_util import utc_now
 from app.models import User, db
+from app.password_util import check_password, hash_password
 from app.services.email import send_password_reset_email
 
 auth_bp = Blueprint("auth", __name__)
@@ -18,11 +18,11 @@ _EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
 
 def _hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+    return hash_password(password)
 
 
 def _check_password(password: str, password_hash: str) -> bool:
-    return bcrypt.checkpw(password.encode(), password_hash.encode())
+    return check_password(password, password_hash)
 
 
 def _hash_reset_token(token: str) -> str:

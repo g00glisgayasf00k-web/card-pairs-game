@@ -5,7 +5,7 @@ from flask_cors import CORS
 from flask_jwt_extended import JWTManager
 
 from app.config import Config
-from app.models import db
+from app.models import User, db
 
 
 def create_app(config_class=Config):
@@ -30,7 +30,18 @@ def create_app(config_class=Config):
 
     @app.route("/api/health")
     def health():
-        return {"status": "ok"}
+        uri = app.config.get("SQLALCHEMY_DATABASE_URI") or ""
+        if "postgres" in uri:
+            db_kind = "postgres"
+        elif "sqlite" in uri:
+            db_kind = "sqlite"
+        else:
+            db_kind = "unknown"
+        try:
+            users = User.query.count()
+            return {"status": "ok", "db": db_kind, "users": users}
+        except Exception as exc:
+            return {"status": "error", "db": db_kind, "error": str(exc)}, 503
 
     static_dir = app.config.get("STATIC_FOLDER")
     if static_dir:

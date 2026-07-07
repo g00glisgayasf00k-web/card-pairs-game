@@ -100,6 +100,16 @@ export function AdminApp() {
     void checkSession();
   }, [checkSession]);
 
+  useEffect(() => {
+    if (!authed) return;
+    if (tab !== "players" && tab !== "overview") return;
+    const id = window.setInterval(() => {
+      void loadStats();
+      void loadUsers(userOffset, search);
+    }, 20000);
+    return () => window.clearInterval(id);
+  }, [authed, tab, userOffset, search, loadStats, loadUsers]);
+
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -283,6 +293,13 @@ export function AdminApp() {
         </header>
 
         {error && <p className="admin-error admin-error--banner">{error}</p>}
+
+        {stats?.db_backend === "sqlite" && (
+          <p className="admin-error admin-error--banner admin-error--warn">
+            Database is SQLite (not Postgres). Player accounts can disappear on deploy. In Render, link{" "}
+            <strong>DATABASE_URL</strong> to the <strong>royal-match-db</strong> Postgres instance and redeploy.
+          </p>
+        )}
 
         {tab === "overview" && stats && (
           <>

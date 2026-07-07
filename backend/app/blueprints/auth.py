@@ -33,7 +33,7 @@ def _unique_username(base: str) -> str:
 
 def _auth_response(user: User, status: int = 200):
     token = create_access_token(identity=str(user.id))
-    payload = {"token": token, "username": user.username}
+    payload = {"token": token, "username": user.username, "user_id": user.id}
     if user.email:
         payload["email"] = user.email
     return jsonify(payload), status
@@ -59,7 +59,11 @@ def register():
 
     user = User(username=username, password_hash=_hash_password(password))
     db.session.add(user)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        return jsonify({"error": "Could not create account — server database error"}), 500
 
     return _auth_response(user, 201)
 

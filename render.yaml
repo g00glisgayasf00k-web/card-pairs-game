@@ -5,6 +5,8 @@ version: "1"
 databases:
   - name: royal-match-db
     plan: free
+    region: oregon
+    postgresMajorVersion: "16"
     databaseName: royalmatch
     user: royalmatch
 

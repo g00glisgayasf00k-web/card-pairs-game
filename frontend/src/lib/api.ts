@@ -130,6 +130,7 @@ export async function fetchAdminStats() {
     users: number;
     players: number;
     scores: number;
+    db_backend?: string;
     synced_players: number;
     signups_7d: number;
     scores_7d: number;

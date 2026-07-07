@@ -2,7 +2,7 @@ import json
 from datetime import datetime, timedelta, timezone
 from functools import wraps
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from sqlalchemy import desc, func
 
@@ -76,11 +76,20 @@ def admin_stats():
 
     recent_users = User.query.order_by(desc(User.id)).limit(8).all()
 
+    db_uri = current_app.config.get("SQLALCHEMY_DATABASE_URI") or ""
+    if "postgres" in db_uri:
+        db_backend = "postgres"
+    elif "sqlite" in db_uri:
+        db_backend = "sqlite"
+    else:
+        db_backend = "unknown"
+
     return jsonify(
         {
             "users": user_count,
             "players": player_count,
             "scores": score_count,
+            "db_backend": db_backend,
             "synced_players": synced_count,
             "users_pending_sync": max(0, user_count - synced_count),
             "signups_7d": signups_7d,

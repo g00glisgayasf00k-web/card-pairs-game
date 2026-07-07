@@ -29,6 +29,29 @@ export function OnboardingScreen({
   return (
     <div className="home-screen home-screen--royal">
       <div className="mobile-shell mobile-shell--home">
+        <div className="home-panel home-panel--auth home-panel--auth-top">
+          <div className="home-panel__header">
+            <span className="home-panel__icon">👤</span>
+            <span>{loggedIn ? "Your account" : "Royal invitation — sign in"}</span>
+          </div>
+          {loggedIn && username ? (
+            <div className="home-profile">
+              <div className="home-profile__badge">
+                <span className="home-profile__avatar">👤</span>
+                <div className="home-profile__info">
+                  <span className="home-profile__label">Playing as</span>
+                  <strong className="home-profile__name">{username}</strong>
+                </div>
+              </div>
+              <button type="button" className="home-btn-ghost" onClick={onSignOut}>
+                Sign out
+              </button>
+            </div>
+          ) : (
+            <AuthPanel onSuccess={onAuthSuccess} variant="home" />
+          )}
+        </div>
+
         <header className="home-hero">
           <div className="home-hero__shine" aria-hidden />
 
@@ -88,29 +111,6 @@ export function OnboardingScreen({
             <p>Sign in to take your seat at the royal table.</p>
           </div>
         )}
-
-        <div className="home-panel home-panel--auth">
-          <div className="home-panel__header">
-            <span className="home-panel__icon">👤</span>
-            <span>{loggedIn ? "Your account" : "Royal invitation — sign in"}</span>
-          </div>
-          {loggedIn && username ? (
-            <div className="home-profile">
-              <div className="home-profile__badge">
-                <span className="home-profile__avatar">👤</span>
-                <div className="home-profile__info">
-                  <span className="home-profile__label">Playing as</span>
-                  <strong className="home-profile__name">{username}</strong>
-                </div>
-              </div>
-              <button type="button" className="home-btn-ghost" onClick={onSignOut}>
-                Sign out
-              </button>
-            </div>
-          ) : (
-            <AuthPanel onSuccess={onAuthSuccess} variant="home" />
-          )}
-        </div>
 
         <div className="home-panels">
           <div className="home-panel-group">

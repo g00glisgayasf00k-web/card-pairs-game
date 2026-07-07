@@ -1978,6 +1978,10 @@
   padding: 0.85rem 0.9rem;
 }
 
+.home-panel--auth-top {
+  margin-bottom: 0.65rem;
+}
+
 .home-play-locked {
   display: flex;
   flex-direction: column;

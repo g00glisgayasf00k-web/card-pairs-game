@@ -38,6 +38,10 @@ const PACK_ICONS: Record<string, string> = {
 
 const FEATURED_PACK_ID = "treasure";
 
+/** Real-money gem packs and gem-for-energy purchases are disabled until payments launch. */
+const PURCHASES_ENABLED = false;
+const COMING_SOON_LABEL = "Coming soon";
+
 function VideoAdOverlay({
   kind,
   progress,
@@ -85,7 +89,8 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
   const saved = loadProgress();
   const { energy } = syncEnergyState();
   const gems = saved?.credits ?? 0;
-  const canBuyEnergy = energy < MAX_ENERGY && gems >= ENERGY_BUY_TEN_COST;
+  const canBuyEnergy =
+    PURCHASES_ENABLED && energy < MAX_ENERGY && gems >= ENERGY_BUY_TEN_COST;
   const gemAdsLeft = gemVideoAdsRemaining();
   const energyAdsLeft = energyVideoAdsRemaining();
   const canWatchGemAd = gemAdsLeft > 0 && !adKind;
@@ -135,6 +140,7 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
   }, [adKind, finishAd]);
 
   const handleBuyGems = (packId: string) => {
+    if (!PURCHASES_ENABLED) return;
     const amount = grantGemPack(packId);
     if (!amount || !saved) return;
     saveProgress({ ...saved, credits: saved.credits + amount });
@@ -142,6 +148,7 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
   };
 
   const handleBuyEnergy = () => {
+    if (!PURCHASES_ENABLED) return;
     if (buyTenEnergy()) refresh();
   };
 
@@ -205,6 +212,12 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
     </section>
   );
 
+  const comingSoonBanner = (
+    <p className="royal-shop-coming-soon" role="status">
+      Purchases are coming soon. Free video rewards are still available below.
+    </p>
+  );
+
   const energySection = (
     <section className="royal-shop-section royal-shop-energy">
       <h3
@@ -212,7 +225,7 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
       >
         {emphasizeEnergy ? "Need energy to play" : "Refill energy"}
       </h3>
-      <div className="royal-shop-card royal-shop-card--row">
+      <div className={`royal-shop-card royal-shop-card--row${!PURCHASES_ENABLED ? " royal-shop-card--locked" : ""}`}>
         <span className="royal-shop-card__icon">⚡</span>
         <div className="royal-shop-card__meta">
           <span className="royal-shop-card__label">Full bar</span>
@@ -220,11 +233,12 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
         </div>
         <button
           type="button"
-          className="royal-shop-card__btn"
+          className="royal-shop-card__btn royal-shop-card__btn--soon"
           onClick={handleBuyEnergy}
-          disabled={!canBuyEnergy}
+          disabled={!PURCHASES_ENABLED || !canBuyEnergy}
+          aria-disabled={!PURCHASES_ENABLED}
         >
-          {ENERGY_BUY_TEN_COST} 💎
+          {PURCHASES_ENABLED ? `${ENERGY_BUY_TEN_COST} 💎` : COMING_SOON_LABEL}
         </button>
       </div>
     </section>
@@ -233,14 +247,18 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
   const gemsSection = (
     <section className="royal-shop-section">
       <h3 className="royal-shop__section-title">Buy gems</h3>
-      <p className="royal-shop__section-note">Demo store — connect real payments later.</p>
+      <p className="royal-shop__section-note">
+        {PURCHASES_ENABLED
+          ? "Demo store — connect real payments later."
+          : "Gem packs will be available here soon."}
+      </p>
       <ul className="royal-shop-grid">
         {GEM_SHOP_PACKS.map((pack) => {
           const featured = pack.id === FEATURED_PACK_ID;
           return (
             <li key={pack.id}>
               <div
-                className={`royal-shop-card${featured ? " royal-shop-card--featured" : ""}`}
+                className={`royal-shop-card${featured ? " royal-shop-card--featured" : ""}${!PURCHASES_ENABLED ? " royal-shop-card--locked" : ""}`}
               >
                 {featured && <span className="royal-shop-card__badge">Best value</span>}
                 <span className="royal-shop-card__icon">{PACK_ICONS[pack.id] ?? "💎"}</span>
@@ -248,10 +266,12 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
                 <span className="royal-shop-card__detail">+{pack.gems.toLocaleString()} gems</span>
                 <button
                   type="button"
-                  className="royal-shop-card__btn"
+                  className="royal-shop-card__btn royal-shop-card__btn--soon"
                   onClick={() => handleBuyGems(pack.id)}
+                  disabled={!PURCHASES_ENABLED}
+                  aria-disabled={!PURCHASES_ENABLED}
                 >
-                  {pack.priceLabel}
+                  {PURCHASES_ENABLED ? pack.priceLabel : COMING_SOON_LABEL}
                 </button>
               </div>
             </li>
@@ -288,11 +308,14 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
 
         {emphasizeEnergy && (
           <p className="royal-shop-alert" role="status">
-            You&apos;re out of energy — watch a free video or spend gems to keep playing.
+            You&apos;re out of energy — watch a free video below to keep playing.
           </p>
         )}
 
-        <div className="royal-shop__body">{sections}</div>
+        <div className="royal-shop__body">
+          {!PURCHASES_ENABLED && comingSoonBanner}
+          {sections}
+        </div>
 
         <button type="button" className="btn scores-close royal-shop-close" onClick={onClose}>
           Close

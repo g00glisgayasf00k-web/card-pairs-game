@@ -2482,6 +2482,59 @@
   display: none;
 }
 
+.auth-link-btn {
+  display: block;
+  width: 100%;
+  margin-top: 0.55rem;
+  padding: 0;
+  border: none;
+  background: none;
+  color: rgba(245, 208, 96, 0.9);
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.auth-panel__info {
+  margin: 0.65rem 0 0;
+  font-size: 0.78rem;
+  line-height: 1.45;
+  color: #86efac;
+  text-align: center;
+}
+
+.reset-password-screen {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+}
+
+.reset-password-card {
+  width: min(100%, 22rem);
+  padding: 1.25rem;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(245, 208, 96, 0.18);
+}
+
+.reset-password-card h1 {
+  margin: 0 0 0.85rem;
+  font-family: "Crimson Pro", Georgia, serif;
+  font-size: 1.35rem;
+  color: var(--mg-gold);
+  text-align: center;
+}
+
+.reset-password-success {
+  margin: 0 0 0.85rem;
+  text-align: center;
+  color: #86efac;
+  line-height: 1.45;
+}
+
 .auth-google {
   display: flex;
   flex-direction: column;

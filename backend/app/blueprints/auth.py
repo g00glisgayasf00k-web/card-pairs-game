@@ -1,13 +1,20 @@
+import hashlib
 import re
 import secrets
+from datetime import timedelta, timezone
+from typing import Optional
 
 import bcrypt
 from flask import Blueprint, current_app, jsonify, request
 from flask_jwt_extended import create_access_token
 
+from app.db_util import utc_now
 from app.models import User, db
+from app.services.email import send_password_reset_email
 
 auth_bp = Blueprint("auth", __name__)
+
+_EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
 
 
 def _hash_password(password: str) -> str:
@@ -16,6 +23,18 @@ def _hash_password(password: str) -> str:
 
 def _check_password(password: str, password_hash: str) -> bool:
     return bcrypt.checkpw(password.encode(), password_hash.encode())
+
+
+def _hash_reset_token(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+def _normalize_email(email: str) -> str:
+    return email.strip().lower()
+
+
+def _valid_email(email: str) -> bool:
+    return bool(_EMAIL_RE.match(email))
 
 
 def _unique_username(base: str) -> str:
@@ -39,6 +58,21 @@ def _auth_response(user: User, status: int = 200):
     return jsonify(payload), status
 
 
+def _find_user_by_identifier(identifier: str) -> Optional[User]:
+    value = identifier.strip()
+    if not value:
+        return None
+    if "@" in value:
+        normalized = _normalize_email(value)
+        return User.query.filter(db.func.lower(User.email) == normalized).first()
+    return User.query.filter_by(username=value).first()
+
+
+def _clear_reset_token(user: User) -> None:
+    user.reset_token_hash = None
+    user.reset_token_expires = None
+
+
 @auth_bp.get("/config")
 def public_config():
     return jsonify({"googleClientId": current_app.config.get("GOOGLE_CLIENT_ID") or ""})
@@ -49,15 +83,21 @@ def register():
     data = request.get_json(silent=True) or {}
     username = (data.get("username") or "").strip()
     password = data.get("password") or ""
+    email_raw = (data.get("email") or "").strip()
+    email = _normalize_email(email_raw) if email_raw else None
 
     if len(username) < 3 or len(username) > 32:
         return jsonify({"error": "Username must be 3–32 characters"}), 400
     if len(password) < 6:
         return jsonify({"error": "Password must be at least 6 characters"}), 400
+    if email and not _valid_email(email):
+        return jsonify({"error": "Enter a valid email address"}), 400
     if User.query.filter_by(username=username).first():
         return jsonify({"error": "Username already taken"}), 409
+    if email and User.query.filter(db.func.lower(User.email) == email).first():
+        return jsonify({"error": "Email already in use"}), 409
 
-    user = User(username=username, password_hash=_hash_password(password))
+    user = User(username=username, password_hash=_hash_password(password), email=email)
     db.session.add(user)
     try:
         db.session.commit()
@@ -79,6 +119,78 @@ def login():
         return jsonify({"error": "Invalid username or password"}), 401
 
     return _auth_response(user)
+
+
+@auth_bp.post("/forgot-password")
+def forgot_password():
+    data = request.get_json(silent=True) or {}
+    identifier = (data.get("email") or data.get("identifier") or data.get("username") or "").strip()
+
+    if not identifier:
+        return jsonify({"error": "Enter your email or username"}), 400
+
+    user = _find_user_by_identifier(identifier)
+    generic = {
+        "message": "If an account exists with a recovery email, we sent reset instructions."
+    }
+
+    if not user:
+        return jsonify(generic)
+
+    if not user.email:
+        return jsonify(
+            {
+                "error": "This account has no email on file. Sign in with Google, or sign up again with an email address."
+            }
+        ), 400
+
+    token = secrets.token_urlsafe(32)
+    ttl = int(current_app.config.get("RESET_TOKEN_TTL_MINUTES") or 60)
+    user.reset_token_hash = _hash_reset_token(token)
+    user.reset_token_expires = utc_now() + timedelta(minutes=ttl)
+    db.session.commit()
+
+    reset_url = f"{current_app.config['FRONTEND_URL']}?reset={token}"
+    try:
+        send_password_reset_email(user.email, reset_url)
+    except Exception as exc:
+        _clear_reset_token(user)
+        db.session.commit()
+        current_app.logger.exception("Failed to send password reset email")
+        return jsonify({"error": "Could not send reset email. Try again later."}), 503
+
+    return jsonify(generic)
+
+
+@auth_bp.post("/reset-password")
+def reset_password():
+    data = request.get_json(silent=True) or {}
+    token = (data.get("token") or "").strip()
+    password = data.get("password") or ""
+
+    if not token:
+        return jsonify({"error": "Reset link is invalid or expired"}), 400
+    if len(password) < 6:
+        return jsonify({"error": "Password must be at least 6 characters"}), 400
+
+    token_hash = _hash_reset_token(token)
+    user = User.query.filter_by(reset_token_hash=token_hash).first()
+    if not user or not user.reset_token_expires:
+        return jsonify({"error": "Reset link is invalid or expired"}), 400
+
+    expires = user.reset_token_expires
+    if expires.tzinfo is None:
+        expires = expires.replace(tzinfo=timezone.utc)
+    if expires < utc_now():
+        _clear_reset_token(user)
+        db.session.commit()
+        return jsonify({"error": "Reset link is invalid or expired"}), 400
+
+    user.password_hash = _hash_password(password)
+    _clear_reset_token(user)
+    db.session.commit()
+
+    return jsonify({"message": "Password updated. You can sign in now.", "username": user.username})
 
 
 def _verify_google_credential(credential: str, client_id: str) -> dict:

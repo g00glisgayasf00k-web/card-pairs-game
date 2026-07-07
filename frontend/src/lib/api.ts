@@ -17,10 +17,10 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return data as T;
 }
 
-export async function register(username: string, password: string) {
+export async function register(username: string, password: string, email?: string) {
   return request<{ token: string; username: string }>("/api/auth/register", {
     method: "POST",
-    body: JSON.stringify({ username, password }),
+    body: JSON.stringify({ username, password, ...(email ? { email } : {}) }),
   });
 }
 
@@ -35,6 +35,20 @@ export async function loginWithGoogle(credential: string) {
   return request<{ token: string; username: string; email?: string }>("/api/auth/google", {
     method: "POST",
     body: JSON.stringify({ credential }),
+  });
+}
+
+export async function forgotPassword(identifier: string) {
+  return request<{ message: string }>("/api/auth/forgot-password", {
+    method: "POST",
+    body: JSON.stringify({ identifier }),
+  });
+}
+
+export async function resetPassword(token: string, password: string) {
+  return request<{ message: string; username?: string }>("/api/auth/reset-password", {
+    method: "POST",
+    body: JSON.stringify({ token, password }),
   });
 }
 

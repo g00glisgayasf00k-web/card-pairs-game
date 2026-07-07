@@ -14,6 +14,8 @@ class User(db.Model):
     email = db.Column(db.String(255), unique=True, nullable=True, index=True)
     google_id = db.Column(db.String(128), unique=True, nullable=True, index=True)
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
+    reset_token_hash = db.Column(db.String(128), nullable=True)
+    reset_token_expires = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(
         db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )

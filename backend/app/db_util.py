@@ -9,18 +9,16 @@ from app.models import User, db
 
 
 def ensure_schema():
-    """Create tables and apply lightweight SQLite column migrations."""
+    """Create tables and apply lightweight column migrations."""
     db.create_all()
 
     engine = db.engine
-    if engine.dialect.name != "sqlite":
-        return
-
     inspector = inspect(engine)
     if "users" not in inspector.get_table_names():
         return
 
     cols = {c["name"] for c in inspector.get_columns("users")}
+    is_sqlite = engine.dialect.name == "sqlite"
     migrations = [
         ("is_admin", "ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT 0 NOT NULL"),
         ("google_id", "ALTER TABLE users ADD COLUMN google_id VARCHAR(128)"),
@@ -29,7 +27,15 @@ def ensure_schema():
             "created_at",
             "ALTER TABLE users ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL",
         ),
+        ("reset_token_hash", "ALTER TABLE users ADD COLUMN reset_token_hash VARCHAR(128)"),
+        ("reset_token_expires", "ALTER TABLE users ADD COLUMN reset_token_expires TIMESTAMP"),
     ]
+    if not is_sqlite:
+        migrations[0] = (
+            "is_admin",
+            "ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT FALSE NOT NULL",
+        )
+
     for col_name, sql in migrations:
         if col_name in cols:
             continue
@@ -38,7 +44,6 @@ def ensure_schema():
                 conn.execute(text(sql))
             cols.add(col_name)
         except OperationalError:
-            # Re-check — another worker may have migrated first.
             cols = {c["name"] for c in inspector.get_columns("users")}
 
 

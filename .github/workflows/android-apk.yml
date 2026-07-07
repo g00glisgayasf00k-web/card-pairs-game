@@ -38,6 +38,9 @@ jobs:
         uses: android-actions/setup-android@v3
 
       - name: Build debug APK
+        env:
+          VERSION_CODE: ${{ github.run_number }}
+          VERSION_NAME: 1.2.${{ github.run_number }}
         run: bash mobile/build.sh
 
       - name: Upload APK

@@ -21,7 +21,10 @@ npm run cap:sync
 echo "==> Building debug APK with Gradle..."
 cd "$ANDROID"
 chmod +x ./gradlew
-./gradlew clean assembleDebug
+VC="${VERSION_CODE:-6}"
+VN="${VERSION_NAME:-1.2.0}"
+echo "    version ${VN} (code ${VC})"
+./gradlew clean assembleDebug -PversionCode="$VC" -PversionName="$VN"
 
 mkdir -p "$OUT_DIR"
 cp -f "$APK_SRC" "$APK_DEST"

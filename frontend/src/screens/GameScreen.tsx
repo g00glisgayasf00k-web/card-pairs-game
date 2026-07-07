@@ -9,7 +9,7 @@ import {
   type FullHandResult,
   type HandLabel,
 } from "../lib/pokerHands";
-import { campaignLeaderboardPoints, computeLevelStars, formatChallenge, getLevelConfig, levelPointsMet, levelRequirementsMet, movesRemaining, MAX_LEVEL, outOfMoves, type HandCounts } from "../lib/levels";
+import { campaignLeaderboardPointsFromProgress, computeLevelStars, formatChallenge, getLevelConfig, levelPointsMet, levelRequirementsMet, movesRemaining, MAX_LEVEL, outOfMoves, type HandCounts } from "../lib/levels";
 import {
   canAffordMovesPack,
   MOVES_PACKS,
@@ -432,13 +432,15 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
   );
 
   const submitRunScore = () => {
-    const pts = campaignLeaderboardPoints(levelRef.current, levelScoreRef.current);
-    if (handsClearedRef.current === 0 && pts === 0) return;
+    if (levelHandsRef.current <= 0 && levelScoreRef.current <= 0) return;
+    const saved = loadProgress();
+    if (!saved) return;
+    const pts = campaignLeaderboardPointsFromProgress(saved);
+    if (pts <= 0) return;
     submitScore({
       points: pts,
-      hands_cleared: handsClearedRef.current,
-      best_hand: bestHandRef.current,
-      username,
+      hands_cleared: saved.handsCleared,
+      best_hand: saved.bestHand,
     }).catch(() => {});
   };
 

@@ -1,10 +1,7 @@
-import secrets
-
 from flask import Blueprint, jsonify, request
-from flask_jwt_extended import get_jwt_identity, jwt_required, verify_jwt_in_request
+from flask_jwt_extended import get_jwt_identity, jwt_required
 from sqlalchemy import desc
 
-from app.blueprints.auth import _hash_password
 from app.leaderboards import build_leaderboards
 from app.models import Score, User, db
 scores_bp = Blueprint("scores", __name__)
@@ -63,32 +60,16 @@ def my_scores():
 
 
 @scores_bp.post("/submit")
+@jwt_required()
 def submit_score():
     data = request.get_json(silent=True) or {}
     points = int(data.get("points", 0))
     hands_cleared = int(data.get("hands_cleared", 0))
     best_hand = data.get("best_hand", "pair")
 
-    user_id = None
-    try:
-        verify_jwt_in_request(optional=True)
-        uid = get_jwt_identity()
-        if uid:
-            user_id = int(uid)
-    except Exception:
-        pass
-
-    if user_id is None:
-        username = (data.get("username") or "").strip()
-        if len(username) < 2 or len(username) > 32:
-            return jsonify({"saved": False, "message": "Enter your name (2–32 chars) to save"}), 200
-        user = User.query.filter_by(username=username).first()
-        if not user:
-            guest_secret = secrets.token_urlsafe(32)
-            user = User(username=username, password_hash=_hash_password(guest_secret))
-            db.session.add(user)
-            db.session.flush()
-        user_id = user.id
+    user_id = int(get_jwt_identity())
+    if points <= 0:
+        return jsonify({"saved": False, "message": "Nothing to save"}), 200
 
     score = Score(
         user_id=user_id,
@@ -100,3 +81,12 @@ def submit_score():
     db.session.commit()
 
     return jsonify({"saved": True, "id": score.id}), 201
+
+
+@scores_bp.delete("/me")
+@jwt_required()
+def reset_my_scores():
+    user_id = int(get_jwt_identity())
+    Score.query.filter_by(user_id=user_id).delete()
+    db.session.commit()
+    return jsonify({"reset": True}), 200

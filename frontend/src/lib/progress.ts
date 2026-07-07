@@ -243,3 +243,13 @@ export function defaultProgress(): Omit<SavedProgress, "v" | "updatedAt"> {
     tutorialStep: 0,
   };
 }
+
+/** True when save data is a brand-new campaign with no recorded play. */
+export function isFreshAccountProgress(saved: SavedProgress): boolean {
+  return (
+    saved.highestUnlocked <= 1 &&
+    saved.completedLevels.length === 0 &&
+    saved.levelScore === 0 &&
+    saved.handsCleared === 0
+  );
+}

@@ -415,3 +415,15 @@ export function campaignLeaderboardPoints(level: number, levelScore: number): nu
   }
   return pts;
 }
+
+/** Leaderboard total from saved progress — avoids phantom points from a stale level field. */
+export function campaignLeaderboardPointsFromProgress(saved: {
+  completedLevels: number[];
+  levelScore: number;
+}): number {
+  let pts = saved.levelScore;
+  for (const lvl of saved.completedLevels) {
+    pts += getLevelConfig(lvl).targetPoints;
+  }
+  return pts;
+}

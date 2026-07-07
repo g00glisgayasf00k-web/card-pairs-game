@@ -1,5 +1,6 @@
 import {
   fetchMyProgress,
+  resetMyScores,
   syncProgressToServer,
   type RemoteProgressResponse,
 } from "./api";
@@ -8,6 +9,7 @@ import {
   clearProgress,
   defaultProgress,
   getProgressOwner,
+  isFreshAccountProgress,
   loadProgress,
   saveProgress,
   setProgressOwner,
@@ -74,6 +76,11 @@ export async function pullRemoteProgress(): Promise<boolean> {
       const fresh = defaultProgress();
       saveProgress(fresh, { skipSync: true });
       if (!isPullStale(generation)) {
+        try {
+          await resetMyScores();
+        } catch {
+          /* offline — local fresh save still applies */
+        }
         await pushProgress(fresh);
       }
       return true;
@@ -117,6 +124,11 @@ export async function beginAccountSession(
   if (options.isNewAccount) {
     invalidateProgressPulls();
     clearProgress();
+    try {
+      await resetMyScores();
+    } catch {
+      /* new account may have no scores yet */
+    }
   } else {
     prepareProgressForAccount(username);
   }
@@ -129,6 +141,15 @@ export async function beginAccountSession(
 
   await flushProgressSync();
   setProgressOwner(username);
+
+  const saved = loadProgress();
+  if (saved && isFreshAccountProgress(saved)) {
+    try {
+      await resetMyScores();
+    } catch {
+      /* offline */
+    }
+  }
 }
 
 export function stopProgressSync(): void {

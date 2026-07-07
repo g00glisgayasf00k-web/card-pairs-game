@@ -91,5 +91,6 @@ Then **Run ▶** on a device or emulator.
 |--------|---------|
 | `npm run build:mobile` | Vite build with production API URL |
 | `npm run cap:sync` | Build + copy into Android project |
+| `npm run icons:android` | Regenerate launcher icons from `resources/icon.svg` |
 | `npm run cap:open` | Open Android Studio |
 | `npm run cap:run` | Sync + run on connected device |

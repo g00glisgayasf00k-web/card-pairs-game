@@ -112,9 +112,54 @@
 
 .game-hud__row {
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: space-between;
-  gap: 0.5rem;
+  gap: 0.35rem;
+}
+
+.hud-labeled-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.hud-labeled-chip__label {
+  font-size: 0.52rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: rgba(255, 255, 255, 0.62);
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.hud-labeled-chip__body {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.2rem;
+  min-width: 0;
+}
+
+.moves-banner__profile.hud-labeled-chip {
+  width: auto;
+  height: auto;
+  padding: 0.15rem 0.25rem;
+  border: none;
+  background: transparent;
+}
+
+.moves-banner__profile.hud-labeled-chip .hud-labeled-chip__body {
+  width: 2.35rem;
+  height: 2.35rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.28);
+  font-size: 1.15rem;
+  line-height: 1;
 }
 
 /* Prominent moves-left banner (top of HUD) */
@@ -146,17 +191,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 2.35rem;
-  height: 2.35rem;
-  padding: 0;
-  border-radius: 12px;
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  background: rgba(0, 0, 0, 0.28);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
 }
 
-.moves-banner__profile:active {
+.moves-banner__profile:active .hud-labeled-chip__body {
   transform: scale(0.96);
 }
 
@@ -1212,6 +1251,131 @@
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
   animation: hand-flash-in 1.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   pointer-events: none;
+}
+
+/* Dismissible hint popup over the board (does not affect layout) */
+.board-hint-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 40;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  pointer-events: auto;
+}
+
+.board-hint-overlay__backdrop {
+  position: absolute;
+  inset: 0;
+  border: none;
+  padding: 0;
+  background: rgba(0, 0, 0, 0.55);
+  cursor: pointer;
+}
+
+.board-hint-modal {
+  position: relative;
+  z-index: 1;
+  width: min(100%, 18rem);
+  padding: 1rem 1rem 0.85rem;
+  border-radius: 16px;
+  text-align: center;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 35%),
+    linear-gradient(165deg, #145a38 0%, #0a3522 100%);
+  border: 2px solid rgba(251, 191, 36, 0.65);
+  box-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.55),
+    0 0 24px rgba(251, 191, 36, 0.18);
+  animation: board-hint-pop 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.board-hint-modal__text {
+  margin: 0 0 0.85rem;
+  font-family: "Crimson Pro", Georgia, serif;
+  font-size: clamp(0.95rem, 4.2vw, 1.12rem);
+  font-weight: 700;
+  line-height: 1.35;
+  color: #fff6cc;
+}
+
+.board-hint-modal__btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 6.5rem;
+  padding: 0.45rem 1.1rem;
+  border-radius: 999px;
+  border: 2px solid var(--mg-gold);
+  background: linear-gradient(180deg, #2d7a4f 0%, #1a5235 100%);
+  color: #fff6cc;
+  font-size: 0.82rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 3px 0 #0a2818;
+}
+
+.board-hint-modal__btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 #0a2818;
+}
+
+@keyframes board-hint-pop {
+  from {
+    opacity: 0;
+    transform: scale(0.92) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Hand score toast — floats over board, auto-fades */
+.board-hand-toast {
+  position: absolute;
+  left: 50%;
+  bottom: 0.65rem;
+  z-index: 30;
+  transform: translateX(-50%);
+  max-width: calc(100% - 1rem);
+  padding: 0.45rem 0.95rem;
+  border-radius: 999px;
+  text-align: center;
+  font-family: "Crimson Pro", Georgia, serif;
+  font-size: clamp(0.92rem, 4.2vw, 1.2rem);
+  font-weight: 800;
+  line-height: 1.25;
+  color: #fff6cc;
+  background: rgba(10, 46, 28, 0.92);
+  border: 2px solid var(--mg-gold);
+  box-shadow:
+    0 8px 24px rgba(0, 0, 0, 0.45),
+    0 0 20px rgba(245, 208, 96, 0.25);
+  pointer-events: none;
+  animation: board-hand-toast-in 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+@keyframes board-hand-toast-in {
+  0% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(10px) scale(0.92);
+  }
+  12% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+  78% {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-4px) scale(0.98);
+  }
 }
 
 .hand-flash--hint {

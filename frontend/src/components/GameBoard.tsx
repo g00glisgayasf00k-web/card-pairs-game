@@ -296,7 +296,9 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
         if (toastTimer.current) window.clearTimeout(toastTimer.current);
         if (embedded && onFeedback) {
           onFeedback(text, hint);
-          toastTimer.current = window.setTimeout(() => onFeedback(null), hint ? 1300 : 1500);
+          if (!hint) {
+            toastTimer.current = window.setTimeout(() => onFeedback(null), 1500);
+          }
           return;
         }
         setMessage(text);

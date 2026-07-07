@@ -246,7 +246,14 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
       return;
     }
     setBoardFeedback({ text: message, hint });
-    boardFeedbackTimer.current = window.setTimeout(() => setBoardFeedback(null), hint ? 1300 : 1500);
+    if (!hint) {
+      boardFeedbackTimer.current = window.setTimeout(() => setBoardFeedback(null), 1500);
+    }
+  }, []);
+
+  const dismissBoardFeedback = useCallback(() => {
+    if (boardFeedbackTimer.current) window.clearTimeout(boardFeedbackTimer.current);
+    setBoardFeedback(null);
   }, []);
 
   const advanceLevel = useCallback(() => {
@@ -513,54 +520,72 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
               </div>
               <button
                 type="button"
-                className="moves-banner__profile hud-chip-btn"
+                className="moves-banner__profile hud-chip-btn hud-labeled-chip"
                 onClick={() => setShowProfile(true)}
                 title={username ? "Your profile" : "Guest profile"}
               >
-                <span className="moves-banner__profile-icon">👤</span>
+                <span className="hud-labeled-chip__label">Profile</span>
+                <span className="hud-labeled-chip__body moves-banner__profile-icon" aria-hidden>
+                  👤
+                </span>
               </button>
             </div>
           </div>
 
           <div className="game-hud__row">
-            <div className="level-badge" title={cfg.label}>
-              <span className="level-badge__icon">⭐</span>
-              <span className="level-badge__num">{level}/{MAX_LEVEL}</span>
+            <div className="level-badge hud-labeled-chip" title={cfg.label}>
+              <span className="hud-labeled-chip__label">Level</span>
+              <span className="hud-labeled-chip__body">
+                <span className="level-badge__icon" aria-hidden>⭐</span>
+                <span className="level-badge__num">{level}/{MAX_LEVEL}</span>
+              </span>
             </div>
 
-            <div className="score-chip score-chip--compact" title={`Goal: ${cfg.targetPoints.toLocaleString()} pts`}>
-              <span className="score-chip__icon">💰</span>
-              <span className="score-chip__value">{levelScore.toLocaleString()}</span>
+            <div className="score-chip score-chip--compact hud-labeled-chip" title={`Goal: ${cfg.targetPoints.toLocaleString()} pts`}>
+              <span className="hud-labeled-chip__label">Score</span>
+              <span className="hud-labeled-chip__body">
+                <span className="score-chip__icon" aria-hidden>💰</span>
+                <span className="score-chip__value">{levelScore.toLocaleString()}</span>
+              </span>
             </div>
 
             <button
               type="button"
-              className="energy-chip hud-chip-btn"
+              className="energy-chip hud-chip-btn hud-labeled-chip"
               onClick={() => {
                 setGemShopEnergyFocus(true);
                 setShowGemShop(true);
               }}
               title="Energy — refills to 10 at midnight UK time"
             >
-              <span className="energy-chip__icon">⚡</span>
-              <span className="energy-chip__val">{energy}/{MAX_ENERGY}</span>
+              <span className="hud-labeled-chip__label">Energy</span>
+              <span className="hud-labeled-chip__body">
+                <span className="energy-chip__icon" aria-hidden>⚡</span>
+                <span className="energy-chip__val">{energy}/{MAX_ENERGY}</span>
+              </span>
             </button>
 
             <button
               type="button"
-              className="credits-chip hud-chip-btn"
+              className="credits-chip hud-chip-btn hud-labeled-chip"
               onClick={() => {
                 setGemShopEnergyFocus(false);
                 setShowGemShop(true);
               }}
               title="Gems — tap to buy more"
             >
-              <span className="credits-chip__icon">💎</span>
-              <span className="credits-chip__val">{credits}</span>
+              <span className="hud-labeled-chip__label">Gems</span>
+              <span className="hud-labeled-chip__body">
+                <span className="credits-chip__icon" aria-hidden>💎</span>
+                <span className="credits-chip__val">{credits}</span>
+              </span>
             </button>
 
-            <div className="rank-chip" title={cfg.label}>
-              <span className="rank-chip__label">{formatLevelId(level)}</span>
+            <div className="rank-chip hud-labeled-chip" title={cfg.label}>
+              <span className="hud-labeled-chip__label">Stage</span>
+              <span className="hud-labeled-chip__body">
+                <span className="rank-chip__label">{formatLevelId(level)}</span>
+              </span>
             </div>
           </div>
 
@@ -573,16 +598,6 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
               💰 {levelScore.toLocaleString()} / {cfg.targetPoints.toLocaleString()}
             </span>
           </div>
-
-          {boardFeedback && (
-            <p
-              className={`hand-flash${boardFeedback.hint ? " hand-flash--hint" : ""}`}
-              role="status"
-              aria-live="polite"
-            >
-              {boardFeedback.text}
-            </p>
-          )}
 
           {(tutorialActive || tutorialFreePlay) && (
             tutorialFreePlay ? (
@@ -625,6 +640,41 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
               onFeedback={handleBoardFeedback}
             />
           </div>
+
+          {boardFeedback && (
+            boardFeedback.hint ? (
+              <div
+                className="board-hint-overlay"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="board-hint-title"
+              >
+                <button
+                  type="button"
+                  className="board-hint-overlay__backdrop"
+                  aria-label="Dismiss message"
+                  onClick={dismissBoardFeedback}
+                />
+                <div className="board-hint-modal">
+                  <p id="board-hint-title" className="board-hint-modal__text">
+                    {boardFeedback.text}
+                  </p>
+                  <button
+                    type="button"
+                    className="board-hint-modal__btn"
+                    onClick={dismissBoardFeedback}
+                    autoFocus
+                  >
+                    Got it
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="board-hand-toast" role="status" aria-live="polite">
+                {boardFeedback.text}
+              </div>
+            )
+          )}
         </main>
 
         <nav className="action-bar">

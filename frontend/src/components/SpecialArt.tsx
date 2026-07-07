@@ -5,14 +5,33 @@ interface Props {
   className?: string;
 }
 
-/** Renders bomb / joker / star from the shared power-ups sprite sheet */
+const GLYPH: Record<SpecialType, string> = {
+  arrow_h: "↔",
+  arrow_v: "↕",
+  bomb: "💣",
+  joker: "🃏",
+  rainbow: "♠♥♦♣",
+};
+
+/** Renders power-up artwork for board cards and the guide modal */
 export function SpecialArt({ type, className }: Props) {
+  const useSprite = type === "bomb" || type === "joker";
+
+  if (useSprite) {
+    return (
+      <div
+        className={["special-art", `special-art--${type}`, className].filter(Boolean).join(" ")}
+        aria-hidden
+      />
+    );
+  }
+
   return (
-    <div
-      className={["special-art", `special-art--${type}`, className]
-        .filter(Boolean)
-        .join(" ")}
+    <span
+      className={["special-glyph", `special-glyph--${type}`, className].filter(Boolean).join(" ")}
       aria-hidden
-    />
+    >
+      {GLYPH[type]}
+    </span>
   );
 }

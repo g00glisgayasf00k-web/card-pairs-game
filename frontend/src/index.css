@@ -566,6 +566,46 @@ header h1 {
   flex-shrink: 0;
 }
 
+.special-glyph {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  font-weight: 800;
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.45));
+}
+
+.special-glyph--card {
+  width: 94%;
+  height: 94%;
+  font-size: clamp(1rem, 5vw, 1.35rem);
+}
+
+.special-glyph--guide {
+  width: 3.25rem;
+  height: 3.25rem;
+  font-size: 1.65rem;
+  flex-shrink: 0;
+}
+
+.special-glyph--tiny {
+  width: 1.65rem;
+  height: 1.65rem;
+  font-size: 0.95rem;
+  flex-shrink: 0;
+}
+
+.special-glyph--arrow_h,
+.special-glyph--arrow_v {
+  color: #fde68a;
+}
+
+.special-glyph--rainbow {
+  font-size: clamp(0.72rem, 3.6vw, 0.95rem);
+  letter-spacing: -0.06em;
+  color: #fff;
+}
+
 .playing-card.selected {
   transform: scale(1.05);
   z-index: 3;
@@ -1473,26 +1513,40 @@ section h2 {
 
 /* ── Special cards ── */
 
-/* Star (wild) — gold starburst */
-.playing-card.special-star {
-  background: linear-gradient(145deg, #fffbe6 0%, #fef08a 50%, #fde047 100%);
+/* Row arrow ↔ — sky blue pulse */
+.playing-card.special-arrow-h {
+  background: linear-gradient(145deg, #eff6ff 0%, #93c5fd 50%, #3b82f6 100%);
   box-shadow:
-    0 0 0 2px #eab308,
-    0 0 12px rgba(234,179,8,0.6),
-    0 2px 4px rgba(0,0,0,0.3);
-  animation: star-pulse 2s ease-in-out infinite;
+    0 0 0 2px #2563eb,
+    0 0 12px rgba(37, 99, 235, 0.5),
+    0 2px 4px rgba(0, 0, 0, 0.3);
+  animation: arrow-pulse 1.6s ease-in-out infinite;
 }
 
-.playing-card.special-star .card-face {
+.playing-card.special-arrow-h .card-face {
   background: radial-gradient(ellipse at 50% 45%, #1a6040 0%, #0d4a2e 65%, #083320 100%);
 }
 
-@keyframes star-pulse {
-  0%, 100% { box-shadow: 0 0 0 2px #eab308, 0 0 8px rgba(234,179,8,0.4), 0 2px 4px rgba(0,0,0,0.3); }
-  50%       { box-shadow: 0 0 0 2px #eab308, 0 0 18px rgba(234,179,8,0.8), 0 2px 4px rgba(0,0,0,0.3); }
+/* Column arrow ↕ */
+.playing-card.special-arrow-v {
+  background: linear-gradient(145deg, #ecfeff 0%, #67e8f9 50%, #0891b2 100%);
+  box-shadow:
+    0 0 0 2px #0e7490,
+    0 0 12px rgba(8, 145, 178, 0.5),
+    0 2px 4px rgba(0, 0, 0, 0.3);
+  animation: arrow-pulse 1.6s ease-in-out infinite;
 }
 
-/* Joker (score ×2) — vivid purple shimmer */
+.playing-card.special-arrow-v .card-face {
+  background: radial-gradient(ellipse at 50% 45%, #1a6040 0%, #0d4a2e 65%, #083320 100%);
+}
+
+@keyframes arrow-pulse {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.12); }
+}
+
+/* Joker — vivid purple shimmer */
 .playing-card.special-joker {
   background: linear-gradient(145deg, #f5f0ff 0%, #c4b5fd 50%, #a78bfa 100%);
   box-shadow:
@@ -1528,6 +1582,33 @@ section h2 {
 @keyframes bomb-tick {
   0%, 90%, 100% { box-shadow: 0 0 0 2px #dc2626, 0 0 8px rgba(220,38,38,0.4),  0 2px 4px rgba(0,0,0,0.3); }
   45%            { box-shadow: 0 0 0 3px #ef4444, 0 0 20px rgba(239,68,68,0.75), 0 2px 4px rgba(0,0,0,0.3); }
+}
+
+/* Rainbow suit — all four suits, drag to clear */
+.playing-card.special-rainbow {
+  background: linear-gradient(145deg, #fff 0%, #fbcfe8 25%, #bfdbfe 50%, #bbf7d0 75%, #fef08a 100%);
+  box-shadow:
+    0 0 0 2px #a855f7,
+    0 0 14px rgba(168, 85, 247, 0.55),
+    0 2px 4px rgba(0, 0, 0, 0.3);
+  animation: rainbow-shimmer 2.2s ease-in-out infinite;
+}
+
+.playing-card.special-rainbow .card-face {
+  background: radial-gradient(ellipse at 50% 45%, #1a6040 0%, #0d4a2e 65%, #083320 100%);
+}
+
+.playing-card.special-rainbow .corner {
+  opacity: 0.35;
+}
+
+@keyframes rainbow-shimmer {
+  0%, 100% { filter: hue-rotate(0deg) brightness(1); }
+  50% { filter: hue-rotate(18deg) brightness(1.08); }
+}
+
+.card-rainbow-drag {
+  cursor: grab;
 }
 
 /* Special overlay (icon centred, with tinted glow ring) */

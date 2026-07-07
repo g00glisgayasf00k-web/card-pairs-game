@@ -7,9 +7,11 @@ const SUIT_SYMBOL: Record<Suit, string> = {
 };
 
 const SPECIAL_CLASS: Record<SpecialType, string> = {
-  bomb:  "special-bomb",
-  star:  "special-star",
+  arrow_h: "special-arrow-h",
+  arrow_v: "special-arrow-v",
+  bomb: "special-bomb",
   joker: "special-joker",
+  rainbow: "special-rainbow",
 };
 
 interface Props {
@@ -38,7 +40,7 @@ export function PlayingCard({ card, blocker, selected, guided, popping }: Props)
     >
       <div className="card-face">
         <div className="corner corner-tl">
-          <span className="c-rank">{card.rank}</span>
+          {sp !== "rainbow" && <span className="c-rank">{card.rank}</span>}
         </div>
 
         {!sp && (

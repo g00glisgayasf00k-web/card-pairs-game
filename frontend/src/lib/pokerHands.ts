@@ -1,15 +1,18 @@
+/**
+ * Special power cards — earned as rewards for clearing big hands:
+ *   arrow_h  ↔  TAP — clears the entire row
+ *   arrow_v  ↕  TAP — clears the entire column
+ *   bomb     💣  TAP — clears all 8 surrounding cards (Four of a Kind)
+ *   joker    🃏  SWIPE — wild card, substitutes any rank/suit in a hand
+ *   rainbow      DRAG onto a suit — clears every card of that suit (Royal Flush only)
+ */
+export type SpecialType = "arrow_h" | "arrow_v" | "bomb" | "joker" | "rainbow";
+
 export type Suit = "hearts" | "diamonds" | "clubs" | "spades";
+
 export type Rank =
   | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9" | "10"
   | "J" | "Q" | "K" | "A";
-
-/**
- * Special cards — earned as rewards for clearing high hands:
- *   bomb  💣  TAP to explode — clears all 8 surrounding cards instantly
- *   star  ⭐  TAP to clear  — clears every card on the board of the same rank
- *   joker 🃏  PASSIVE WILD  — when included in a swipe it acts as any rank/suit
- */
-export type SpecialType = "bomb" | "star" | "joker";
 
 export interface Card {
   rank: Rank;
@@ -82,17 +85,35 @@ export function createBoard(rows: number, cols: number): (Card | null)[][] {
 
 // ── Specials earned as hand rewards ──────────────────────────────────────────
 
+function randomArrow(): "arrow_h" | "arrow_v" {
+  return Math.random() < 0.5 ? "arrow_h" : "arrow_v";
+}
+
+export function isTappableSpecial(type?: SpecialType): boolean {
+  return type === "bomb" || type === "arrow_h" || type === "arrow_v";
+}
+
+export function isSwipeOnlySpecial(type?: SpecialType): boolean {
+  return type === "joker" || type === "rainbow";
+}
+
 /** Returns the special cards injected into the board after clearing the given hand. */
 export function specialsEarnedForHand(hand: HandLabel): SpecialType[] {
   switch (hand) {
-    case "three_of_a_kind": return ["bomb"];
-    case "straight":        return ["star"];
-    case "flush":           return ["joker"];
-    case "full_house":      return ["bomb", "star"];
-    case "four_of_a_kind":  return ["star", "star"];
-    case "straight_flush":  return ["joker", "star"];
-    case "royal_flush":     return ["bomb", "star", "joker"];
-    default:                return [];
+    case "three_of_a_kind":
+      return [randomArrow()];
+    case "four_of_a_kind":
+      return ["bomb"];
+    case "flush":
+      return ["joker"];
+    case "full_house":
+      return [randomArrow(), "joker"];
+    case "straight_flush":
+      return ["joker"];
+    case "royal_flush":
+      return ["rainbow"];
+    default:
+      return [];
   }
 }
 
@@ -104,33 +125,44 @@ export const SPECIALS_GUIDE: {
   effect: string;
 }[] = [
   {
-    type: "bomb",
-    name: "Bomb",
-    earn: "Clear a Three of a Kind or better",
-    effect: "Tap to blast all 8 surrounding cards (+50 pts each)",
+    type: "arrow_h",
+    name: "Row arrow ↔",
+    earn: "Clear Three of a Kind (or Full House)",
+    effect: "Tap to wipe out the entire row (+45 pts per card)",
   },
   {
-    type: "star",
-    name: "Star",
-    earn: "Clear a Straight or better",
-    effect: "Tap to clear every card of the same rank (+75 pts each)",
+    type: "arrow_v",
+    name: "Column arrow ↕",
+    earn: "Clear Three of a Kind (or Full House)",
+    effect: "Tap to wipe out the entire column (+45 pts per card)",
+  },
+  {
+    type: "bomb",
+    name: "Bomb",
+    earn: "Clear Four of a Kind",
+    effect: "Tap to blast all 8 surrounding cards (+50 pts each)",
   },
   {
     type: "joker",
     name: "Joker",
     earn: "Clear a Flush or better",
-    effect: "Swipe into a hand — counts as any rank or suit",
+    effect: "Swipe into a 5-card hand — counts as any rank or suit",
+  },
+  {
+    type: "rainbow",
+    name: "Rainbow suit",
+    earn: "Clear a Royal Flush only",
+    effect: "Drag onto any card to clear every card of that suit (+55 pts each)",
   },
 ];
 
 export const SPECIALS_EARN_BY_HAND: { hand: HandLabel; types: SpecialType[] }[] = [
-  { hand: "three_of_a_kind", types: ["bomb"] },
-  { hand: "straight",        types: ["star"] },
-  { hand: "flush",           types: ["joker"] },
-  { hand: "full_house",      types: ["bomb", "star"] },
-  { hand: "four_of_a_kind",  types: ["star", "star"] },
-  { hand: "straight_flush",  types: ["joker", "star"] },
-  { hand: "royal_flush",     types: ["bomb", "star", "joker"] },
+  { hand: "three_of_a_kind", types: ["arrow_h", "arrow_v"] },
+  { hand: "four_of_a_kind", types: ["bomb"] },
+  { hand: "flush", types: ["joker"] },
+  { hand: "full_house", types: ["arrow_h", "arrow_v", "joker"] },
+  { hand: "straight_flush", types: ["joker"] },
+  { hand: "royal_flush", types: ["rainbow"] },
 ];
 
 // ── Plain evaluator (rank/suit only, ignores special field) ──────────────────

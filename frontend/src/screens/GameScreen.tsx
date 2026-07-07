@@ -574,7 +574,7 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
                 </div>
                 <p className="tutorial-banner__summary">{tutorialConfig.summary}</p>
                 <details className="tutorial-banner__details">
-                  <summary className="tutorial-banner__more">More tips</summary>
+                  <summary className="tutorial-banner__more">Show More Info</summary>
                   <p className="tutorial-banner__text">{tutorialConfig.message}</p>
                 </details>
               </div>
@@ -658,7 +658,7 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
             type="button"
             className="action-btn action-btn--specials"
             onClick={() => setShowSpecials(true)}
-            title="How bomb, star, and joker power-ups work"
+            title="How arrow, bomb, joker, and rainbow power-ups work"
           >
             <span className="action-btn__icon">✨</span>
             <span className="action-btn__label">Powers</span>

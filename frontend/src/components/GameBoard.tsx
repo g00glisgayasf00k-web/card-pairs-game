@@ -10,6 +10,7 @@ import {
 import {
   createBoard,
   HAND_DISPLAY,
+  isTappableSpecial,
   pathIsAdjacent,
   POKER_HAND_SIZE,
   randomCard,
@@ -18,8 +19,8 @@ import {
   type Card,
   type FullHandResult,
   type HandLabel,
-  type Rank,
   type SpecialType,
+  type Suit,
 } from "../lib/pokerHands";
 import { pathMatchesGuide } from "../lib/tutorialLevel1";
 import {
@@ -36,7 +37,8 @@ import { PlayingCard } from "./PlayingCard";
 const ROWS = 8;
 const COLS = 8;
 const BOMB_PTS_PER_CARD = 50;
-const STAR_PTS_PER_CARD = 75;
+const LINE_PTS_PER_CARD = 45;
+const RAINBOW_PTS_PER_CARD = 55;
 
 /** Match .grid gap/padding in CSS */
 const GRID_GAP = 3;
@@ -366,8 +368,10 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
             if (dr === 0 && dc === 0) continue;
             const nr = r + dr, nc = c + dc;
             if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) {
-              cleared.add(`${nr},${nc}`);
-              blast.add(`${nr},${nc}`);
+              if (board[nr]?.[nc]) {
+                cleared.add(`${nr},${nc}`);
+                blast.add(`${nr},${nc}`);
+              }
             }
           }
         }
@@ -398,38 +402,92 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
       [board, blockers, commitClear]
     );
 
-    // ── ⭐ Star tap ───────────────────────────────────────────────────────────
-    const activateStar = useCallback(
-      async (r: number, c: number, rank: Rank) => {
+    // ── ↔↕ Arrow tap — clear row or column ────────────────────────────────────
+    const activateArrow = useCallback(
+      async (r: number, c: number, axis: "row" | "col") => {
         setBusy(true);
         const cleared = new Set<string>();
-        const poppingSet = new Set<string>();
         const order = new Map<string, number>();
 
-        for (let rr = 0; rr < ROWS; rr++) {
+        if (axis === "row") {
           for (let cc = 0; cc < COLS; cc++) {
-            const cell = board[rr]?.[cc];
-            if (cell && (cell.rank === rank || (rr === r && cc === c))) {
-              const k = `${rr},${cc}`;
-              cleared.add(k);
-              poppingSet.add(k);
-              order.set(k, Math.abs(rr - r) + Math.abs(cc - c));
-            }
+            if (!board[r]?.[cc]) continue;
+            const k = `${r},${cc}`;
+            cleared.add(k);
+            order.set(k, Math.abs(cc - c));
+          }
+        } else {
+          for (let rr = 0; rr < ROWS; rr++) {
+            if (!board[rr]?.[c]) continue;
+            const k = `${rr},${c}`;
+            cleared.add(k);
+            order.set(k, Math.abs(rr - r));
           }
         }
 
         const count = cleared.size;
-        const pts = count * STAR_PTS_PER_CARD;
-        setPopping(poppingSet);
+        const pts = count * LINE_PTS_PER_CARD;
+        setPopping(cleared);
         setPopOrder(order);
 
+        const label = axis === "row" ? "row" : "column";
+        const icon = axis === "row" ? "↔" : "↕";
         await commitClear(
           board,
           blockers,
           cleared,
           [],
           new Set([c]),
-          `⭐ Cleared all ${count}× ${rank}s! +${pts}`,
+          `${icon} Cleared the ${label}! ${count} cards +${pts}`,
+          pts,
+          null,
+          count
+        );
+      },
+      [board, blockers, commitClear]
+    );
+
+    // ── Rainbow suit clear — drag onto a card ───────────────────────────────
+    const activateRainbow = useCallback(
+      async (targetSuit: Suit) => {
+        setBusy(true);
+        const cleared = new Set<string>();
+        const order = new Map<string, number>();
+        let i = 0;
+
+        for (let rr = 0; rr < ROWS; rr++) {
+          for (let cc = 0; cc < COLS; cc++) {
+            const cell = board[rr]?.[cc];
+            if (!cell) continue;
+            if (cell.special === "rainbow" || cell.suit === targetSuit) {
+              const k = `${rr},${cc}`;
+              cleared.add(k);
+              order.set(k, i++);
+            }
+          }
+        }
+
+        const count = cleared.size;
+        const pts = count * RAINBOW_PTS_PER_CARD;
+        setPopping(cleared);
+        setPopOrder(order);
+
+        const suitLabel =
+          targetSuit === "hearts"
+            ? "Hearts"
+            : targetSuit === "diamonds"
+              ? "Diamonds"
+              : targetSuit === "clubs"
+                ? "Clubs"
+                : "Spades";
+
+        await commitClear(
+          board,
+          blockers,
+          cleared,
+          [],
+          new Set(Array.from({ length: COLS }, (_, idx) => idx)),
+          `🌈 Cleared all ${suitLabel}! ${count} cards +${pts}`,
           pts,
           null,
           count
@@ -457,8 +515,24 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
           return;
         }
         const cell = board[row]?.[col];
-        if (cell?.special === "bomb") { await activateBomb(row, col); return; }
-        if (cell?.special === "star") { await activateStar(row, col, cell.rank); return; }
+        if (cell?.special === "bomb") {
+          await activateBomb(row, col);
+          return;
+        }
+        if (cell?.special === "arrow_h") {
+          await activateArrow(row, col, "row");
+          return;
+        }
+        if (cell?.special === "arrow_v") {
+          await activateArrow(row, col, "col");
+          return;
+        }
+        if (cell?.special === "rainbow") {
+          if (embedded) showToast("Drag the rainbow card onto any suit to clear it", true);
+          else setMessage("Drag the rainbow card onto any suit to clear it");
+          clear();
+          return;
+        }
         clear();
         return;
       }
@@ -471,8 +545,64 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
       }
 
       if (swipePath.length < POKER_HAND_SIZE) {
+        const hasRainbow = swipePath.some((p) => board[p.row]?.[p.col]?.special === "rainbow");
+        if (hasRainbow && swipePath.length >= 2 && pathIsAdjacent(swipePath)) {
+          let targetSuit: Suit | null = null;
+          for (let i = swipePath.length - 1; i >= 0; i--) {
+            const p = swipePath[i]!;
+            const c = board[p.row]?.[p.col];
+            if (c && c.special !== "rainbow") {
+              targetSuit = c.suit;
+              break;
+            }
+          }
+          if (targetSuit) {
+            finishingSwipe.current = true;
+            await activateRainbow(targetSuit);
+            finishingSwipe.current = false;
+            return;
+          }
+          if (embedded) showToast("Drag the rainbow onto a card to pick a suit", true);
+          else setMessage("Drag the rainbow onto a card to pick a suit");
+          clear();
+          return;
+        }
+
         if (embedded) showToast(`Swipe exactly ${POKER_HAND_SIZE} cards`, true);
         else setMessage(`Swipe exactly ${POKER_HAND_SIZE} cards for a poker hand`);
+        clear();
+        return;
+      }
+
+      const blockedSpecial = swipePath.find((p) => {
+        const sp = board[p.row]?.[p.col]?.special;
+        return sp && sp !== "joker";
+      });
+      if (blockedSpecial) {
+        const sp = board[blockedSpecial.row]?.[blockedSpecial.col]?.special;
+        if (sp === "rainbow") {
+          let targetSuit: Suit | null = null;
+          for (let i = swipePath.length - 1; i >= 0; i--) {
+            const p = swipePath[i]!;
+            const c = board[p.row]?.[p.col];
+            if (c && c.special !== "rainbow") {
+              targetSuit = c.suit;
+              break;
+            }
+          }
+          if (targetSuit && pathIsAdjacent(swipePath)) {
+            finishingSwipe.current = true;
+            await activateRainbow(targetSuit);
+            finishingSwipe.current = false;
+            return;
+          }
+        }
+        const hint =
+          sp === "rainbow"
+            ? "Drag the rainbow onto a card to clear that suit"
+            : "Tap arrow and bomb power cards — only the Joker swipes into hands";
+        if (embedded) showToast(hint, true);
+        else setMessage(hint);
         clear();
         return;
       }
@@ -573,7 +703,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
       }
     }, [
       busy, board, blockers, clear, locked, pathRef,
-      onHand, activateBomb, activateStar,
+      onHand, activateBomb, activateArrow, activateRainbow,
       guidedPath, tutorialExpectedHand, tutorialWrongSwipeHint, onTutorialStepComplete, embedded, showToast,
     ]);
 
@@ -609,7 +739,8 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
             const isNew = newKeys.has(key);
             const overlay = blockers[r]?.[c] ?? null;
             const blocked = isBlocked(overlay);
-            const isTappable = !blocked && (cell?.special === "bomb" || cell?.special === "star");
+            const isRainbow = cell?.special === "rainbow";
+            const isTappable = !blocked && isTappableSpecial(cell?.special);
             const isPopping = popping.has(key);
             const isBlasting = blasting.has(key);
             const cardStyle: CSSProperties | undefined =
@@ -633,6 +764,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
                       isBlasting         ? "card-blasting" : "",
                       isPopping          ? "card-clearing" : "",
                       isTappable         ? "card-tappable" : "",
+                      isRainbow          ? "card-rainbow-drag" : "",
                     ].filter(Boolean).join(" ")}
                     style={cardStyle}
                   >

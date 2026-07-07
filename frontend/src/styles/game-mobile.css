@@ -1845,6 +1845,10 @@
     max-height: none;
     overflow-y: auto;
   }
+
+  .mobile-shell--framed {
+    max-height: calc(100dvh - 2rem);
+  }
 }
 
 /* =============================================================================
@@ -1877,10 +1881,172 @@
   padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
 }
 
+.mobile-shell--home,
+.mobile-shell--framed {
+  width: min(100%, var(--mg-shell-w));
+}
+
+@media (min-width: 480px) {
+  .mobile-shell--home,
+  .mobile-shell--framed {
+    width: min(calc(100% - 2rem), var(--mg-shell-w));
+  }
+}
+
 /* Hide legacy onboard classes if any remain */
 .onboard-screen,
 .felt-watermarks {
   display: none !important;
+}
+
+/* ── Top icon toolbar ── */
+.home-toolbar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.15rem 0.1rem 0.35rem;
+}
+
+.home-toolbar__brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(245, 208, 96, 0.2);
+  color: var(--mg-gold);
+  font-size: 1.1rem;
+  opacity: 0.75;
+}
+
+.home-toolbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  margin-left: auto;
+}
+
+.home-icon-btn {
+  position: relative;
+  width: 2.65rem;
+  height: 2.65rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(245, 208, 96, 0.35);
+  border-radius: 14px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 40%),
+    linear-gradient(165deg, #145a38 0%, var(--mg-mid) 55%, var(--mg-deep) 100%);
+  color: var(--cream);
+  font-size: 1.25rem;
+  cursor: pointer;
+  box-shadow: 0 3px 0 rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+  transition: transform 0.12s ease, border-color 0.15s, box-shadow 0.12s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.home-icon-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+}
+
+.home-icon-btn--active {
+  border-color: var(--mg-gold);
+  box-shadow:
+    0 3px 0 rgba(0, 0, 0, 0.35),
+    0 0 16px rgba(245, 208, 96, 0.25);
+}
+
+.home-icon-btn--signed-in {
+  border-color: rgba(125, 255, 186, 0.45);
+}
+
+.home-icon-btn__dot {
+  position: absolute;
+  top: 0.28rem;
+  right: 0.28rem;
+  width: 0.45rem;
+  height: 0.45rem;
+  border-radius: 50%;
+  background: var(--mg-neon);
+  border: 1px solid rgba(0, 0, 0, 0.35);
+  box-shadow: 0 0 6px rgba(125, 255, 186, 0.65);
+}
+
+.home-menu-overlay {
+  backdrop-filter: blur(6px);
+}
+
+.home-menu-modal {
+  max-height: min(85dvh, 640px);
+  overflow-y: auto;
+  text-align: left;
+}
+
+.home-menu-modal--wide {
+  max-width: min(400px, calc(100vw - 1.25rem));
+}
+
+.home-menu-modal .leaderboard-royal {
+  margin-top: 0.35rem;
+}
+
+.home-rules-list--modal {
+  margin: 0 0 1rem;
+  padding-left: 1.15rem;
+  text-align: left;
+  line-height: 1.55;
+  font-size: 0.88rem;
+}
+
+.home-rules-list--modal li {
+  margin-bottom: 0.45rem;
+}
+
+/* =============================================================================
+   LEVEL SELECT — match home shell width on desktop
+   ============================================================================= */
+
+.app--levels {
+  max-width: none;
+  width: 100%;
+  min-height: 100dvh;
+  padding: 0;
+  margin: 0;
+  border-radius: 0;
+  background:
+    radial-gradient(ellipse 120% 80% at 50% -20%, rgba(125, 255, 186, 0.08) 0%, transparent 55%),
+    radial-gradient(ellipse 80% 50% at 50% 100%, rgba(245, 208, 96, 0.06) 0%, transparent 50%),
+    linear-gradient(180deg, #062318 0%, var(--mg-deep) 35%, #051a10 100%);
+  box-shadow: none;
+  outline: none;
+  display: flex;
+  justify-content: center;
+}
+
+@media (min-width: 480px) {
+  .app--levels {
+    padding: 1rem 0;
+  }
+
+  .app--levels .felt-screen {
+    width: min(calc(100% - 2rem), var(--mg-shell-w));
+    max-width: var(--mg-shell-w);
+    min-height: calc(100dvh - 2rem);
+    max-height: calc(100dvh - 2rem);
+    border-radius: 24px;
+    border: 3px solid rgba(245, 208, 96, 0.2);
+    box-shadow:
+      0 0 0 1px rgba(0, 0, 0, 0.5),
+      0 24px 64px rgba(0, 0, 0, 0.65),
+      0 0 80px rgba(26, 107, 69, 0.15);
+    overflow: hidden;
+  }
 }
 
 /* ── Hero ── */
@@ -2063,6 +2229,10 @@
   font-size: 0.82rem;
   opacity: 0.85;
   line-height: 1.4;
+}
+
+.home-play-locked strong {
+  color: var(--mg-gold);
 }
 
 .auth-panel__lead {

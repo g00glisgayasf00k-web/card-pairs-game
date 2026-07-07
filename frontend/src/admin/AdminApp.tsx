@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import {
+  deleteAdminUser,
   fetchAdminLeaderboards,
   fetchAdminStats,
   fetchAdminUserDetail,
   fetchAdminUsers,
   fetchAdminMe,
   login,
+  resetAdminUser,
   type AdminUserRow,
   type LeaderboardsPayload,
 } from "../lib/api";
@@ -33,6 +35,7 @@ export function AdminApp() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [adminName, setAdminName] = useState<string | null>(null);
+  const [adminUserId, setAdminUserId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
 
   const [stats, setStats] = useState<Awaited<ReturnType<typeof fetchAdminStats>> | null>(null);
@@ -90,6 +93,7 @@ export function AdminApp() {
         return;
       }
       setAdminName(me.username);
+      setAdminUserId(me.user_id);
       await loadDashboard();
     } catch {
       localStorage.removeItem("token");
@@ -124,6 +128,7 @@ export function AdminApp() {
         throw new Error("This account is not an admin");
       }
       setAdminName(me.username);
+      setAdminUserId(me.user_id);
       await loadDashboard();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Login failed");
@@ -137,6 +142,7 @@ export function AdminApp() {
     localStorage.removeItem("token");
     setAuthed(false);
     setAdminName(null);
+    setAdminUserId(null);
     setStats(null);
     setUsers([]);
     setUserDetail(null);
@@ -184,6 +190,58 @@ export function AdminApp() {
     e.preventDefault();
     setSearch(searchInput.trim());
     void loadUsers(0, searchInput.trim());
+  };
+
+  const canModerate = (userId: number, isAdmin: boolean) =>
+    !isAdmin && adminUserId !== null && userId !== adminUserId;
+
+  const handleResetUser = async (userId: number, name: string) => {
+    if (
+      !window.confirm(
+        `Reset progress and scores for "${name}"?\n\nTheir account stays active but they start from level 1.`
+      )
+    ) {
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      await resetAdminUser(userId);
+      if (selectedUserId === userId) {
+        setUserDetail(await fetchAdminUserDetail(userId));
+      }
+      await loadUsers(userOffset, search);
+      await loadStats();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Reset failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDeleteUser = async (userId: number, name: string) => {
+    if (
+      !window.confirm(
+        `Permanently delete "${name}"?\n\nThis removes their account, scores, and cloud save. This cannot be undone.`
+      )
+    ) {
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      await deleteAdminUser(userId);
+      if (selectedUserId === userId) {
+        closeUser();
+      }
+      await loadUsers(userOffset, search);
+      await loadStats();
+      await loadLeaderboards();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Delete failed");
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!authed) {
@@ -435,6 +493,7 @@ export function AdminApp() {
                     <th>Scores</th>
                     <th>Last sync</th>
                     <th>Joined</th>
+                    <th className="admin-table__actions-col">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -465,6 +524,38 @@ export function AdminApp() {
                           : "—"}
                       </td>
                       <td>{u.created_at ? fmtShortDate(u.created_at) : "—"}</td>
+                      <td className="admin-table__actions-col">
+                        {canModerate(u.id, u.is_admin) ? (
+                          <div className="admin-row-actions">
+                            <button
+                              type="button"
+                              className="admin-btn admin-btn--ghost admin-btn--xs"
+                              disabled={loading}
+                              onClick={() => openUser(u.id)}
+                            >
+                              View
+                            </button>
+                            <button
+                              type="button"
+                              className="admin-btn admin-btn--warn admin-btn--xs"
+                              disabled={loading}
+                              onClick={() => void handleResetUser(u.id, u.username)}
+                            >
+                              Reset
+                            </button>
+                            <button
+                              type="button"
+                              className="admin-btn admin-btn--danger admin-btn--xs"
+                              disabled={loading}
+                              onClick={() => void handleDeleteUser(u.id, u.username)}
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        ) : (
+                          <span className="admin-muted admin-table__protected">Protected</span>
+                        )}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -583,6 +674,33 @@ export function AdminApp() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+            )}
+
+            {canModerate(userDetail.id, userDetail.is_admin) && (
+              <div className="admin-moderation">
+                <h3>Moderation</h3>
+                <p className="admin-muted">
+                  Reset clears progress and scores but keeps the login. Delete removes the account entirely.
+                </p>
+                <div className="admin-moderation__actions">
+                  <button
+                    type="button"
+                    className="admin-btn admin-btn--warn"
+                    disabled={loading}
+                    onClick={() => void handleResetUser(userDetail.id, userDetail.username)}
+                  >
+                    Reset progress &amp; scores
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-btn admin-btn--danger"
+                    disabled={loading}
+                    onClick={() => void handleDeleteUser(userDetail.id, userDetail.username)}
+                  >
+                    Delete account
+                  </button>
+                </div>
               </div>
             )}
           </section>

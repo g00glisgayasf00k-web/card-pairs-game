@@ -1,24 +1,26 @@
 import { useState } from "react";
-import { AuthPanel } from "../components/AuthPanel";
 import { Leaderboard } from "../components/Leaderboard";
+import { ProfileModal } from "../components/ProfileModal";
 import { clearProgress, loadProgress } from "../lib/progress";
 
 interface Props {
   username: string | null;
   loggedIn: boolean;
-  onAuthSuccess: (username: string, token: string) => void;
   onSignOut: () => void;
+  onSessionChange?: () => void;
   onPlay: () => void;
 }
+
+type HomeMenu = "leaderboard" | "rules" | "account" | null;
 
 export function OnboardingScreen({
   username,
   loggedIn,
-  onAuthSuccess,
   onSignOut,
+  onSessionChange,
   onPlay,
 }: Props) {
-  const [section, setSection] = useState<"leaderboard" | "rules" | null>(null);
+  const [menu, setMenu] = useState<HomeMenu>(null);
   const saved = loadProgress();
 
   const startFresh = () => {
@@ -26,31 +28,50 @@ export function OnboardingScreen({
     onPlay();
   };
 
+  const closeMenu = () => setMenu(null);
+
+  const handleAccountChange = () => {
+    onSessionChange?.();
+  };
+
   return (
     <div className="home-screen home-screen--royal">
       <div className="mobile-shell mobile-shell--home">
-        <div className="home-panel home-panel--auth home-panel--auth-top">
-          <div className="home-panel__header">
-            <span className="home-panel__icon">👤</span>
-            <span>{loggedIn ? "Your account" : "Royal invitation — sign in"}</span>
+        <header className="home-toolbar">
+          <span className="home-toolbar__brand" aria-hidden>
+            ♠
+          </span>
+          <div className="home-toolbar__actions">
+            <button
+              type="button"
+              className={`home-icon-btn${menu === "leaderboard" ? " home-icon-btn--active" : ""}`}
+              aria-label="High scores"
+              title="High scores"
+              onClick={() => setMenu(menu === "leaderboard" ? null : "leaderboard")}
+            >
+              🏆
+            </button>
+            <button
+              type="button"
+              className={`home-icon-btn${menu === "rules" ? " home-icon-btn--active" : ""}`}
+              aria-label="How to play"
+              title="How to play"
+              onClick={() => setMenu(menu === "rules" ? null : "rules")}
+            >
+              📖
+            </button>
+            <button
+              type="button"
+              className={`home-icon-btn home-icon-btn--account${menu === "account" ? " home-icon-btn--active" : ""}${loggedIn ? " home-icon-btn--signed-in" : ""}`}
+              aria-label={loggedIn ? `Account: ${username ?? "player"}` : "Sign in or create account"}
+              title={loggedIn ? username ?? "Your account" : "Sign in"}
+              onClick={() => setMenu(menu === "account" ? null : "account")}
+            >
+              👤
+              {loggedIn && <span className="home-icon-btn__dot" aria-hidden />}
+            </button>
           </div>
-          {loggedIn && username ? (
-            <div className="home-profile">
-              <div className="home-profile__badge">
-                <span className="home-profile__avatar">👤</span>
-                <div className="home-profile__info">
-                  <span className="home-profile__label">Playing as</span>
-                  <strong className="home-profile__name">{username}</strong>
-                </div>
-              </div>
-              <button type="button" className="home-btn-ghost" onClick={onSignOut}>
-                Sign out
-              </button>
-            </div>
-          ) : (
-            <AuthPanel onSuccess={onAuthSuccess} variant="home" />
-          )}
-        </div>
+        </header>
 
         <header className="home-hero">
           <div className="home-hero__shine" aria-hidden />
@@ -108,56 +129,64 @@ export function OnboardingScreen({
         ) : (
           <div className="home-play-locked">
             <span className="home-play-locked__icon">🔒</span>
-            <p>Sign in to take your seat at the royal table.</p>
+            <p>
+              Tap <strong>👤</strong> above to sign in and take your seat at the royal table.
+            </p>
           </div>
         )}
+      </div>
 
-        <div className="home-panels">
-          <div className="home-panel-group">
-            <button
-              type="button"
-              className={`home-panel-toggle ${section === "leaderboard" ? "open" : ""}`}
-              onClick={() => setSection(section === "leaderboard" ? null : "leaderboard")}
-            >
-              <span className="home-panel-toggle__left">
-                <span className="home-panel-toggle__icon">🏆</span>
-                <span>Top scores</span>
-              </span>
-              <span className="home-panel-toggle__chev">{section === "leaderboard" ? "▲" : "▼"}</span>
+      {menu === "leaderboard" && (
+        <div className="modal-overlay scores-overlay home-menu-overlay" onClick={closeMenu} role="presentation">
+          <div
+            className="modal scores-modal home-menu-modal home-menu-modal--wide"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-labelledby="home-leaderboard-title"
+          >
+            <h2 id="home-leaderboard-title">Top scores</h2>
+            <Leaderboard />
+            <button type="button" className="btn scores-close" onClick={closeMenu}>
+              Close
             </button>
-            {section === "leaderboard" && (
-              <div className="home-panel-body">
-                <Leaderboard />
-              </div>
-            )}
-          </div>
-
-          <div className="home-panel-group">
-            <button
-              type="button"
-              className={`home-panel-toggle ${section === "rules" ? "open" : ""}`}
-              onClick={() => setSection(section === "rules" ? null : "rules")}
-            >
-              <span className="home-panel-toggle__left">
-                <span className="home-panel-toggle__icon">📖</span>
-                <span>How to play</span>
-              </span>
-              <span className="home-panel-toggle__chev">{section === "rules" ? "▲" : "▼"}</span>
-            </button>
-            {section === "rules" && (
-              <div className="home-panel-body home-rules">
-                <ul className="home-rules-list">
-                  <li><strong>Swipe</strong> exactly five adjacent cards.</li>
-                  <li>Make poker hands to clear cards and score points.</li>
-                  <li>Reach the point goal before moves run out.</li>
-                  <li>Earn up to 3★ per level for speed and challenges.</li>
-                  <li>Use gems for extra moves and energy when needed.</li>
-                </ul>
-              </div>
-            )}
           </div>
         </div>
-      </div>
+      )}
+
+      {menu === "rules" && (
+        <div className="modal-overlay scores-overlay home-menu-overlay" onClick={closeMenu} role="presentation">
+          <div
+            className="modal scores-modal home-menu-modal"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-labelledby="home-rules-title"
+          >
+            <h2 id="home-rules-title">How to play</h2>
+            <ul className="home-rules-list home-rules-list--modal">
+              <li><strong>Swipe</strong> exactly five adjacent cards.</li>
+              <li>Make poker hands to clear cards and score points.</li>
+              <li>Reach the point goal before moves run out.</li>
+              <li>Earn up to 3★ per level for speed and challenges.</li>
+              <li>Use gems for extra moves and energy when needed.</li>
+            </ul>
+            <button type="button" className="btn scores-close" onClick={closeMenu}>
+              Close
+            </button>
+          </div>
+        </div>
+      )}
+
+      {menu === "account" && (
+        <ProfileModal
+          username={username}
+          onClose={closeMenu}
+          onAccountChange={handleAccountChange}
+          onSignOut={() => {
+            onSignOut();
+            closeMenu();
+          }}
+        />
+      )}
     </div>
   );
 }

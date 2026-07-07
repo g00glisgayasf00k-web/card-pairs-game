@@ -50,7 +50,7 @@ def admin_me():
     user = db.session.get(User, user_id)
     if not user:
         return jsonify({"error": "User not found"}), 404
-    return jsonify({"username": user.username, "is_admin": bool(user.is_admin)})
+    return jsonify({"username": user.username, "is_admin": bool(user.is_admin), "user_id": user.id})
 
 
 @admin_bp.get("/stats")
@@ -242,3 +242,41 @@ def admin_user_detail(user_id: int):
             ],
         }
     )
+
+
+@admin_bp.post("/users/<int:user_id>/reset")
+@admin_required
+def admin_reset_user(user_id: int):
+    """Clear a player's scores and cloud progress (moderation)."""
+    user = db.session.get(User, user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    if user.is_admin:
+        return jsonify({"error": "Admin accounts cannot be reset"}), 400
+
+    Score.query.filter_by(user_id=user.id).delete()
+    PlayerProgress.query.filter_by(user_id=user.id).delete()
+    db.session.commit()
+    return jsonify({"reset": True, "username": user.username}), 200
+
+
+@admin_bp.delete("/users/<int:user_id>")
+@admin_required
+def admin_delete_user(user_id: int):
+    """Permanently delete a player account and all associated data."""
+    actor_id = int(get_jwt_identity())
+    if user_id == actor_id:
+        return jsonify({"error": "You cannot delete your own account while signed in"}), 400
+
+    user = db.session.get(User, user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    if user.is_admin:
+        return jsonify({"error": "Admin accounts cannot be deleted"}), 400
+
+    username = user.username
+    Score.query.filter_by(user_id=user.id).delete()
+    PlayerProgress.query.filter_by(user_id=user.id).delete()
+    db.session.delete(user)
+    db.session.commit()
+    return jsonify({"deleted": True, "username": username}), 200

@@ -498,7 +498,7 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
 
   return (
     <div className="game-screen">
-      <div className="mobile-shell">
+      <div className="mobile-shell mobile-shell--framed">
         <header className={`game-hud${tutorialActive || tutorialFreePlay ? " game-hud--lesson" : ""}`}>
           <div
             className={`moves-banner${movesLow ? " moves-banner--low" : ""}${movesCritical || phase === "moves_failed" ? " moves-banner--critical" : ""}`}

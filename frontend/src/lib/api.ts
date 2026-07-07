@@ -122,7 +122,7 @@ export async function syncProgressToServer(progress: Record<string, unknown>) {
 }
 
 export async function fetchAdminMe() {
-  return request<{ username: string; is_admin: boolean }>("/api/admin/me");
+  return request<{ username: string; is_admin: boolean; user_id: number }>("/api/admin/me");
 }
 
 export async function fetchAdminStats() {
@@ -199,4 +199,16 @@ export async function fetchAdminUserDetail(userId: number) {
       played_at: string;
     }[];
   }>(`/api/admin/users/${userId}`);
+}
+
+export async function resetAdminUser(userId: number) {
+  return request<{ reset: boolean; username: string }>(`/api/admin/users/${userId}/reset`, {
+    method: "POST",
+  });
+}
+
+export async function deleteAdminUser(userId: number) {
+  return request<{ deleted: boolean; username: string }>(`/api/admin/users/${userId}`, {
+    method: "DELETE",
+  });
 }

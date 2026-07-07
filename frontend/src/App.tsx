@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { OnboardingScreen } from "./screens/OnboardingScreen";
 import { LevelSelectScreen } from "./screens/LevelSelectScreen";
 import { GameScreen } from "./screens/GameScreen";
-import { clearSession, getUsername, isLoggedIn, setSession } from "./lib/session";
+import { clearSession, getUsername, isLoggedIn } from "./lib/session";
 import { clearProgress } from "./lib/progress";
 import { initProgressSync, stopProgressSync } from "./lib/progressSync";
 
@@ -22,12 +22,6 @@ export default function App() {
     initProgressSync();
     return () => stopProgressSync();
   }, [loggedIn]);
-
-  const handleAuthSuccess = (name: string, token: string) => {
-    setSession(name, token);
-    setUsername(name);
-    setLoggedIn(true);
-  };
 
   const handleSignOut = () => {
     stopProgressSync();
@@ -85,8 +79,11 @@ export default function App() {
       <OnboardingScreen
         username={username}
         loggedIn={loggedIn}
-        onAuthSuccess={handleAuthSuccess}
         onSignOut={handleSignOut}
+        onSessionChange={() => {
+          setLoggedIn(isLoggedIn());
+          setUsername(getUsername());
+        }}
         onPlay={goToLevels}
       />
     </div>

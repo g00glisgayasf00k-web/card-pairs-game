@@ -9,6 +9,7 @@ from sqlalchemy import desc, func
 
 from app.leaderboards import build_leaderboards
 from app.models import PlayerProgress, Score, User, db
+from app.password_util import generate_temp_password, hash_password
 
 admin_bp = Blueprint("admin", __name__)
 
@@ -295,6 +296,8 @@ def admin_user_detail(user_id: int):
         {
             "id": user.id,
             "username": user.username,
+            "email": user.email,
+            "has_google": bool(user.google_id),
             "is_admin": bool(user.is_admin),
             "created_at": user.created_at.isoformat(),
             "progress": progress_payload,
@@ -412,5 +415,44 @@ def admin_grant_resources(user_id: int):
             "energy_added": energy_add,
             "progress_summary": summary,
             "client_updated_at": now,
+        }
+    ), 200
+
+
+@admin_bp.post("/users/<int:user_id>/reset-password")
+@admin_required
+def admin_reset_password(user_id: int):
+    """Set a temporary password for a player who lost access."""
+    actor_id = int(get_jwt_identity())
+    if user_id == actor_id:
+        return jsonify({"error": "Use your account settings to change your own password"}), 400
+
+    user = db.session.get(User, user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+    if user.is_admin:
+        return jsonify({"error": "Cannot reset passwords for admin accounts"}), 400
+
+    data = request.get_json(silent=True) or {}
+    custom = (data.get("password") or "").strip()
+    if custom:
+        if len(custom) < 6:
+            return jsonify({"error": "Password must be at least 6 characters"}), 400
+        if len(custom) > 72:
+            return jsonify({"error": "Password is too long"}), 400
+        temp_password = custom
+    else:
+        temp_password = generate_temp_password()
+
+    user.password_hash = hash_password(temp_password)
+    user.reset_token_hash = None
+    user.reset_token_expires = None
+    db.session.commit()
+
+    return jsonify(
+        {
+            "reset": True,
+            "username": user.username,
+            "temporary_password": temp_password,
         }
     ), 200

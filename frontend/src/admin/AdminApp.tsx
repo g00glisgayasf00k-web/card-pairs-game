@@ -9,6 +9,7 @@ import {
   grantAdminUserResources,
   login,
   resetAdminUser,
+  resetAdminUserPassword,
   type AdminUserRow,
   type LeaderboardsPayload,
 } from "../lib/api";
@@ -55,6 +56,8 @@ export function AdminApp() {
   );
   const [grantGems, setGrantGems] = useState("100");
   const [grantEnergy, setGrantEnergy] = useState("5");
+  const [tempPassword, setTempPassword] = useState("");
+  const [issuedTempPassword, setIssuedTempPassword] = useState<string | null>(null);
 
   const loadStats = useCallback(async () => {
     const data = await fetchAdminStats();
@@ -173,6 +176,8 @@ export function AdminApp() {
   const openUser = async (userId: number) => {
     setLoading(true);
     setError(null);
+    setIssuedTempPassword(null);
+    setTempPassword("");
     try {
       setUserDetail(await fetchAdminUserDetail(userId));
       setSelectedUserId(userId);
@@ -187,6 +192,8 @@ export function AdminApp() {
   const closeUser = () => {
     setUserDetail(null);
     setSelectedUserId(null);
+    setIssuedTempPassword(null);
+    setTempPassword("");
   };
 
   const runSearch = (e: FormEvent) => {
@@ -286,6 +293,46 @@ export function AdminApp() {
       return;
     }
     void handleGrantResources(undefined, amount);
+  };
+
+  const handleResetPassword = async (e?: FormEvent) => {
+    e?.preventDefault();
+    if (!userDetail) return;
+    const custom = tempPassword.trim();
+    if (custom && custom.length < 6) {
+      setError("Custom password must be at least 6 characters");
+      return;
+    }
+    if (
+      !window.confirm(
+        custom
+          ? `Set a custom temporary password for ${userDetail.username}?`
+          : `Generate a new temporary password for ${userDetail.username}? Their old password will stop working.`
+      )
+    ) {
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await resetAdminUserPassword(userDetail.id, custom || undefined);
+      setIssuedTempPassword(res.temporary_password);
+      setTempPassword("");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not reset password");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const copyTempPassword = async () => {
+    if (!issuedTempPassword || !userDetail) return;
+    const text = `Royal Match Poker login\nUsername: ${userDetail.username}\nTemporary password: ${issuedTempPassword}`;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      setError("Could not copy to clipboard");
+    }
   };
 
   if (!authed) {
@@ -644,6 +691,8 @@ export function AdminApp() {
                 <p className="admin-muted">
                   ID {userDetail.id}
                   {userDetail.is_admin ? " · Administrator" : ""}
+                  {userDetail.email ? ` · ${userDetail.email}` : ""}
+                  {userDetail.has_google ? " · Google linked" : ""}
                   {userDetail.best_score != null && ` · Best score ${userDetail.best_score.toLocaleString()}`}
                 </p>
               </div>
@@ -691,6 +740,54 @@ export function AdminApp() {
               </div>
             ) : (
               <p className="admin-muted">No cloud save on record.</p>
+            )}
+
+            {!userDetail.is_admin && (
+              <div className="admin-password-reset">
+                <h3>Password recovery</h3>
+                <p className="admin-muted">
+                  Generate a temporary password for players who cannot sign in. Share it privately — their old
+                  password stops working immediately.
+                </p>
+                <form className="admin-grant__form" onSubmit={handleResetPassword}>
+                  <label className="admin-grant__label" htmlFor="temp-password">
+                    Custom temp password (optional)
+                  </label>
+                  <div className="admin-grant__row">
+                    <input
+                      id="temp-password"
+                      type="text"
+                      autoComplete="off"
+                      placeholder="Leave blank to auto-generate"
+                      value={tempPassword}
+                      onChange={(e) => setTempPassword(e.target.value)}
+                      disabled={loading}
+                      minLength={6}
+                    />
+                    <button type="submit" className="admin-btn admin-btn--primary admin-btn--sm" disabled={loading}>
+                      Set temp password
+                    </button>
+                  </div>
+                </form>
+                {issuedTempPassword && (
+                  <div className="admin-password-reset__result" role="status">
+                    <p>
+                      <strong>Username:</strong> {userDetail.username}
+                    </p>
+                    <p>
+                      <strong>Temporary password:</strong>{" "}
+                      <code className="admin-password-reset__code">{issuedTempPassword}</code>
+                    </p>
+                    <button
+                      type="button"
+                      className="admin-btn admin-btn--ghost admin-btn--sm"
+                      onClick={() => void copyTempPassword()}
+                    >
+                      Copy login details
+                    </button>
+                  </div>
+                )}
+              </div>
             )}
 
             {!userDetail.is_admin && (

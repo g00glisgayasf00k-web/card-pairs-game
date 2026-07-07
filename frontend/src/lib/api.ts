@@ -200,6 +200,8 @@ export async function fetchAdminUserDetail(userId: number) {
   return request<{
     id: number;
     username: string;
+    email: string | null;
+    has_google: boolean;
     is_admin: boolean;
     created_at: string;
     progress: Record<string, unknown> | null;
@@ -242,4 +244,14 @@ export async function grantAdminUserResources(
     method: "POST",
     body: JSON.stringify(body),
   });
+}
+
+export async function resetAdminUserPassword(userId: number, password?: string) {
+  return request<{ reset: boolean; username: string; temporary_password: string }>(
+    `/api/admin/users/${userId}/reset-password`,
+    {
+      method: "POST",
+      body: JSON.stringify(password ? { password } : {}),
+    }
+  );
 }

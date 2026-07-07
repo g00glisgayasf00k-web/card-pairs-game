@@ -524,6 +524,15 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
             title={`${movesLeft} of ${effectiveMoveLimit} hands remaining`}
           >
             <div className="moves-banner__row">
+              <button
+                type="button"
+                className="game-back-btn"
+                onClick={handleExit}
+                aria-label="Back to menu"
+                title="Back to menu"
+              >
+                ←
+              </button>
               <div className="moves-banner__main">
                 <div className="moves-banner__head">
                   <span className="moves-banner__label">Moves left</span>
@@ -754,14 +763,6 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
               </span>
             </button>
           )}
-          <button
-            type="button"
-            className="action-btn action-btn--menu"
-            onClick={handleExit}
-          >
-            <span className="action-btn__icon">✕</span>
-            <span className="action-btn__label">Exit</span>
-          </button>
         </nav>
       </div>
 

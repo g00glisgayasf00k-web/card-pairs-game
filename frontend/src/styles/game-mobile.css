@@ -69,6 +69,41 @@
   gap: 0.3rem;
 }
 
+.mobile-shell--framed {
+  position: relative;
+}
+
+.game-back-btn {
+  flex-shrink: 0;
+  align-self: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid rgba(148, 163, 184, 0.55);
+  border-radius: 12px;
+  background: linear-gradient(180deg, #475569 0%, #334155 55%, #1e293b 100%);
+  color: #fff;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+  box-shadow:
+    0 3px 0 #0f172a,
+    0 4px 12px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.1s ease;
+}
+
+.game-back-btn:active {
+  transform: translateY(2px);
+  box-shadow:
+    0 1px 0 #0f172a,
+    0 2px 8px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
 /* Hide legacy desktop layout pieces */
 .game-body,
 .game-sidebar,
@@ -1521,6 +1556,13 @@
   max-height: 100%;
 }
 
+.game-panel--embedded .grid-fx-wrap[data-sized] > .grid {
+  aspect-ratio: unset;
+  width: 100%;
+  height: 100%;
+  margin: 0;
+}
+
 .game-panel--embedded .grid {
   width: 100%;
   max-width: none;
@@ -1537,8 +1579,7 @@
     0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
-.game-panel--embedded .grid[data-sized],
-.game-panel--embedded .grid-fx-wrap[data-sized] .grid {
+.game-panel--embedded .grid[data-sized] {
   aspect-ratio: unset;
   width: auto;
   height: auto;
@@ -1648,10 +1689,16 @@
 .action-bar {
   flex-shrink: 0;
   display: flex;
+  flex-wrap: wrap;
   gap: 0.35rem;
   padding:
     0.35rem 0.15rem
     max(0.35rem, env(safe-area-inset-bottom));
+}
+
+.action-bar .action-btn {
+  flex: 1 1 calc(33.333% - 0.35rem);
+  min-width: 3.5rem;
 }
 
 .action-btn {

@@ -20,6 +20,7 @@ npm run cap:sync
 
 echo "==> Building debug APK with Gradle..."
 cd "$ANDROID"
+chmod +x ./gradlew
 ./gradlew clean assembleDebug
 
 mkdir -p "$OUT_DIR"

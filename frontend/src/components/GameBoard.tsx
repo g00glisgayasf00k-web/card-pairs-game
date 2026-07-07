@@ -99,6 +99,8 @@ interface Props {
   guidedPath?: { row: number; col: number }[];
   /** Required hand for the current guided lesson */
   tutorialExpectedHand?: HandLabel;
+  /** Hint when the player swipes the wrong glowing cells */
+  tutorialWrongSwipeHint?: string;
   /** Skip gravity — parent loads the next lesson board */
   onTutorialStepComplete?: () => void;
   /** Glass / crate overlays (level 11+). */
@@ -195,6 +197,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
       seedBoard,
       guidedPath,
       tutorialExpectedHand,
+      tutorialWrongSwipeHint,
       onTutorialStepComplete,
       blockerConfig,
     },
@@ -501,7 +504,14 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
         onTutorialStepComplete &&
         (result.hand !== tutorialExpectedHand || !pathMatchesGuide(validPath, guidedPath))
       ) {
-        const hint = `Swipe the glowing cards to make a ${HAND_DISPLAY[tutorialExpectedHand]}`;
+        let hint: string;
+        if (!pathMatchesGuide(validPath, guidedPath)) {
+          hint =
+            tutorialWrongSwipeHint ??
+            `Swipe all ${guidedPath.length} glowing cards — they must touch edge-to-edge.`;
+        } else {
+          hint = `Those cards don't make a ${HAND_DISPLAY[tutorialExpectedHand]}. Follow the glowing path.`;
+        }
         if (embedded) showToast(hint, true);
         else setMessage(hint);
         clear();
@@ -564,7 +574,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
     }, [
       busy, board, blockers, clear, locked, pathRef,
       onHand, activateBomb, activateStar,
-      guidedPath, tutorialExpectedHand, onTutorialStepComplete, embedded, showToast,
+      guidedPath, tutorialExpectedHand, tutorialWrongSwipeHint, onTutorialStepComplete, embedded, showToast,
     ]);
 
     const handlePointerUp = () => {

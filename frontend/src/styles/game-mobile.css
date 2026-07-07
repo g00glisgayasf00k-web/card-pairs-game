@@ -930,15 +930,28 @@
 
 .tutorial-banner__text {
   margin: 0;
-  font-size: 0.68rem;
-  line-height: 1.35;
+  font-size: 0.72rem;
+  line-height: 1.45;
   color: rgba(255, 255, 255, 0.92);
+}
+
+.tutorial-banner__direction {
+  display: block;
+  margin-top: 0.35rem;
+  padding: 0.28rem 0.45rem;
+  border-radius: 6px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: #fde68a;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(251, 191, 36, 0.35);
 }
 
 .tutorial-banner__hand {
   display: block;
-  margin-top: 0.25rem;
-  font-size: 0.62rem;
+  margin-top: 0.3rem;
+  font-size: 0.65rem;
   font-weight: 700;
   color: #c4b5fd;
 }

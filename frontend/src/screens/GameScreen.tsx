@@ -571,7 +571,10 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
                   : tutorialConfig?.message}
               </p>
               {tutorialConfig && (
-                <span className="tutorial-banner__hand">{tutorialConfig.title}</span>
+                <>
+                  <span className="tutorial-banner__direction">{tutorialConfig.directionHint}</span>
+                  <span className="tutorial-banner__hand">{tutorialConfig.title}</span>
+                </>
               )}
             </div>
           )}
@@ -617,6 +620,7 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
               seedBoard={level1SeedBoard}
               guidedPath={tutorialConfig?.guidedPath}
               tutorialExpectedHand={tutorialConfig?.expectedHand}
+              tutorialWrongSwipeHint={tutorialConfig?.wrongSwipeHint}
               onTutorialStepComplete={tutorialActive ? handleTutorialStepComplete : undefined}
               blockerConfig={cfg.blockers}
               onHand={handleHand}

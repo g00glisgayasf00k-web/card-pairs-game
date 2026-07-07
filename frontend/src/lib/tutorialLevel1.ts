@@ -8,6 +8,10 @@ export interface TutorialStepConfig {
   lesson: number;
   title: string;
   message: string;
+  /** Short swipe-direction cue shown under the main instruction. */
+  directionHint: string;
+  /** Toast when the player swipes the wrong cells during a guided step. */
+  wrongSwipeHint: string;
   expectedHand: HandLabel;
   guidedPath: { row: number; col: number }[];
   board: Card[][];
@@ -55,6 +59,7 @@ function cloneBoard(board: Card[][]): Card[][] {
   return board.map((row) => row.map((cell) => ({ ...cell })));
 }
 
+/** Lesson 1 — horizontal line across the middle row. */
 const PAIR_PATH = [
   { row: 3, col: 2 },
   { row: 3, col: 3 },
@@ -63,20 +68,22 @@ const PAIR_PATH = [
   { row: 3, col: 6 },
 ];
 
+/** Lesson 2 — vertical line down the centre column. */
 const TWO_PAIR_PATH = [
-  { row: 2, col: 2 },
-  { row: 2, col: 3 },
+  { row: 1, col: 4 },
   { row: 2, col: 4 },
-  { row: 2, col: 5 },
-  { row: 2, col: 6 },
+  { row: 3, col: 4 },
+  { row: 4, col: 4 },
+  { row: 5, col: 4 },
 ];
 
+/** Lesson 3 — L-shaped path: across then down then across. */
 const TRIPS_PATH = [
-  { row: 4, col: 2 },
-  { row: 4, col: 3 },
-  { row: 4, col: 4 },
-  { row: 4, col: 5 },
-  { row: 4, col: 6 },
+  { row: 2, col: 2 },
+  { row: 2, col: 3 },
+  { row: 3, col: 3 },
+  { row: 3, col: 4 },
+  { row: 3, col: 5 },
 ];
 
 export const TUTORIAL_STEPS: TutorialStepConfig[] = [
@@ -84,7 +91,10 @@ export const TUTORIAL_STEPS: TutorialStepConfig[] = [
     id: "pair",
     lesson: 1,
     title: "Make a Pair",
-    message: "Swipe all five glowing cards — your pair plus three kickers.",
+    message:
+      "Hold and drag through exactly 5 cards that touch side-by-side. A Pair is two cards of the same rank plus three kickers — don't lift your finger until all five are linked.",
+    directionHint: "Swipe in a straight line left ↔ right",
+    wrongSwipeHint: "Trace the full horizontal row of glowing cards to make a Pair.",
     expectedHand: "pair",
     guidedPath: PAIR_PATH,
     board: buildBoard({
@@ -99,30 +109,36 @@ export const TUTORIAL_STEPS: TutorialStepConfig[] = [
     id: "two_pair",
     lesson: 2,
     title: "Make Two Pair",
-    message: "Swipe all five — two pairs plus one kicker card.",
+    message:
+      "Two Pair needs two different matching pairs plus one kicker. Paths can run up and down the board — each card must still touch the previous one edge-to-edge.",
+    directionHint: "Swipe in a straight line up ↕ down",
+    wrongSwipeHint: "Trace the full vertical column of glowing cards to make Two Pair.",
     expectedHand: "two_pair",
     guidedPath: TWO_PAIR_PATH,
     board: buildBoard({
-      "2,2": c("J", "hearts"),
-      "2,3": c("J", "diamonds"),
-      "2,4": c("4", "clubs"),
-      "2,5": c("4", "spades"),
-      "2,6": c("A", "diamonds"),
+      "1,4": c("J", "hearts"),
+      "2,4": c("J", "diamonds"),
+      "3,4": c("4", "clubs"),
+      "4,4": c("4", "spades"),
+      "5,4": c("A", "diamonds"),
     }),
   },
   {
     id: "three_of_a_kind",
     lesson: 3,
     title: "Three of a Kind",
-    message: "Swipe all five — three matching ranks plus two kickers.",
+    message:
+      "Three of a Kind uses three cards of the same rank plus two kickers. Your swipe can turn corners — as long as every card touches the last, any shape works.",
+    directionHint: "Swipe around the corner ↳ (path can bend)",
+    wrongSwipeHint: "Follow the full L-shaped glow — all five cards, including the turn.",
     expectedHand: "three_of_a_kind",
     guidedPath: TRIPS_PATH,
     board: buildBoard({
-      "4,2": c("8", "hearts"),
-      "4,3": c("8", "diamonds"),
-      "4,4": c("8", "clubs"),
-      "4,5": c("2", "spades"),
-      "4,6": c("5", "hearts"),
+      "2,2": c("8", "hearts"),
+      "2,3": c("8", "diamonds"),
+      "3,3": c("8", "clubs"),
+      "3,4": c("2", "spades"),
+      "3,5": c("5", "hearts"),
     }),
   },
 ];
@@ -166,7 +182,7 @@ export function getLevel1SeedBoard(tutorialStep: number): Card[][] {
 }
 
 export function tutorialFreePlayMessage(): string {
-  return "Great job! Swipe 5-card hands to reach 1,000 points.";
+  return "Nice work! Now swipe any path — horizontal, vertical, or around corners — through 5 touching cards to reach 1,000 points.";
 }
 
 export function pathMatchesGuide(

@@ -9,6 +9,7 @@ import {
 } from "react";
 import {
   createBoard,
+  formatEarnedSpecials,
   HAND_DISPLAY,
   isTappableSpecial,
   pathIsAdjacent,
@@ -33,6 +34,7 @@ import {
 } from "../lib/blockers";
 import { useSwipePath } from "../hooks/useSwipePath";
 import { PlayingCard } from "./PlayingCard";
+import { SpecialArt } from "./SpecialArt";
 
 const ROWS = 8;
 const COLS = 8;
@@ -52,12 +54,27 @@ const GRID_VISUAL_INSET = 6;
 const ANIM = {
   pop: 260,
   popStagger: 32,
-  blast: 280,
+  blast: 380,
+  bombBurst: 520,
+  swoosh: 480,
   drop: 300,
   rain: 300,
   rainStagger: 18,
   settlePad: 24,
 } as const;
+
+interface ArrowSweep {
+  axis: "row" | "col";
+  /** Row index for horizontal sweeps, column index for vertical. */
+  line: number;
+  /** Tap origin along the sweep axis (col for row, row for col). */
+  from: number;
+}
+
+interface BombBurst {
+  row: number;
+  col: number;
+}
 
 const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
@@ -226,6 +243,8 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
     const [popping, setPopping] = useState<Set<string>>(new Set());
     const [popOrder, setPopOrder] = useState<Map<string, number>>(new Map());
     const [blasting, setBlasting] = useState<Set<string>>(new Set());
+    const [arrowSweep, setArrowSweep] = useState<ArrowSweep | null>(null);
+    const [bombBurst, setBombBurst] = useState<BombBurst | null>(null);
     const [dropMap, setDropMap] = useState<Map<string, number>>(new Map());
     const [newKeys, setNewKeys] = useState<Set<string>>(new Set());
     const [busy, setBusy] = useState(false);
@@ -245,6 +264,8 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
       setPopping(new Set());
       setPopOrder(new Map());
       setBlasting(new Set());
+      setArrowSweep(null);
+      setBombBurst(null);
       setDropMap(new Map());
       setNewKeys(new Set());
       setBusy(false);
@@ -350,13 +371,11 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
         pts: number,
         isHand: FullHandResult | null,
         popCount: number,
-        hasBlast = false
+        fxWait = 0
       ) => {
         if (!embedded) setMessage(toastMsg);
         else showFeedback(toastMsg);
-        await delay(
-          Math.max(waitForPop(popCount), hasBlast ? ANIM.blast + ANIM.settlePad : 0)
-        );
+        await delay(Math.max(waitForPop(popCount), fxWait));
 
         const gravity = applyGravity(
           currentBoard,
@@ -372,6 +391,8 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
         setPopping(new Set());
         setPopOrder(new Map());
         setBlasting(new Set());
+        setArrowSweep(null);
+        setBombBurst(null);
 
         if (isHand) onHand(isHand);
         else onActivation(pts);
@@ -415,6 +436,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
         setPopping(new Set([bombKey]));
         setPopOrder(new Map([[bombKey, 0], ...blastOrder]));
         setBlasting(blast);
+        setBombBurst({ row: r, col: c });
 
         await commitClear(
           board,
@@ -426,7 +448,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
           pts,
           null,
           cleared.size,
-          true
+          ANIM.bombBurst
         );
       },
       [board, blockers, commitClear]
@@ -457,6 +479,11 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
 
         const count = cleared.size;
         const pts = count * LINE_PTS_PER_CARD;
+        setArrowSweep({
+          axis: axis === "row" ? "row" : "col",
+          line: axis === "row" ? r : c,
+          from: axis === "row" ? c : r,
+        });
         setPopping(cleared);
         setPopOrder(order);
 
@@ -471,7 +498,8 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
           `${icon} Cleared the ${label}! ${count} cards +${pts}`,
           pts,
           null,
-          count
+          count,
+          ANIM.swoosh
         );
       },
       [board, blockers, commitClear]
@@ -688,11 +716,11 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
       let toast = `${HAND_DISPLAY[result.hand]}! +${finalPts}`;
       if (result.hasJoker) toast += " 🃏";
 
+      const earned = specialsEarnedForHand(result.hand);
+      toast += formatEarnedSpecials(earned);
       const order = new Map(validPath.map((p, i) => [pathKey(p.row, p.col), i]));
       setPopping(handKeys);
       setPopOrder(order);
-
-      const earned = specialsEarnedForHand(result.hand);
 
       const boardSnapshot = board;
       const blockersSnapshot = blockers;
@@ -772,6 +800,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
             const isTappable = !blocked && isTappableSpecial(cell?.special);
             const isPopping = popping.has(key);
             const isBlasting = blasting.has(key);
+            const isBombOrigin = bombBurst?.row === r && bombBurst?.col === c;
             const cardStyle: CSSProperties | undefined =
               drop > 0
                 ? { "--drop-n": drop }
@@ -790,6 +819,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
                     className={[
                       drop > 0           ? "card-dropping" : "",
                       isNew              ? "card-new"      : "",
+                      isBombOrigin       ? "card-bomb-origin" : "",
                       isBlasting         ? "card-blasting" : "",
                       isPopping          ? "card-clearing" : "",
                       isTappable         ? "card-tappable" : "",
@@ -809,6 +839,39 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
               </div>
             );
           })
+        )}
+        {arrowSweep && (
+          <div
+            className={`arrow-swoosh-layer arrow-swoosh-layer--${arrowSweep.axis}`}
+            style={{
+              ...(arrowSweep.axis === "row"
+                ? { gridRow: arrowSweep.line + 1, gridColumn: "1 / -1" }
+                : { gridColumn: arrowSweep.line + 1, gridRow: "1 / -1" }),
+              "--swoosh-from": arrowSweep.from,
+            } as CSSProperties}
+            aria-hidden
+          >
+            <div className={`arrow-swoosh-fx arrow-swoosh-fx--${arrowSweep.axis}`}>
+              <SpecialArt
+                type={arrowSweep.axis === "row" ? "arrow_h" : "arrow_v"}
+                className="arrow-swoosh-fx__art"
+              />
+            </div>
+            <div className={`arrow-swoosh-trail arrow-swoosh-trail--${arrowSweep.axis}`} />
+          </div>
+        )}
+        {bombBurst && (
+          <div
+            className="bomb-burst-layer"
+            style={{ gridRow: bombBurst.row + 1, gridColumn: bombBurst.col + 1 }}
+            aria-hidden
+          >
+            <div className="bomb-burst-flash" />
+            <div className="bomb-burst-ring bomb-burst-ring--1" />
+            <div className="bomb-burst-ring bomb-burst-ring--2" />
+            <div className="bomb-burst-ring bomb-burst-ring--3" />
+            <div className="bomb-burst-sparks" />
+          </div>
         )}
       </div>
     );

@@ -102,6 +102,8 @@ export function specialsEarnedForHand(hand: HandLabel): SpecialType[] {
   switch (hand) {
     case "three_of_a_kind":
       return [randomArrow()];
+    case "straight":
+      return [randomArrow()];
     case "four_of_a_kind":
       return ["bomb"];
     case "flush":
@@ -109,12 +111,27 @@ export function specialsEarnedForHand(hand: HandLabel): SpecialType[] {
     case "full_house":
       return [randomArrow(), "joker"];
     case "straight_flush":
-      return ["joker"];
+      return ["joker", "bomb"];
     case "royal_flush":
       return ["rainbow"];
     default:
       return [];
   }
+}
+
+const SPECIAL_REWARD_NAME: Record<SpecialType, string> = {
+  arrow_h: "Row Arrow",
+  arrow_v: "Column Arrow",
+  bomb: "Bomb",
+  joker: "Joker",
+  rainbow: "Rainbow",
+};
+
+/** Toast suffix when a hand spawns power-ups, e.g. " · Row Arrow earned!" */
+export function formatEarnedSpecials(types: SpecialType[]): string {
+  if (types.length === 0) return "";
+  const names = types.map((t) => SPECIAL_REWARD_NAME[t]);
+  return ` · ${names.join(" + ")} earned!`;
 }
 
 /** UI copy for the power-ups guide modal */
@@ -127,25 +144,25 @@ export const SPECIALS_GUIDE: {
   {
     type: "arrow_h",
     name: "Row arrow ↔",
-    earn: "Clear Three of a Kind (or Full House)",
+    earn: "Clear Three of a Kind, Straight, or Full House",
     effect: "Tap to wipe out the entire row (+45 pts per card)",
   },
   {
     type: "arrow_v",
     name: "Column arrow ↕",
-    earn: "Clear Three of a Kind (or Full House)",
+    earn: "Clear Three of a Kind, Straight, or Full House",
     effect: "Tap to wipe out the entire column (+45 pts per card)",
   },
   {
     type: "bomb",
     name: "Bomb",
-    earn: "Clear Four of a Kind",
+    earn: "Clear Four of a Kind or Straight Flush",
     effect: "Tap to blast all 8 surrounding cards (+50 pts each)",
   },
   {
     type: "joker",
     name: "Joker",
-    earn: "Clear a Flush or better",
+    earn: "Clear Flush, Full House, or Straight Flush",
     effect: "Swipe into a 5-card hand — counts as any rank or suit",
   },
   {
@@ -158,10 +175,11 @@ export const SPECIALS_GUIDE: {
 
 export const SPECIALS_EARN_BY_HAND: { hand: HandLabel; types: SpecialType[] }[] = [
   { hand: "three_of_a_kind", types: ["arrow_h", "arrow_v"] },
+  { hand: "straight", types: ["arrow_h", "arrow_v"] },
   { hand: "four_of_a_kind", types: ["bomb"] },
   { hand: "flush", types: ["joker"] },
   { hand: "full_house", types: ["arrow_h", "arrow_v", "joker"] },
-  { hand: "straight_flush", types: ["joker"] },
+  { hand: "straight_flush", types: ["joker", "bomb"] },
   { hand: "royal_flush", types: ["rainbow"] },
 ];
 

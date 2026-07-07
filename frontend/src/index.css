@@ -299,6 +299,7 @@ header h1 {
 }
 
 .grid {
+  position: relative;
   display: grid;
   gap: 3px;
   padding: 5px;
@@ -544,16 +545,16 @@ header h1 {
   background-position: 50% center;
 }
 
-.special-art--arrow_h {
+.special-art--arrow_h,
+.special-art--arrow_v {
   background-image: url("/assets/pixellab/arrow-h.png");
   background-size: contain;
   background-position: center;
+  background-repeat: no-repeat;
 }
 
 .special-art--arrow_v {
-  background-image: url("/assets/pixellab/arrow-v.png");
-  background-size: contain;
-  background-position: center;
+  transform: rotate(90deg);
 }
 
 .special-art--star {
@@ -1519,14 +1520,211 @@ section h2 {
 }
 
 .card-blasting .playing-card {
-  animation: card-blast 0.28s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation: card-blast 0.38s cubic-bezier(0.4, 0, 0.2, 1) forwards;
   animation-delay: calc(var(--pop-order, 0) * 32ms);
+}
+
+.card-bomb-origin .playing-card {
+  animation: bomb-origin-burst 0.52s cubic-bezier(0.22, 1, 0.28, 1) forwards;
+  z-index: 4;
 }
 
 @keyframes card-blast {
   0%   { transform: scale(1) translateZ(0);    opacity: 1; filter: brightness(1); }
-  40%  { transform: scale(1.05) translateZ(0); opacity: 1; filter: brightness(1.2); }
-  100% { transform: scale(0.82) translateZ(0); opacity: 0; }
+  35%  { transform: scale(1.12) translateZ(0); opacity: 1; filter: brightness(1.45) saturate(1.2); }
+  100% { transform: scale(0.75) translateZ(0); opacity: 0; filter: brightness(1.8); }
+}
+
+@keyframes bomb-origin-burst {
+  0%   { transform: scale(1) translateZ(0); opacity: 1; filter: brightness(1); }
+  25%  { transform: scale(1.35) translateZ(0); opacity: 1; filter: brightness(2) saturate(1.4); }
+  100% { transform: scale(0.4) translateZ(0); opacity: 0; filter: brightness(2.5); }
+}
+
+/* Arrow sweep FX — flying arrow + light trail across row/column */
+.arrow-swoosh-layer {
+  position: relative;
+  z-index: 12;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.arrow-swoosh-layer--row {
+  display: flex;
+  align-items: center;
+}
+
+.arrow-swoosh-layer--col {
+  display: flex;
+  justify-content: center;
+}
+
+.arrow-swoosh-fx {
+  position: absolute;
+  width: clamp(1.75rem, 8vw, 2.5rem);
+  height: clamp(1.75rem, 8vw, 2.5rem);
+  filter: drop-shadow(0 0 12px rgba(56, 189, 248, 0.9));
+}
+
+.arrow-swoosh-fx__art {
+  width: 100%;
+  height: 100%;
+  animation: none;
+}
+
+.arrow-swoosh-fx--row {
+  top: 50%;
+  left: calc((var(--swoosh-from, 0) / 7) * 100%);
+  transform: translate(-50%, -50%);
+  animation: arrow-swoosh-row 0.48s cubic-bezier(0.22, 0.9, 0.3, 1) forwards;
+}
+
+.arrow-swoosh-fx--col {
+  left: 50%;
+  top: calc((var(--swoosh-from, 0) / 7) * 100%);
+  transform: translate(-50%, -50%);
+  animation: arrow-swoosh-col 0.48s cubic-bezier(0.22, 0.9, 0.3, 1) forwards;
+}
+
+.arrow-swoosh-trail {
+  position: absolute;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(56, 189, 248, 0.15) 20%,
+    rgba(125, 211, 252, 0.75) 50%,
+    rgba(56, 189, 248, 0.15) 80%,
+    transparent 100%
+  );
+}
+
+.arrow-swoosh-trail--row {
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 42%;
+  transform-origin: calc((var(--swoosh-from, 0) / 7) * 100%) center;
+  animation: arrow-swoosh-trail-row 0.48s ease-out forwards;
+}
+
+.arrow-swoosh-trail--col {
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 42%;
+  transform-origin: center calc((var(--swoosh-from, 0) / 7) * 100%);
+  background: linear-gradient(
+    180deg,
+    transparent 0%,
+    rgba(56, 189, 248, 0.15) 20%,
+    rgba(125, 211, 252, 0.75) 50%,
+    rgba(56, 189, 248, 0.15) 80%,
+    transparent 100%
+  );
+  animation: arrow-swoosh-trail-col 0.48s ease-out forwards;
+}
+
+@keyframes arrow-swoosh-row {
+  0% {
+    left: calc((var(--swoosh-from, 0) / 7) * 100%);
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.85);
+  }
+  100% {
+    left: 108%;
+    opacity: 0.85;
+    transform: translate(-50%, -50%) scale(1.15);
+  }
+}
+
+@keyframes arrow-swoosh-col {
+  0% {
+    top: calc((var(--swoosh-from, 0) / 7) * 100%);
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(0.85);
+  }
+  100% {
+    top: 108%;
+    opacity: 0.85;
+    transform: translate(-50%, -50%) scale(1.15);
+  }
+}
+
+@keyframes arrow-swoosh-trail-row {
+  0%   { opacity: 0; transform: translateY(-50%) scaleX(0.15); }
+  20%  { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-50%) scaleX(1); }
+}
+
+@keyframes arrow-swoosh-trail-col {
+  0%   { opacity: 0; transform: translateX(-50%) scaleY(0.15); }
+  20%  { opacity: 1; }
+  100% { opacity: 0; transform: translateX(-50%) scaleY(1); }
+}
+
+/* Bomb burst overlay at detonation cell */
+.bomb-burst-layer {
+  position: relative;
+  z-index: 15;
+  pointer-events: none;
+  overflow: visible;
+}
+
+.bomb-burst-flash {
+  position: absolute;
+  inset: -35%;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255, 248, 220, 0.95) 0%, rgba(251, 146, 60, 0.55) 35%, transparent 70%);
+  animation: bomb-flash 0.52s ease-out forwards;
+}
+
+.bomb-burst-ring {
+  position: absolute;
+  inset: 10%;
+  border-radius: 50%;
+  border: 2px solid rgba(251, 191, 36, 0.85);
+  box-shadow: 0 0 12px rgba(251, 146, 60, 0.65);
+  animation: bomb-ring 0.52s ease-out forwards;
+}
+
+.bomb-burst-ring--2 {
+  animation-delay: 60ms;
+  border-color: rgba(248, 113, 113, 0.75);
+}
+
+.bomb-burst-ring--3 {
+  animation-delay: 110ms;
+  border-color: rgba(254, 240, 138, 0.65);
+}
+
+.bomb-burst-sparks {
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(circle at 30% 40%, rgba(255, 200, 80, 0.9) 0 3px, transparent 4px),
+    radial-gradient(circle at 70% 25%, rgba(255, 120, 60, 0.85) 0 2px, transparent 3px),
+    radial-gradient(circle at 55% 75%, rgba(255, 230, 140, 0.9) 0 2px, transparent 3px),
+    radial-gradient(circle at 20% 70%, rgba(255, 90, 50, 0.8) 0 2px, transparent 3px);
+  animation: bomb-sparks 0.52s ease-out forwards;
+}
+
+@keyframes bomb-flash {
+  0%   { transform: scale(0.3); opacity: 0; }
+  20%  { transform: scale(1.1); opacity: 1; }
+  100% { transform: scale(1.8); opacity: 0; }
+}
+
+@keyframes bomb-ring {
+  0%   { transform: scale(0.4); opacity: 0.95; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+
+@keyframes bomb-sparks {
+  0%   { transform: scale(0.6) rotate(0deg); opacity: 0; }
+  25%  { opacity: 1; }
+  100% { transform: scale(1.4) rotate(18deg); opacity: 0; }
 }
 
 /* ── Special cards ── */
@@ -1545,8 +1743,18 @@ section h2 {
   display: none;
 }
 
-.playing-card.arrow-power .special-art--arrow {
+.playing-card.arrow-power .special-art--arrow,
+.playing-card.arrow-power .special-art--arrow_h {
   animation: arrow-float 1.8s ease-in-out infinite;
+}
+
+.playing-card.arrow-power .special-art--arrow_v {
+  animation: arrow-float-v 1.8s ease-in-out infinite;
+}
+
+@keyframes arrow-float-v {
+  0%, 100% { transform: rotate(90deg) scale(1); }
+  50% { transform: rotate(90deg) scale(1.06); }
 }
 
 @keyframes arrow-float {

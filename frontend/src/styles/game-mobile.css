@@ -1837,7 +1837,30 @@
 }
 
 .card-blasting .playing-card {
-  animation: card-blast-mobile 0.28s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+  animation: card-blast-mobile 0.38s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+.card-bomb-origin .playing-card {
+  animation: bomb-origin-burst 0.52s cubic-bezier(0.22, 1, 0.28, 1) forwards;
+  z-index: 4;
+}
+
+@keyframes card-blast-mobile {
+  0% {
+    transform: scale(1) translateZ(0);
+    opacity: 1;
+    filter: brightness(1);
+  }
+  35% {
+    transform: scale(1.12) translateZ(0);
+    opacity: 1;
+    filter: brightness(1.45) saturate(1.2);
+  }
+  100% {
+    transform: scale(0.75) translateZ(0);
+    opacity: 0;
+    filter: brightness(1.8);
+  }
 }
 
 @keyframes card-vanish {
@@ -1850,23 +1873,6 @@
     transform: scale(0.82) translateZ(0);
     opacity: 0;
     filter: brightness(1.15);
-  }
-}
-
-@keyframes card-blast-mobile {
-  0% {
-    transform: scale(1) translateZ(0);
-    opacity: 1;
-    filter: brightness(1);
-  }
-  35% {
-    transform: scale(1.06) translateZ(0);
-    opacity: 1;
-    filter: brightness(1.25);
-  }
-  100% {
-    transform: scale(0.8) translateZ(0);
-    opacity: 0;
   }
 }
 

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ENERGY_BUY_TEN_COST,
   MAX_ENERGY,
@@ -6,6 +6,7 @@ import {
   grantEnergyFromVideo,
   syncEnergyState,
 } from "../lib/energy";
+import { clearGemRewardAd, mountGemRewardAd } from "../lib/adsense";
 import { GEM_SHOP_PACKS, grantGemPack } from "../lib/credits";
 import { loadProgress, saveProgress } from "../lib/progress";
 import {
@@ -51,19 +52,39 @@ function VideoAdOverlay({
   progress: number;
   onCancel: () => void;
 }) {
+  const adHostRef = useRef<HTMLDivElement>(null);
+  const isGemAd = kind === "gems";
   const rewardLabel =
     kind === "gems" ? `+${GEM_VIDEO_REWARD} gems` : `+${ENERGY_VIDEO_REWARD} energy`;
+
+  useEffect(() => {
+    if (!isGemAd) return;
+    const host = adHostRef.current;
+    if (!host) return;
+    void mountGemRewardAd(host);
+    return () => clearGemRewardAd(host);
+  }, [isGemAd]);
 
   return (
     <div className="royal-shop-ad" role="status" aria-live="polite">
       <div className="royal-shop-ad__panel">
         <span className="royal-shop-ad__badge">Sponsored</span>
         <div className="royal-shop-ad__screen">
-          <span className="royal-shop-ad__play" aria-hidden>
-            ▶
-          </span>
-          <p className="royal-shop-ad__title">Royal Match Poker</p>
-          <p className="royal-shop-ad__tagline">Play your hand — match pairs, beat the table.</p>
+          {isGemAd ? (
+            <div
+              ref={adHostRef}
+              className="royal-shop-ad__slot"
+              aria-label="Advertisement — watch to earn free gems"
+            />
+          ) : (
+            <>
+              <span className="royal-shop-ad__play" aria-hidden>
+                ▶
+              </span>
+              <p className="royal-shop-ad__title">Royal Match Poker</p>
+              <p className="royal-shop-ad__tagline">Play your hand — match pairs, beat the table.</p>
+            </>
+          )}
         </div>
         <div className="royal-shop-ad__progress" aria-hidden>
           <span className="royal-shop-ad__progress-fill" style={{ width: `${progress * 100}%` }} />

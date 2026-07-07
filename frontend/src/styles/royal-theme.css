@@ -808,6 +808,22 @@ button.royal-resource:active {
   border: 1px solid rgba(232, 197, 71, 0.25);
 }
 
+.royal-shop-ad__slot {
+  min-height: 120px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 8px;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.royal-shop-ad__unit {
+  width: 100%;
+  min-height: 100px;
+}
+
 .royal-shop-ad__play {
   display: block;
   font-size: 2rem;

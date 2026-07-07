@@ -26,7 +26,7 @@ import {
 } from "../lib/levelProgress";
 import { canBeginLevelAttempt } from "../lib/levelAttempt";
 import { MAX_ENERGY, syncEnergyState } from "../lib/energy";
-import { loadProgress } from "../lib/progress";
+import { loadProgress, PROGRESS_IMPORTED_EVENT } from "../lib/progress";
 import { GemShopModal } from "../components/GemShopModal";
 import { ResourceBar } from "../components/ResourceBar";
 
@@ -139,6 +139,12 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
   useEffect(() => {
     refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    const onImported = () => setWalletTick((t) => t + 1);
+    window.addEventListener(PROGRESS_IMPORTED_EVENT, onImported);
+    return () => window.removeEventListener(PROGRESS_IMPORTED_EVENT, onImported);
+  }, []);
 
   useEffect(() => {
     if (worldForLevel(currentLevel) !== selectedWorld) return;

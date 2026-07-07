@@ -4,7 +4,8 @@ import { LevelSelectScreen } from "./screens/LevelSelectScreen";
 import { GameScreen } from "./screens/GameScreen";
 import { clearSession, getUsername, isLoggedIn } from "./lib/session";
 import { clearProgress } from "./lib/progress";
-import { initProgressSync, stopProgressSync } from "./lib/progressSync";
+import { initProgressSync, pullRemoteProgress, stopProgressSync } from "./lib/progressSync";
+import { ensureAdSenseLoaded, setGameplayAdSuppression } from "./lib/adsense";
 
 type Screen = "onboard" | "levels" | "game";
 
@@ -22,6 +23,18 @@ export default function App() {
     initProgressSync();
     return () => stopProgressSync();
   }, [loggedIn]);
+
+  useEffect(() => {
+    const inGame = screen === "game" && loggedIn;
+    setGameplayAdSuppression(inGame);
+    if (!inGame) ensureAdSenseLoaded();
+    return () => setGameplayAdSuppression(false);
+  }, [screen, loggedIn]);
+
+  useEffect(() => {
+    if (!loggedIn || screen === "onboard") return;
+    void pullRemoteProgress();
+  }, [screen, loggedIn]);
 
   const handleSignOut = () => {
     stopProgressSync();

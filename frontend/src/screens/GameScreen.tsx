@@ -26,6 +26,7 @@ import {
   clearProgress,
   defaultProgress,
   loadProgress,
+  PROGRESS_IMPORTED_EVENT,
   saveProgress,
 } from "../lib/progress";
 import {
@@ -70,32 +71,7 @@ interface RunState {
   tutorialStep: number;
 }
 
-const HAND_BADGE: Record<HandLabel, string> = {
-  pair: "2",
-  two_pair: "2×2",
-  three_of_a_kind: "3",
-  straight: "5↔",
-  flush: "♠",
-  full_house: "🏠",
-  four_of_a_kind: "4",
-  straight_flush: "⚡",
-  royal_flush: "👑",
-};
-
 const ROUND_COMPLETE_MS = 2200;
-
-function missionBriefEligible(level: number, tutorialStep: number): boolean {
-  return level > 1 || tutorialStep >= TUTORIAL_FREE_STEP;
-}
-
-function isFreshMissionStart(startLevel: number | undefined): boolean {
-  const saved = loadProgress();
-  if (startLevel === undefined) {
-    if (!saved) return true;
-    return saved.levelScore === 0 && saved.levelHands === 0;
-  }
-  return !shouldResumeSavedRun(startLevel, saved);
-}
 
 function initRunState(startLevel?: number): RunState {
   const saved = loadProgress();
@@ -172,6 +148,7 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
   const [walletTick, setWalletTick] = useState(0);
   const [energyBlocked, setEnergyBlocked] = useState(false);
   const [boardKey, setBoardKey] = useState(0);
+  const [boardFeedback, setBoardFeedback] = useState<{ text: string; hint?: boolean } | null>(null);
   const levelScoreRef = useRef(levelScore);
   const levelHandsRef = useRef(levelHands);
   const levelHandCountsRef = useRef<HandCounts>(levelHandCounts);
@@ -179,9 +156,9 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
   const bestHandRef = useRef(bestHand);
   const levelRef = useRef(level);
   const advancingRef = useRef(false);
-  const briefOnNextBoardRef = useRef(isFreshMissionStart(startLevel));
 
   const boardRef = useRef<GameBoardHandle>(null);
+  const boardFeedbackTimer = useRef<number | null>(null);
   const refreshWallet = useCallback(() => setWalletTick((t) => t + 1), []);
 
   levelScoreRef.current = levelScore;
@@ -245,12 +222,32 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
   }, [run, persistRun]);
 
   useEffect(() => {
-    if (!briefOnNextBoardRef.current) return;
-    briefOnNextBoardRef.current = false;
-    if (missionBriefEligible(level, tutorialStep)) {
-      setShowChallenges(true);
+    const syncWalletFromCloud = () => {
+      const saved = loadProgress();
+      if (!saved) return;
+      setRun((prev) => ({ ...prev, credits: saved.credits }));
+      refreshWallet();
+    };
+    window.addEventListener(PROGRESS_IMPORTED_EVENT, syncWalletFromCloud);
+    return () => window.removeEventListener(PROGRESS_IMPORTED_EVENT, syncWalletFromCloud);
+  }, [refreshWallet]);
+
+  useEffect(
+    () => () => {
+      if (boardFeedbackTimer.current) window.clearTimeout(boardFeedbackTimer.current);
+    },
+    []
+  );
+
+  const handleBoardFeedback = useCallback((message: string | null, hint = false) => {
+    if (boardFeedbackTimer.current) window.clearTimeout(boardFeedbackTimer.current);
+    if (!message) {
+      setBoardFeedback(null);
+      return;
     }
-  }, [level, boardKey, tutorialStep]);
+    setBoardFeedback({ text: message, hint });
+    boardFeedbackTimer.current = window.setTimeout(() => setBoardFeedback(null), hint ? 1300 : 1500);
+  }, []);
 
   const advanceLevel = useCallback(() => {
     advancingRef.current = false;
@@ -265,7 +262,6 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
       return;
     }
     setEnergyBlocked(false);
-    briefOnNextBoardRef.current = true;
     setRun((prev) => {
       const next: RunState = {
         ...prev,
@@ -293,7 +289,6 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
       return;
     }
     refreshWallet();
-    briefOnNextBoardRef.current = true;
     setRun((prev) => ({
       ...prev,
       levelScore: 0,
@@ -352,12 +347,8 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
   const handleTutorialStepComplete = useCallback(() => {
     setRun((prev) => {
       const nextStep = Math.min(TUTORIAL_FREE_STEP, prev.tutorialStep + 1);
-      if (prev.level === 1 && nextStep === TUTORIAL_FREE_STEP) {
-        briefOnNextBoardRef.current = true;
-      }
       return { ...prev, tutorialStep: nextStep };
     });
-    setBoardKey((k) => k + 1);
   }, []);
 
   const handleHand = useCallback(
@@ -506,16 +497,28 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
             aria-live="polite"
             title={`${movesLeft} of ${effectiveMoveLimit} hands remaining`}
           >
-            <div className="moves-banner__head">
-              <span className="moves-banner__label">Moves left</span>
-              <span className="moves-banner__count">{movesLeft}</span>
-              <span className="moves-banner__limit">/ {effectiveMoveLimit}</span>
-            </div>
-            <div className="moves-banner__track">
-              <div
-                className="moves-banner__fill"
-                style={{ width: `${Math.max(0, (movesLeft / effectiveMoveLimit) * 100)}%` }}
-              />
+            <div className="moves-banner__row">
+              <div className="moves-banner__main">
+                <div className="moves-banner__head">
+                  <span className="moves-banner__label">Moves left</span>
+                  <span className="moves-banner__count">{movesLeft}</span>
+                  <span className="moves-banner__limit">/ {effectiveMoveLimit}</span>
+                </div>
+                <div className="moves-banner__track">
+                  <div
+                    className="moves-banner__fill"
+                    style={{ width: `${Math.max(0, (movesLeft / effectiveMoveLimit) * 100)}%` }}
+                  />
+                </div>
+              </div>
+              <button
+                type="button"
+                className="moves-banner__profile hud-chip-btn"
+                onClick={() => setShowProfile(true)}
+                title={username ? "Your profile" : "Guest profile"}
+              >
+                <span className="moves-banner__profile-icon">👤</span>
+              </button>
             </div>
           </div>
 
@@ -571,6 +574,16 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
             </span>
           </div>
 
+          {boardFeedback && (
+            <p
+              className={`hand-flash${boardFeedback.hint ? " hand-flash--hint" : ""}`}
+              role="status"
+              aria-live="polite"
+            >
+              {boardFeedback.text}
+            </p>
+          )}
+
           {(tutorialActive || tutorialFreePlay) && (
             tutorialFreePlay ? (
               <div className="tutorial-banner tutorial-banner--free tutorial-banner--compact">
@@ -591,37 +604,6 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
               </div>
             ) : null
           )}
-
-          {!tutorialActive && (
-          <div className="stat-chips">
-            <div className="stat-chip" title="Total hands this run">
-              <span className="stat-chip__icon">🎯</span>
-              <span className="stat-chip__val">{handsCleared}</span>
-            </div>
-            <div className="stat-chip" title={`Best: ${HAND_DISPLAY[bestHand]}`}>
-              <span className="stat-chip__icon">{HAND_BADGE[bestHand]}</span>
-            </div>
-            {username ? (
-              <button
-                type="button"
-                className="stat-chip stat-chip--user hud-chip-btn"
-                onClick={() => setShowProfile(true)}
-                title="Your profile"
-              >
-                <span className="stat-chip__icon">👤</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="stat-chip stat-chip--user hud-chip-btn"
-                onClick={() => setShowProfile(true)}
-                title="Guest profile"
-              >
-                <span className="stat-chip__icon">👤</span>
-              </button>
-            )}
-          </div>
-          )}
         </header>
 
         <main className={`board-stage${boardLocked ? " board-stage--locked" : ""}`}>
@@ -640,6 +622,7 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
               blockerConfig={cfg.blockers}
               onHand={handleHand}
               onActivation={handleActivation}
+              onFeedback={handleBoardFeedback}
             />
           </div>
         </main>

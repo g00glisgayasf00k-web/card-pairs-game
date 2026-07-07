@@ -66,7 +66,7 @@
     max(0.35rem, env(safe-area-inset-top))
     0.5rem
     max(0.35rem, env(safe-area-inset-bottom));
-  gap: 0.4rem;
+  gap: 0.3rem;
 }
 
 /* Hide legacy desktop layout pieces */
@@ -84,8 +84,8 @@
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 0.45rem;
-  padding: 0.65rem 0.75rem 0.55rem;
+  gap: 0.3rem;
+  padding: 0.5rem 0.65rem 0.4rem;
   border-radius: var(--mg-radius);
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.07) 0%, transparent 40%),
@@ -119,8 +119,8 @@
 
 /* Prominent moves-left banner (top of HUD) */
 .moves-banner {
-  margin-bottom: 0.55rem;
-  padding: 0.5rem 0.65rem 0.45rem;
+  margin-bottom: 0.15rem;
+  padding: 0.45rem 0.55rem 0.4rem;
   border-radius: 12px;
   background: linear-gradient(180deg, #1e4a7a 0%, #123055 100%);
   border: 2px solid rgba(56, 189, 248, 0.5);
@@ -129,12 +129,49 @@
     0 0 14px rgba(56, 189, 248, 0.22);
 }
 
+.moves-banner__row {
+  display: flex;
+  align-items: stretch;
+  gap: 0.45rem;
+}
+
+.moves-banner__main {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+.moves-banner__profile {
+  flex-shrink: 0;
+  align-self: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.35rem;
+  height: 2.35rem;
+  padding: 0;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(0, 0, 0, 0.28);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.moves-banner__profile:active {
+  transform: scale(0.96);
+}
+
+.moves-banner__profile-icon {
+  font-size: 1.15rem;
+  line-height: 1;
+  opacity: 0.9;
+}
+
 .moves-banner__head {
   display: flex;
   align-items: baseline;
   justify-content: center;
   gap: 0.35rem;
-  margin-bottom: 0.35rem;
+  margin-bottom: 0.3rem;
 }
 
 .moves-banner__label {
@@ -1160,6 +1197,48 @@
   pointer-events: none;
 }
 
+.hand-flash {
+  margin: 0.2rem 0 0;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  text-align: center;
+  font-family: "Crimson Pro", Georgia, serif;
+  font-size: clamp(0.82rem, 3.6vw, 1rem);
+  font-weight: 800;
+  line-height: 1.25;
+  color: #fff6cc;
+  background: rgba(10, 46, 28, 0.88);
+  border: 1px solid rgba(245, 208, 96, 0.55);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
+  animation: hand-flash-in 1.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  pointer-events: none;
+}
+
+.hand-flash--hint {
+  font-weight: 700;
+  font-size: clamp(0.78rem, 3.2vw, 0.92rem);
+  border-color: rgba(251, 191, 36, 0.65);
+  animation-duration: 1.15s;
+}
+
+@keyframes hand-flash-in {
+  0% {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  14% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  78% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-3px);
+  }
+}
+
 /* Stat chips row */
 .stat-chips {
   display: flex;
@@ -1238,7 +1317,7 @@
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  padding: 0.25rem;
+  padding: 0.1rem;
   border-radius: 20px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, transparent 30%),
@@ -1658,10 +1737,6 @@
 
 .game-panel--embedded .cell {
   overflow: visible;
-}
-
-.game-panel--embedded .grid {
-  contain: layout style;
 }
 
 .card-tappable .playing-card {

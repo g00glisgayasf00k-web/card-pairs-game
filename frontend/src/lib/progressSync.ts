@@ -9,8 +9,10 @@ import {
   clearProgress,
   defaultProgress,
   getProgressOwner,
+  importProgress,
   isFreshAccountProgress,
   loadProgress,
+  mergeImportedResources,
   saveProgress,
   setProgressOwner,
   setProgressSyncHook,
@@ -18,9 +20,12 @@ import {
 } from "./progress";
 
 let syncTimer: ReturnType<typeof setTimeout> | null = null;
+let pullInterval: ReturnType<typeof setInterval> | null = null;
 let syncing = false;
 /** Bumped on sign-out / account switch so stale pulls cannot repopulate local storage. */
 let pullGeneration = 0;
+
+const PULL_INTERVAL_MS = 45_000;
 
 function isPullStale(generation: number): boolean {
   return generation !== pullGeneration;
@@ -60,6 +65,13 @@ async function pushProgress(payload?: SavedProgress): Promise<void> {
   }
 }
 
+function shouldMergeRemoteResources(local: SavedProgress | null, remote: RemoteProgressResponse): boolean {
+  if (!local || !remote.progress) return false;
+  const remoteParsed = importProgress(remote.progress);
+  if (!remoteParsed) return false;
+  return remoteParsed.credits > local.credits || remoteParsed.energy > local.energy;
+}
+
 export async function pullRemoteProgress(): Promise<boolean> {
   if (!hasAuthToken()) return false;
 
@@ -94,6 +106,16 @@ export async function pullRemoteProgress(): Promise<boolean> {
       return applyImportedProgress(remote.progress);
     }
 
+    const remoteParsed = importProgress(remote.progress);
+    if (local && remoteParsed && shouldMergeRemoteResources(local, remote)) {
+      if (isPullStale(generation)) return false;
+      const merged = mergeImportedResources(local, remoteParsed);
+      if (merged && !isPullStale(generation)) {
+        await pushProgress(loadProgress() ?? undefined);
+      }
+      return merged;
+    }
+
     if (localTs > remoteTs && !isPullStale(generation)) {
       await pushProgress(local);
     }
@@ -103,9 +125,24 @@ export async function pullRemoteProgress(): Promise<boolean> {
   }
 }
 
+function onFocusPull(): void {
+  void pullRemoteProgress();
+}
+
+function onVisibilityPull(): void {
+  if (document.visibilityState === "visible") {
+    void pullRemoteProgress();
+  }
+}
+
 export function initProgressSync(): void {
   setProgressSyncHook(queueSync);
   void pullRemoteProgress();
+  pullInterval = setInterval(() => {
+    void pullRemoteProgress();
+  }, PULL_INTERVAL_MS);
+  window.addEventListener("focus", onFocusPull);
+  document.addEventListener("visibilitychange", onVisibilityPull);
 }
 
 /** Drop local save when switching to a different account. */
@@ -158,6 +195,12 @@ export function stopProgressSync(): void {
     clearTimeout(syncTimer);
     syncTimer = null;
   }
+  if (pullInterval) {
+    clearInterval(pullInterval);
+    pullInterval = null;
+  }
+  window.removeEventListener("focus", onFocusPull);
+  document.removeEventListener("visibilitychange", onVisibilityPull);
   setProgressSyncHook(null);
 }
 

@@ -8,6 +8,13 @@ const STORAGE_KEY = "royalMatchProgress";
 const PROGRESS_USER_KEY = "royalMatchProgressUser";
 const VERSION = 8;
 
+/** Fired when cloud progress is applied to local storage (admin grants, server sync). */
+export const PROGRESS_IMPORTED_EVENT = "royal-progress-imported";
+
+function notifyProgressImported(): void {
+  window.dispatchEvent(new CustomEvent(PROGRESS_IMPORTED_EVENT));
+}
+
 type ProgressSyncHook = (payload: SavedProgress) => void;
 let progressSyncHook: ProgressSyncHook | null = null;
 
@@ -206,6 +213,26 @@ export function applyImportedProgress(data: unknown): boolean {
   const parsed = importProgress(data);
   if (!parsed) return false;
   saveProgress(parsed, { skipSync: true });
+  notifyProgressImported();
+  return true;
+}
+
+/** Merge admin-granted gems/energy without clobbering newer local level progress. */
+export function mergeImportedResources(local: SavedProgress, remote: SavedProgress): boolean {
+  const credits = Math.max(local.credits, remote.credits);
+  const energy = Math.max(local.energy, remote.energy);
+  if (credits === local.credits && energy === local.energy) return false;
+
+  saveProgress(
+    {
+      ...local,
+      credits,
+      energy,
+      energyUkDate: energy > local.energy ? remote.energyUkDate : local.energyUkDate,
+    },
+    { skipSync: true }
+  );
+  notifyProgressImported();
   return true;
 }
 

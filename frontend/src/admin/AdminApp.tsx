@@ -697,7 +697,7 @@ export function AdminApp() {
               <div className="admin-grant">
                 <h3>Grant resources</h3>
                 <p className="admin-muted">
-                  Adds gems or energy to the player&apos;s cloud save. They receive it on next sync or refresh.
+                  Adds gems or energy to the player&apos;s cloud save. The player sees it within a minute, or immediately if they refocus the game tab.
                   {!userDetail.progress_summary && " A new cloud save will be created if needed."}
                 </p>
                 <div className="admin-grant__grid">

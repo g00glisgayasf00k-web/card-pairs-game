@@ -9,6 +9,25 @@ from app.models import PlayerProgress, User, db
 
 progress_bp = Blueprint("progress", __name__)
 
+STARTING_CREDITS = 200
+MAX_ENERGY = 10
+
+
+def _merge_resource_grants(existing: dict, incoming: dict) -> dict:
+    """Keep admin-granted gems/energy when a stale client sync would drop them."""
+    merged = dict(incoming)
+    old_credits = int(existing.get("credits") or STARTING_CREDITS)
+    new_credits = int(incoming.get("credits") or STARTING_CREDITS)
+    if old_credits > new_credits:
+        merged["credits"] = old_credits
+
+    old_energy = int(existing.get("energy") if existing.get("energy") is not None else MAX_ENERGY)
+    new_energy = int(incoming.get("energy") if incoming.get("energy") is not None else MAX_ENERGY)
+    if old_energy > new_energy:
+        merged["energy"] = min(MAX_ENERGY, old_energy)
+
+    return merged
+
 
 @progress_bp.get("/me")
 @jwt_required()
@@ -55,6 +74,14 @@ def sync_progress():
                 "client_updated_at": row.client_updated_at,
             }
         ), 200
+
+    if row:
+        try:
+            existing = json.loads(row.payload)
+            if isinstance(existing, dict):
+                progress = _merge_resource_grants(existing, progress)
+        except json.JSONDecodeError:
+            pass
 
     payload_text = json.dumps(progress)
     if not row:

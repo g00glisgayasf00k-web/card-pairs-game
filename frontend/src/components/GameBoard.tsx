@@ -46,7 +46,7 @@ const GRID_PAD = 5;
 /** Card width ÷ height */
 const CELL_ASPECT = 5 / 7;
 /** Room for border + outer glow so nothing clips */
-const GRID_VISUAL_INSET = 14;
+const GRID_VISUAL_INSET = 6;
 
 /** Keep in sync with CSS animation durations (game-mobile / index.css) */
 const ANIM = {
@@ -107,6 +107,8 @@ interface Props {
   onTutorialStepComplete?: () => void;
   /** Glass / crate overlays (level 11+). */
   blockerConfig?: BlockerSpawnConfig | null;
+  /** Parent HUD feedback — avoids board overlay flash in embedded mode */
+  onFeedback?: (message: string | null, hint?: boolean) => void;
 }
 
 // ── Gravity ───────────────────────────────────────────────────────────────────
@@ -206,6 +208,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
       tutorialWrongSwipeHint,
       onTutorialStepComplete,
       blockerConfig,
+      onFeedback,
     },
     ref
   ) {
@@ -230,6 +233,22 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
     const gridRef = useRef<HTMLDivElement>(null);
     const finishingSwipe = useRef(false);
     const [gridFit, setGridFit] = useState<{ width: number; height: number } | null>(null);
+    const seedBoardKeyRef = useRef<string | null>(null);
+
+    useEffect(() => {
+      if (!seedBoard) return;
+      const key = JSON.stringify(seedBoard);
+      if (seedBoardKeyRef.current === key) return;
+      seedBoardKeyRef.current = key;
+      setBoard(cloneSeedBoard(seedBoard));
+      setBlockers(emptyBlockerGrid(ROWS, COLS));
+      setPopping(new Set());
+      setPopOrder(new Map());
+      setBlasting(new Set());
+      setDropMap(new Map());
+      setNewKeys(new Set());
+      setBusy(false);
+    }, [seedBoard]);
 
     useEffect(() => {
       if (seedBoard) {
@@ -272,9 +291,14 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
     const { path, pathRef, clear, onPointerDown, onPointerMove, onPointerUp } =
       useSwipePath(ROWS, COLS);
 
-    const showToast = useCallback(
+    const showFeedback = useCallback(
       (text: string, hint = false) => {
         if (toastTimer.current) window.clearTimeout(toastTimer.current);
+        if (embedded && onFeedback) {
+          onFeedback(text, hint);
+          toastTimer.current = window.setTimeout(() => onFeedback(null), hint ? 1300 : 1500);
+          return;
+        }
         setMessage(text);
         setToastHint(hint);
         if (embedded) {
@@ -284,7 +308,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
           }, hint ? 1300 : 1500);
         }
       },
-      [embedded]
+      [embedded, onFeedback]
     );
 
     useEffect(
@@ -327,7 +351,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
         hasBlast = false
       ) => {
         if (!embedded) setMessage(toastMsg);
-        else showToast(toastMsg);
+        else showFeedback(toastMsg);
         await delay(
           Math.max(waitForPop(popCount), hasBlast ? ANIM.blast + ANIM.settlePad : 0)
         );
@@ -356,7 +380,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
         clear();
         setBusy(false);
       },
-      [onHand, onActivation, clear, embedded, showToast]
+      [onHand, onActivation, clear, embedded, showFeedback]
     );
 
     // ── 💣 Bomb tap ───────────────────────────────────────────────────────────
@@ -513,7 +537,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
       if (swipePath.length === 1) {
         const { row, col } = swipePath[0]!;
         if (isBlocked(blockers[row]?.[col])) {
-          if (embedded) showToast("Break the glass or crate first", true);
+          if (embedded) showFeedback("Break the glass or crate first", true);
           else setMessage("Break the glass or crate first");
           clear();
           return;
@@ -532,7 +556,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
           return;
         }
         if (cell?.special === "rainbow") {
-          if (embedded) showToast("Drag the rainbow card onto any suit to clear it", true);
+          if (embedded) showFeedback("Drag the rainbow card onto any suit to clear it", true);
           else setMessage("Drag the rainbow card onto any suit to clear it");
           clear();
           return;
@@ -542,7 +566,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
       }
 
       if (swipePath.some((p) => isBlocked(blockers[p.row]?.[p.col]))) {
-        if (embedded) showToast("Clear the glass or crate blocking that card", true);
+        if (embedded) showFeedback("Clear the glass or crate blocking that card", true);
         else setMessage("Clear the glass or crate blocking that card");
         clear();
         return;
@@ -566,13 +590,13 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
             finishingSwipe.current = false;
             return;
           }
-          if (embedded) showToast("Drag the rainbow onto a card to pick a suit", true);
+          if (embedded) showFeedback("Drag the rainbow onto a card to pick a suit", true);
           else setMessage("Drag the rainbow onto a card to pick a suit");
           clear();
           return;
         }
 
-        if (embedded) showToast(`Swipe exactly ${POKER_HAND_SIZE} cards`, true);
+        if (embedded) showFeedback(`Swipe exactly ${POKER_HAND_SIZE} cards`, true);
         else setMessage(`Swipe exactly ${POKER_HAND_SIZE} cards for a poker hand`);
         clear();
         return;
@@ -605,7 +629,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
           sp === "rainbow"
             ? "Drag the rainbow onto a card to clear that suit"
             : "Tap arrow and bomb power cards — only the Joker swipes into hands";
-        if (embedded) showToast(hint, true);
+        if (embedded) showFeedback(hint, true);
         else setMessage(hint);
         clear();
         return;
@@ -617,13 +641,13 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
       });
       if (!resolved) {
         if (!pathIsAdjacent(swipePath)) {
-          if (embedded) showToast("Cards must be touching", true);
+          if (embedded) showFeedback("Cards must be touching", true);
           else setMessage("Cards must be touching");
         } else if (swipePath.length > POKER_HAND_SIZE) {
-          if (embedded) showToast(`Use exactly ${POKER_HAND_SIZE} cards (lift finger sooner)`, true);
+          if (embedded) showFeedback(`Use exactly ${POKER_HAND_SIZE} cards (lift finger sooner)`, true);
           else setMessage(`Use exactly ${POKER_HAND_SIZE} cards — lift finger sooner`);
         } else {
-          if (embedded) showToast("Not a valid 5-card poker hand", true);
+          if (embedded) showFeedback("Not a valid 5-card poker hand", true);
           else setMessage("Not a valid 5-card poker hand");
         }
         clear();
@@ -646,7 +670,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
         } else {
           hint = `Those cards don't make a ${HAND_DISPLAY[tutorialExpectedHand]}. Follow the glowing path.`;
         }
-        if (embedded) showToast(hint, true);
+        if (embedded) showFeedback(hint, true);
         else setMessage(hint);
         clear();
         return;
@@ -676,8 +700,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
 
         setPopping(new Set());
         setPopOrder(new Map());
-        if (embedded) showToast(toast);
-        else setMessage(toast);
+        showFeedback(toast);
 
         onHand(result);
 
@@ -708,7 +731,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
     }, [
       busy, board, blockers, clear, locked, pathRef,
       onHand, activateBomb, activateArrow, activateRainbow,
-      guidedPath, tutorialExpectedHand, tutorialWrongSwipeHint, onTutorialStepComplete, embedded, showToast,
+      guidedPath, tutorialExpectedHand, tutorialWrongSwipeHint, onTutorialStepComplete, embedded, showFeedback,
     ]);
 
     const handlePointerUp = () => {
@@ -788,15 +811,19 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
       </div>
     );
 
+    const useHudFeedback = embedded && !!onFeedback;
+
     return (
       <div className={`game-panel${embedded ? " game-panel--embedded" : ""}`}>
-        <div className={`toast-area${embedded ? " toast-area--compact" : ""}`}>
-          {message && (
-            <p className={`toast${toastHint ? " toast--hint" : ""}`} key={message}>
-              {message}
-            </p>
-          )}
-        </div>
+        {!useHudFeedback && (
+          <div className={`toast-area${embedded ? " toast-area--compact" : ""}`}>
+            {message && (
+              <p className={`toast${toastHint ? " toast--hint" : ""}`} key={message}>
+                {message}
+              </p>
+            )}
+          </div>
+        )}
 
         {embedded ? (
           <div className="board-fit" ref={fitRef}>

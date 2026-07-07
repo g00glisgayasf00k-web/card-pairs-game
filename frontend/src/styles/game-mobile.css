@@ -1264,7 +1264,7 @@
 
 .board-fit {
   flex: 1 1 0;
-  min-height: 0;
+  min-height: 8rem;
   width: 100%;
   display: flex;
   align-items: center;
@@ -1305,71 +1305,67 @@
   margin: 0;
 }
 
-/* Score / hand feedback — centered overlay on the board */
+/* Score / hand feedback — compact banner over the board (not full-screen) */
 .game-panel--embedded .toast-area--compact {
   position: absolute;
-  inset: 0;
+  top: auto;
+  right: 0.5rem;
+  bottom: 0.5rem;
+  left: 0.5rem;
   z-index: 80;
   display: flex;
-  align-items: center;
   justify-content: center;
+  align-items: flex-end;
   pointer-events: none;
 }
 
 .game-panel--embedded .toast-area--compact .toast {
   font-family: "Crimson Pro", Georgia, serif;
-  font-size: clamp(1.15rem, 5.5vw, 1.65rem);
+  font-size: clamp(0.92rem, 4.2vw, 1.2rem);
   font-weight: 800;
   line-height: 1.25;
-  padding: 0.6rem 1.2rem;
-  border-radius: 16px;
+  padding: 0.5rem 0.95rem;
+  border-radius: 999px;
   color: #fff6cc;
-  background: rgba(6, 16, 11, 0.94);
+  background: rgba(10, 46, 28, 0.92);
   border: 2px solid var(--mg-gold);
   box-shadow:
-    0 12px 40px rgba(0, 0, 0, 0.6),
-    0 0 32px rgba(245, 208, 96, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.14);
-  text-shadow:
-    0 2px 4px rgba(0, 0, 0, 0.85),
-    0 0 12px rgba(245, 208, 96, 0.45);
-  max-width: calc(100% - 1.25rem);
+    0 8px 24px rgba(0, 0, 0, 0.45),
+    0 0 20px rgba(245, 208, 96, 0.25);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.65);
+  max-width: calc(100% - 0.5rem);
   text-align: center;
-  white-space: normal;
-  animation: score-popup 1.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  animation: score-popup 1.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
 .game-panel--embedded .toast-area--compact .toast.toast--hint {
-  font-size: clamp(0.88rem, 4vw, 1.05rem);
+  font-size: clamp(0.82rem, 3.6vw, 1rem);
   font-weight: 700;
-  padding: 0.5rem 0.95rem;
-  color: #fff;
+  padding: 0.45rem 0.85rem;
+  white-space: normal;
   border-color: rgba(251, 191, 36, 0.75);
-  box-shadow:
-    0 10px 32px rgba(0, 0, 0, 0.55),
-    0 0 20px rgba(251, 191, 36, 0.25);
-  animation: score-popup-hint 1.25s ease-out forwards;
+  animation: score-popup-hint 1.15s ease-out forwards;
 }
 
 @keyframes score-popup {
   0% {
     opacity: 0;
-    transform: scale(0.55) translateY(16px);
+    transform: translateY(10px) scale(0.92);
   }
-  14% {
+  12% {
     opacity: 1;
-    transform: scale(1.12) translateY(0);
+    transform: translateY(0) scale(1);
   }
-  22% {
-    transform: scale(1) translateY(0);
-  }
-  72% {
+  78% {
     opacity: 1;
-    transform: scale(1) translateY(-10px);
+    transform: translateY(0) scale(1);
   }
   100% {
     opacity: 0;
-    transform: scale(0.92) translateY(-24px);
+    transform: translateY(-4px) scale(0.98);
   }
 }
 
@@ -1682,7 +1678,7 @@
    ============================================================================= */
 
 .game-screen .modal-overlay {
-  backdrop-filter: blur(6px);
+  background: rgba(0, 0, 0, 0.72);
 }
 
 .game-screen .levelup-modal,

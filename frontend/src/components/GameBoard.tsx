@@ -281,7 +281,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
           toastTimer.current = window.setTimeout(() => {
             setMessage(null);
             setToastHint(false);
-          }, hint ? 1250 : 1500);
+          }, hint ? 1300 : 1500);
         }
       },
       [embedded]

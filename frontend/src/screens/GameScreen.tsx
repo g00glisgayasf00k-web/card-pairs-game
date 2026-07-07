@@ -455,7 +455,7 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
     onMenu();
   };
 
-  const boardLocked = phase !== "playing" || showChallenges || energyBlocked;
+  const boardLocked = phase !== "playing" || energyBlocked;
 
   const starMoveTarget = cfg.starMoveLimits.three;
   const twoStarMoveTarget = cfg.starMoveLimits.two;

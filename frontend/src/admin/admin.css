@@ -367,6 +367,54 @@ body {
   vertical-align: middle;
 }
 
+.admin-badge--ok {
+  background: rgba(34, 197, 94, 0.2);
+  color: #86efac;
+}
+
+.admin-badge--pending {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fde68a;
+}
+
+.admin-leaderboard-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-bottom: 1rem;
+}
+
+.admin-hand-leaders {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.75rem;
+}
+
+.admin-hand-leader-card {
+  padding: 0.75rem 0.85rem;
+  border-radius: 10px;
+  background: #0f172a;
+  border: 1px solid #1e293b;
+}
+
+.admin-hand-leader-card h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.92rem;
+}
+
+.admin-hand-leader-card ol {
+  margin: 0;
+  padding-left: 1.1rem;
+  font-size: 0.85rem;
+}
+
+.admin-hand-leader-card li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.25rem;
+}
+
 .admin-search {
   display: flex;
   flex-wrap: wrap;

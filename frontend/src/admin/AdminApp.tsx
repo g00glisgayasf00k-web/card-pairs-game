@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import {
-  fetchAdminLeaderboard,
+  fetchAdminLeaderboards,
   fetchAdminStats,
   fetchAdminUserDetail,
   fetchAdminUsers,
   fetchAdminMe,
   login,
   type AdminUserRow,
+  type LeaderboardsPayload,
 } from "../lib/api";
+import { HAND_DISPLAY, HAND_SCORE_LIST, type HandLabel } from "../lib/pokerHands";
 
 type Tab = "overview" | "players" | "leaderboard";
 
@@ -40,9 +42,8 @@ export function AdminApp() {
   const [search, setSearch] = useState("");
   const [searchInput, setSearchInput] = useState("");
 
-  const [leaderboard, setLeaderboard] = useState<
-    Awaited<ReturnType<typeof fetchAdminLeaderboard>>["leaderboard"]
-  >([]);
+  const [leaderboards, setLeaderboards] = useState<LeaderboardsPayload | null>(null);
+  const [leaderboardView, setLeaderboardView] = useState<"scores" | "level" | "hands">("scores");
 
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [userDetail, setUserDetail] = useState<Awaited<ReturnType<typeof fetchAdminUserDetail>> | null>(
@@ -61,23 +62,23 @@ export function AdminApp() {
     setUserOffset(data.offset);
   }, []);
 
-  const loadLeaderboard = useCallback(async () => {
-    const data = await fetchAdminLeaderboard(30);
-    setLeaderboard(data.leaderboard);
+  const loadLeaderboards = useCallback(async () => {
+    const data = await fetchAdminLeaderboards(15);
+    setLeaderboards(data);
   }, []);
 
   const loadDashboard = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      await Promise.all([loadStats(), loadUsers(0, search), loadLeaderboard()]);
+      await Promise.all([loadStats(), loadUsers(0, search), loadLeaderboards()]);
       setAuthed(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load admin data");
     } finally {
       setLoading(false);
     }
-  }, [loadStats, loadUsers, loadLeaderboard, search]);
+  }, [loadStats, loadUsers, loadLeaderboards, search]);
 
   const checkSession = useCallback(async () => {
     const token = localStorage.getItem("token");
@@ -139,7 +140,7 @@ export function AdminApp() {
     try {
       if (tab === "overview") await loadStats();
       if (tab === "players" || tab === "overview") await loadUsers(userOffset, search);
-      if (tab === "leaderboard" || tab === "overview") await loadLeaderboard();
+      if (tab === "leaderboard" || tab === "overview") await loadLeaderboards();
       if (selectedUserId) {
         setUserDetail(await fetchAdminUserDetail(selectedUserId));
       }
@@ -294,7 +295,12 @@ export function AdminApp() {
               <div className="admin-stat-card">
                 <span className="admin-stat-card__val">{stats.synced_players}</span>
                 <span className="admin-stat-card__label">Cloud saves</span>
-                <span className="admin-stat-card__sub">Progress synced</span>
+                <span className="admin-stat-card__sub">Progress on server</span>
+              </div>
+              <div className="admin-stat-card">
+                <span className="admin-stat-card__val">{stats.users_pending_sync ?? 0}</span>
+                <span className="admin-stat-card__label">Awaiting first sync</span>
+                <span className="admin-stat-card__sub">New accounts — play once to sync</span>
               </div>
               <div className="admin-stat-card">
                 <span className="admin-stat-card__val">{stats.scores}</span>
@@ -386,6 +392,7 @@ export function AdminApp() {
                 <thead>
                   <tr>
                     <th>Player</th>
+                    <th>Sync</th>
                     <th>Level</th>
                     <th>Cleared</th>
                     <th>Stars</th>
@@ -405,6 +412,13 @@ export function AdminApp() {
                           {u.is_admin && <span className="admin-badge">admin</span>}
                         </button>
                       </td>
+                      <td>
+                        {u.has_synced ? (
+                          <span className="admin-badge admin-badge--ok">Synced</span>
+                        ) : (
+                          <span className="admin-badge admin-badge--pending">Pending</span>
+                        )}
+                      </td>
                       <td>{u.progress?.level ?? "—"}</td>
                       <td>{u.progress?.completed ?? "—"}</td>
                       <td>{u.progress?.stars_total ?? "—"}</td>
@@ -416,7 +430,7 @@ export function AdminApp() {
                           ? fmtShortDate(new Date(u.progress.client_updated_at).toISOString())
                           : "—"}
                       </td>
-                      <td>{fmtShortDate(u.created_at)}</td>
+                      <td>{u.created_at ? fmtShortDate(u.created_at) : "—"}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -540,38 +554,124 @@ export function AdminApp() {
           </section>
         )}
 
-        {tab === "leaderboard" && (
+        {tab === "leaderboard" && leaderboards && (
           <section className="admin-panel">
-            <div className="admin-table-wrap">
-              <table className="admin-table">
-                <thead>
-                  <tr>
-                    <th>#</th>
-                    <th>Player</th>
-                    <th>Points</th>
-                    <th>Hands</th>
-                    <th>Best hand</th>
-                    <th>Played</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {leaderboard.map((row, i) => (
-                    <tr key={`${row.user_id}-${row.played_at}-${i}`}>
-                      <td>{i + 1}</td>
-                      <td>
-                        <button type="button" className="admin-link" onClick={() => openUser(row.user_id)}>
-                          {row.username}
-                        </button>
-                      </td>
-                      <td className="admin-num">{row.points.toLocaleString()}</td>
-                      <td>{row.hands_cleared}</td>
-                      <td>{row.best_hand}</td>
-                      <td>{fmtDate(row.played_at)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="admin-leaderboard-tabs">
+              <button
+                type="button"
+                className={`admin-btn admin-btn--sm${leaderboardView === "scores" ? " admin-btn--primary" : " admin-btn--ghost"}`}
+                onClick={() => setLeaderboardView("scores")}
+              >
+                Top scores
+              </button>
+              <button
+                type="button"
+                className={`admin-btn admin-btn--sm${leaderboardView === "level" ? " admin-btn--primary" : " admin-btn--ghost"}`}
+                onClick={() => setLeaderboardView("level")}
+              >
+                Highest level
+              </button>
+              <button
+                type="button"
+                className={`admin-btn admin-btn--sm${leaderboardView === "hands" ? " admin-btn--primary" : " admin-btn--ghost"}`}
+                onClick={() => setLeaderboardView("hands")}
+              >
+                Hand masters
+              </button>
             </div>
+
+            {leaderboardView === "scores" && (
+              <div className="admin-table-wrap">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Player</th>
+                      <th>Best score</th>
+                      <th>Hands</th>
+                      <th>Best hand</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {leaderboards.top_scores.map((row, i) => (
+                      <tr key={`${row.user_id}-${i}`}>
+                        <td>{i + 1}</td>
+                        <td>
+                          {row.user_id ? (
+                            <button type="button" className="admin-link" onClick={() => openUser(row.user_id!)}>
+                              {row.username}
+                            </button>
+                          ) : (
+                            row.username
+                          )}
+                        </td>
+                        <td className="admin-num">{row.points.toLocaleString()}</td>
+                        <td>{row.hands_cleared}</td>
+                        <td>{HAND_DISPLAY[row.best_hand as HandLabel] ?? row.best_hand}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {leaderboardView === "level" && (
+              <div className="admin-table-wrap">
+                <table className="admin-table">
+                  <thead>
+                    <tr>
+                      <th>#</th>
+                      <th>Player</th>
+                      <th>Level</th>
+                      <th>Cleared</th>
+                      <th>Stars</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {leaderboards.highest_level.map((row, i) => (
+                      <tr key={`${row.user_id}-${i}`}>
+                        <td>{i + 1}</td>
+                        <td>
+                          <button type="button" className="admin-link" onClick={() => openUser(row.user_id)}>
+                            {row.username}
+                          </button>
+                        </td>
+                        <td>{row.level}</td>
+                        <td>{row.completed}</td>
+                        <td>{row.stars_total}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {leaderboardView === "hands" && (
+              <div className="admin-hand-leaders">
+                {HAND_SCORE_LIST.map(({ hand }) => {
+                  const leaders = leaderboards.hand_leaders[hand] ?? [];
+                  return (
+                    <div key={hand} className="admin-hand-leader-card">
+                      <h3>{HAND_DISPLAY[hand]}</h3>
+                      {leaders.length === 0 ? (
+                        <p className="admin-muted">No synced data</p>
+                      ) : (
+                        <ol>
+                          {leaders.map((row, i) => (
+                            <li key={`${row.user_id}-${i}`}>
+                              <button type="button" className="admin-link" onClick={() => openUser(row.user_id)}>
+                                {row.username}
+                              </button>
+                              <span className="admin-num">{row.count}</span>
+                            </li>
+                          ))}
+                        </ol>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </section>
         )}
       </main>

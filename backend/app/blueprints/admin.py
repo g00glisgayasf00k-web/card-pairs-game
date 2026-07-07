@@ -6,6 +6,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from sqlalchemy import desc, func
 
+from app.leaderboards import build_leaderboards
 from app.models import PlayerProgress, Score, User, db
 
 admin_bp = Blueprint("admin", __name__)
@@ -37,6 +38,7 @@ def _progress_summary(payload: dict | None) -> dict | None:
         "highest_unlocked": payload.get("highestUnlocked"),
         "stars_total": stars_total,
         "hands_cleared": payload.get("handsCleared"),
+        "lifetime_hand_counts": payload.get("lifetimeHandCounts") or {},
         "client_updated_at": payload.get("updatedAt"),
     }
 
@@ -71,13 +73,14 @@ def admin_stats():
         .all()
     )
 
-    recent_users = User.query.order_by(desc(User.created_at)).limit(8).all()
+    recent_users = User.query.order_by(desc(User.id)).limit(8).all()
 
     return jsonify(
         {
             "users": user_count,
             "scores": score_count,
             "synced_players": synced_count,
+            "users_pending_sync": max(0, user_count - synced_count),
             "signups_7d": signups_7d,
             "scores_7d": scores_7d,
             "recent_scores": [
@@ -106,28 +109,15 @@ def admin_stats():
 @admin_required
 def admin_leaderboard():
     limit = min(int(request.args.get("limit", 25)), 100)
-    rows = (
-        db.session.query(Score, User.username, User.id)
-        .join(User)
-        .order_by(desc(Score.points), desc(Score.created_at))
-        .limit(limit)
-        .all()
-    )
-    return jsonify(
-        {
-            "leaderboard": [
-                {
-                    "user_id": user_id,
-                    "username": username,
-                    "points": score.points,
-                    "hands_cleared": score.hands_cleared,
-                    "best_hand": score.best_hand,
-                    "played_at": score.created_at.isoformat(),
-                }
-                for score, username, user_id in rows
-            ]
-        }
-    )
+    payload = build_leaderboards(limit)
+    return jsonify({"leaderboard": payload["top_scores"]})
+
+
+@admin_bp.get("/leaderboards")
+@admin_required
+def admin_leaderboards():
+    limit = min(int(request.args.get("limit", 10)), 50)
+    return jsonify(build_leaderboards(limit))
 
 
 @admin_bp.get("/users")
@@ -143,7 +133,7 @@ def admin_users():
 
     total = base_query.count()
     rows = (
-        base_query.order_by(desc(User.created_at))
+        base_query.order_by(desc(User.id))
         .offset(offset)
         .limit(limit)
         .all()
@@ -182,9 +172,10 @@ def admin_users():
                 "id": u.id,
                 "username": u.username,
                 "is_admin": bool(u.is_admin),
-                "created_at": u.created_at.isoformat(),
+                "created_at": u.created_at.isoformat() if u.created_at else None,
                 "score_count": score_counts.get(u.id, 0),
                 "progress": summary,
+                "has_synced": prog is not None,
             }
         )
 

@@ -50,6 +50,40 @@ export async function fetchLeaderboard(limit = 20) {
   }>(`/api/scores/leaderboard?limit=${limit}`);
 }
 
+export interface LeaderboardScoreRow {
+  user_id?: number;
+  username: string;
+  points: number;
+  hands_cleared: number;
+  best_hand: string;
+  played_at: string;
+}
+
+export interface LeaderboardLevelRow {
+  user_id: number;
+  username: string;
+  level: number;
+  highest_unlocked: number;
+  completed: number;
+  stars_total: number;
+}
+
+export interface LeaderboardHandRow {
+  user_id: number;
+  username: string;
+  count: number;
+}
+
+export interface LeaderboardsPayload {
+  top_scores: LeaderboardScoreRow[];
+  highest_level: LeaderboardLevelRow[];
+  hand_leaders: Record<string, LeaderboardHandRow[]>;
+}
+
+export async function fetchLeaderboards(limit = 10) {
+  return request<LeaderboardsPayload>(`/api/scores/leaderboards?limit=${limit}`);
+}
+
 export async function submitScore(payload: {
   points: number;
   hands_cleared: number;
@@ -101,6 +135,7 @@ export async function fetchAdminStats() {
     synced_players: number;
     signups_7d: number;
     scores_7d: number;
+    users_pending_sync?: number;
     recent_scores: {
       username: string;
       points: number;
@@ -114,23 +149,21 @@ export async function fetchAdminStats() {
 
 export async function fetchAdminLeaderboard(limit = 25) {
   return request<{
-    leaderboard: {
-      user_id: number;
-      username: string;
-      points: number;
-      hands_cleared: number;
-      best_hand: string;
-      played_at: string;
-    }[];
+    leaderboard: LeaderboardScoreRow[];
   }>(`/api/admin/leaderboard?limit=${limit}`);
+}
+
+export async function fetchAdminLeaderboards(limit = 10) {
+  return request<LeaderboardsPayload>(`/api/admin/leaderboards?limit=${limit}`);
 }
 
 export interface AdminUserRow {
   id: number;
   username: string;
   is_admin: boolean;
-  created_at: string;
+  created_at: string | null;
   score_count: number;
+  has_synced?: boolean;
   progress: {
     level?: number;
     credits?: number;

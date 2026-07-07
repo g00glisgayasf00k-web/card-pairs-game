@@ -61,6 +61,7 @@ interface RunState {
   levelScore: number;
   levelHands: number;
   levelHandCounts: HandCounts;
+  lifetimeHandCounts: HandCounts;
   handsCleared: number;
   bestHand: HandLabel;
   credits: number;
@@ -106,6 +107,7 @@ function initRunState(startLevel?: number): RunState {
         levelScore: saved.levelScore,
         levelHands: saved.levelHands,
         levelHandCounts: saved.levelHandCounts ?? {},
+        lifetimeHandCounts: saved.lifetimeHandCounts ?? {},
         handsCleared: saved.handsCleared,
         bestHand: saved.bestHand,
         credits: saved.credits,
@@ -135,6 +137,7 @@ function initRunState(startLevel?: number): RunState {
   return {
     ...fresh,
     handsCleared: saved?.handsCleared ?? 0,
+    lifetimeHandCounts: saved?.lifetimeHandCounts ?? {},
     bestHand: saved?.bestHand ?? "pair",
     credits: saved?.credits ?? defaultProgress().credits,
     bonusMoves: 0,
@@ -225,6 +228,7 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
       levelScore: onFrontier ? next.levelScore : saved.levelScore,
       levelHands: onFrontier ? next.levelHands : saved.levelHands,
       levelHandCounts: onFrontier ? next.levelHandCounts : saved.levelHandCounts,
+      lifetimeHandCounts: next.lifetimeHandCounts,
       handsCleared: next.handsCleared,
       bestHand: next.bestHand,
       credits: next.credits,
@@ -374,6 +378,10 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
           HAND_RANK_ORDER[result.hand] > HAND_RANK_ORDER[prev.bestHand]
             ? result.hand
             : prev.bestHand;
+        const nextLifetime: HandCounts = {
+          ...prev.lifetimeHandCounts,
+          [result.hand]: (prev.lifetimeHandCounts[result.hand] ?? 0) + 1,
+        };
         bestHandRef.current = nextBest;
         handsClearedRef.current = prev.handsCleared + 1;
         return {
@@ -382,6 +390,7 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
           levelHands: nextHands,
           levelScore: nextScore,
           levelHandCounts: nextHandCounts,
+          lifetimeHandCounts: nextLifetime,
           bestHand: nextBest,
         };
       });

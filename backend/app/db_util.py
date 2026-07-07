@@ -25,6 +25,10 @@ def ensure_schema():
         ("is_admin", "ALTER TABLE users ADD COLUMN is_admin BOOLEAN DEFAULT 0 NOT NULL"),
         ("google_id", "ALTER TABLE users ADD COLUMN google_id VARCHAR(128)"),
         ("email", "ALTER TABLE users ADD COLUMN email VARCHAR(255)"),
+        (
+            "created_at",
+            "ALTER TABLE users ADD COLUMN created_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL",
+        ),
     ]
     for col_name, sql in migrations:
         if col_name in cols:

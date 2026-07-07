@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { OnboardingScreen } from "./screens/OnboardingScreen";
 import { LevelSelectScreen } from "./screens/LevelSelectScreen";
 import { GameScreen } from "./screens/GameScreen";
@@ -14,11 +14,19 @@ export default function App() {
   const [loggedIn, setLoggedIn] = useState(() => isLoggedIn());
   const [username, setUsername] = useState<string | null>(() => getUsername());
 
+  useEffect(() => {
+    if (!loggedIn) {
+      stopProgressSync();
+      return;
+    }
+    initProgressSync();
+    return () => stopProgressSync();
+  }, [loggedIn]);
+
   const handleAuthSuccess = (name: string, token: string) => {
     setSession(name, token);
     setUsername(name);
     setLoggedIn(true);
-    initProgressSync();
   };
 
   const handleSignOut = () => {

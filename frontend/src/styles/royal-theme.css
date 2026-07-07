@@ -400,6 +400,93 @@ button.royal-resource:active {
   color: var(--royal-gold);
 }
 
+.leaderboard-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin: 0.65rem 0 0.75rem;
+}
+
+.leaderboard-tabs__btn {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding: 0.42rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(232, 197, 71, 0.35);
+  background: rgba(0, 0, 0, 0.28);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.68rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.leaderboard-tabs__btn--active {
+  background: linear-gradient(180deg, #22a058, #145a38);
+  border-color: rgba(125, 255, 186, 0.45);
+  color: #fff;
+}
+
+.leaderboard-list--rich li {
+  grid-template-columns: 1.75rem 1fr;
+  grid-template-rows: auto auto;
+}
+
+.leaderboard-list--rich .rank-num {
+  grid-row: 1 / span 2;
+}
+
+.leaderboard-list__meta {
+  grid-column: 2;
+  font-size: 0.68rem;
+  opacity: 0.72;
+}
+
+.leaderboard-hands-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.45rem;
+}
+
+.leaderboard-hand-card {
+  padding: 0.55rem 0.6rem;
+  border-radius: 12px;
+  border: 1px solid rgba(232, 197, 71, 0.25);
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.leaderboard-hand-card__title {
+  margin: 0 0 0.25rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: var(--royal-gold);
+}
+
+.leaderboard-hand-card__leader {
+  margin: 0;
+  font-size: 0.82rem;
+  font-weight: 800;
+}
+
+.leaderboard-hand-card__count {
+  margin: 0.15rem 0 0;
+  font-size: 0.68rem;
+  opacity: 0.75;
+}
+
+.leaderboard-hand-card__rest {
+  list-style: none;
+  margin: 0.35rem 0 0;
+  padding: 0;
+  font-size: 0.65rem;
+  opacity: 0.85;
+}
+
+.leaderboard-hand-card__rest li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.35rem;
+}
+
 /* ── Gem / power-up shop cards ───────────────────────────────────────────── */
 
 .gem-shop-modal.royal-shop {

@@ -27,6 +27,8 @@ export interface SavedProgress {
   levelScore: number;
   levelHands: number;
   levelHandCounts: HandCounts;
+  /** Lifetime hands cleared by type — synced for leaderboards. */
+  lifetimeHandCounts: HandCounts;
   handsCleared: number;
   bestHand: HandLabel;
   /** In-game currency for buying extra moves. */
@@ -156,6 +158,7 @@ function parseProgress(raw: string | null): SavedProgress | null {
       levelScore: Math.floor(data.levelScore),
       levelHands: Math.floor(data.levelHands),
       levelHandCounts: parseHandCounts(data.levelHandCounts),
+      lifetimeHandCounts: parseHandCounts(data.lifetimeHandCounts),
       handsCleared: Math.floor(data.handsCleared),
       bestHand: data.bestHand,
       credits,
@@ -229,6 +232,7 @@ export function defaultProgress(): Omit<SavedProgress, "v" | "updatedAt"> {
     levelScore: 0,
     levelHands: 0,
     levelHandCounts: {},
+    lifetimeHandCounts: {},
     handsCleared: 0,
     bestHand: "pair",
     credits: STARTING_CREDITS,

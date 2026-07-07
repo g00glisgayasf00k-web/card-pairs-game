@@ -5,6 +5,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required, verify_jwt_in_req
 from sqlalchemy import desc
 
 from app.blueprints.auth import _hash_password
+from app.leaderboards import build_leaderboards
 from app.models import Score, User, db
 scores_bp = Blueprint("scores", __name__)
 
@@ -12,27 +13,28 @@ scores_bp = Blueprint("scores", __name__)
 @scores_bp.get("/leaderboard")
 def leaderboard():
     limit = min(int(request.args.get("limit", 20)), 100)
-    rows = (
-        db.session.query(Score, User.username)
-        .join(User)
-        .order_by(desc(Score.points), desc(Score.created_at))
-        .limit(limit)
-        .all()
-    )
+    payload = build_leaderboards(limit)
+    rows = payload["top_scores"]
     return jsonify(
         {
             "leaderboard": [
                 {
-                    "username": username,
-                    "points": score.points,
-                    "hands_cleared": score.hands_cleared,
-                    "best_hand": score.best_hand,
-                    "played_at": score.created_at.isoformat(),
+                    "username": row["username"],
+                    "points": row["points"],
+                    "hands_cleared": row["hands_cleared"],
+                    "best_hand": row["best_hand"],
+                    "played_at": row["played_at"],
                 }
-                for score, username in rows
+                for row in rows
             ]
         }
     )
+
+
+@scores_bp.get("/leaderboards")
+def leaderboards():
+    limit = min(int(request.args.get("limit", 10)), 50)
+    return jsonify(build_leaderboards(limit))
 
 
 @scores_bp.get("/me")

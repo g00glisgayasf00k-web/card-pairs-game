@@ -22,7 +22,24 @@ export function clearSession(): void {
 let cachedGoogleClientId: string | null = null;
 let configPromise: Promise<string> | null = null;
 
+declare global {
+  interface Window {
+    RMP_CONFIG?: {
+      restUrl?: string;
+      googleClientId?: string;
+      view?: string;
+    };
+  }
+}
+
 const API_BASE = import.meta.env.VITE_API_URL ?? "";
+
+function authConfigUrl(): string {
+  if (window.RMP_CONFIG?.restUrl) {
+    return `${window.RMP_CONFIG.restUrl.replace(/\/$/, "")}/auth/config`;
+  }
+  return `${API_BASE}/api/auth/config`;
+}
 
 /** Set to true when Google sign-in should appear in the auth UI. */
 export const GOOGLE_SIGNIN_UI_ENABLED = false;
@@ -30,6 +47,11 @@ export const GOOGLE_SIGNIN_UI_ENABLED = false;
 /** Resolve Google OAuth client ID from server config or local env. */
 export async function resolveGoogleClientId(): Promise<string> {
   if (cachedGoogleClientId !== null) return cachedGoogleClientId;
+  const fromWp = window.RMP_CONFIG?.googleClientId ?? "";
+  if (fromWp) {
+    cachedGoogleClientId = fromWp;
+    return fromWp;
+  }
   const fromEnv = import.meta.env.VITE_GOOGLE_CLIENT_ID ?? "";
   if (fromEnv) {
     cachedGoogleClientId = fromEnv;
@@ -37,7 +59,7 @@ export async function resolveGoogleClientId(): Promise<string> {
   }
   if (configPromise) return configPromise;
 
-  configPromise = fetch(`${API_BASE}/api/auth/config`)
+  configPromise = fetch(authConfigUrl())
     .then((res) => res.json())
     .then((data: { googleClientId?: string }) => {
       cachedGoogleClientId = data.googleClientId ?? "";
@@ -55,7 +77,12 @@ export async function resolveGoogleClientId(): Promise<string> {
 }
 
 export function getGoogleClientIdSync(): string {
-  return cachedGoogleClientId ?? import.meta.env.VITE_GOOGLE_CLIENT_ID ?? "";
+  return (
+    cachedGoogleClientId ??
+    window.RMP_CONFIG?.googleClientId ??
+    import.meta.env.VITE_GOOGLE_CLIENT_ID ??
+    ""
+  );
 }
 
 export function googleSignInEnabled(): boolean {

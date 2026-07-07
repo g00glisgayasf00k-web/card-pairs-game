@@ -1,7 +1,7 @@
-import { useEffect, useState, type FormEvent } from "react";
+import { useState, type FormEvent } from "react";
 import { login, loginWithGoogle, register } from "../lib/api";
 import { flushProgressSync, pullRemoteProgress } from "../lib/progressSync";
-import { googleSignInEnabled, resolveGoogleClientId } from "../lib/session";
+import { googleSignInEnabled } from "../lib/session";
 import { GoogleSignInButton } from "./GoogleSignInButton";
 
 type AuthMode = "signup" | "login";
@@ -19,11 +19,6 @@ export function AuthPanel({ onSuccess, initialUsername = "", variant = "home" }:
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [googleReady, setGoogleReady] = useState(false);
-
-  useEffect(() => {
-    void resolveGoogleClientId().then((id) => setGoogleReady(id.length > 0));
-  }, []);
 
   const finishAuth = async (name: string, token: string) => {
     setError(null);
@@ -64,7 +59,7 @@ export function AuthPanel({ onSuccess, initialUsername = "", variant = "home" }:
   };
 
   const isHome = variant === "home";
-  const showGoogleDivider = googleReady || googleSignInEnabled();
+  const showGoogle = googleSignInEnabled();
 
   return (
     <div className={`auth-panel auth-panel--${variant}`}>
@@ -74,16 +69,17 @@ export function AuthPanel({ onSuccess, initialUsername = "", variant = "home" }:
         </p>
       )}
 
-      <GoogleSignInButton
-        onCredential={handleGoogle}
-        disabled={busy}
-        text={mode === "signup" ? "signup_with" : "signin_with"}
-      />
-
-      {showGoogleDivider && (
-        <div className="auth-divider">
-          <span>or</span>
-        </div>
+      {showGoogle && (
+        <>
+          <GoogleSignInButton
+            onCredential={handleGoogle}
+            disabled={busy}
+            text={mode === "signup" ? "signup_with" : "signin_with"}
+          />
+          <div className="auth-divider">
+            <span>or</span>
+          </div>
+        </>
       )}
 
       <div className="home-auth-tabs" role="tablist">

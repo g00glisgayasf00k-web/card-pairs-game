@@ -25,6 +25,9 @@ Write-Host "==> Installing frontend dependencies..."
 Push-Location $Frontend
 npm install
 
+Write-Host "==> Regenerating launcher + splash icons..."
+npm run icons:android
+
 Write-Host "==> Building mobile web bundle (Capacitor mode)..."
 npm run cap:sync
 Pop-Location
@@ -32,7 +35,7 @@ Pop-Location
 Write-Host "==> Building debug APK with Gradle..."
 Push-Location $Android
 if (Test-Path ".\gradlew.bat") {
-    .\gradlew.bat assembleDebug
+    .\gradlew.bat clean assembleDebug
 } else {
     throw "gradlew.bat not found. Run 'npx cap add android' from frontend/ first."
 }

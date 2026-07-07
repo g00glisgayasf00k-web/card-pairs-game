@@ -9,26 +9,28 @@ const root = join(__dirname, "..");
 const resourcesDir = join(root, "resources");
 const assetsDir = join(resourcesDir, "assets");
 
-function svgToPng(svgPath, outPath, size = 1024) {
+async function svgToPng(svgPath, outPath, size = 1024) {
   const svg = readFileSync(svgPath, "utf8");
   const resvg = new Resvg(svg, {
     fitTo: { mode: "width", value: size },
-    background: "transparent",
+    background: "rgba(0,0,0,0)",
   });
-  writeFileSync(outPath, resvg.render().asPng());
+  const png = resvg.render().asPng();
+  await sharp(png).ensureAlpha().png({ compressionLevel: 9 }).toFile(outPath);
 }
 
 mkdirSync(assetsDir, { recursive: true });
 
-svgToPng(join(resourcesDir, "icon.svg"), join(assetsDir, "icon-only.png"));
-svgToPng(join(resourcesDir, "icon-foreground.svg"), join(assetsDir, "icon-foreground.png"));
+await svgToPng(join(resourcesDir, "icon.svg"), join(assetsDir, "icon-only.png"));
+await svgToPng(join(resourcesDir, "icon-foreground.svg"), join(assetsDir, "icon-foreground.png"));
+await svgToPng(join(resourcesDir, "icon.svg"), join(assetsDir, "splash.png"), 2732);
 
 await sharp({
   create: {
     width: 1024,
     height: 1024,
-    channels: 3,
-    background: "#0d4a2e",
+    channels: 4,
+    background: { r: 13, g: 74, b: 46, alpha: 255 },
   },
 })
   .png()

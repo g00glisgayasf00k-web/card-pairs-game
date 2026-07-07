@@ -12,12 +12,15 @@ echo "==> Installing frontend dependencies..."
 cd "$FRONTEND"
 npm install
 
+echo "==> Regenerating launcher + splash icons..."
+npm run icons:android
+
 echo "==> Building mobile web bundle (Capacitor mode)..."
 npm run cap:sync
 
 echo "==> Building debug APK with Gradle..."
 cd "$ANDROID"
-./gradlew assembleDebug
+./gradlew clean assembleDebug
 
 mkdir -p "$OUT_DIR"
 cp -f "$APK_SRC" "$APK_DEST"

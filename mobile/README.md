@@ -32,11 +32,15 @@ Or open the project in Android Studio once — it configures the SDK path in `fr
 
 ## Build a debug APK (install on your phone)
 
+Pushing to GitHub updates the **website only**. The home-screen icon changes when you **rebuild and reinstall the APK** on your phone.
+
 From the repo root:
 
 ```powershell
 .\mobile\build.ps1
 ```
+
+The script regenerates launcher + splash icons, syncs Capacitor, then builds the APK.
 
 Or manually:
 
@@ -61,6 +65,8 @@ Install via USB (developer mode + USB debugging):
 ```powershell
 adb install -r mobile\output\royal-match-poker-debug.apk
 ```
+
+If the old icon still shows, uninstall the app first, then install again (Android caches launcher icons).
 
 ## Open in Android Studio
 

@@ -164,7 +164,7 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
   const [boardKey, setBoardKey] = useState(0);
   const [boardFeedback, setBoardFeedback] = useState<{ text: string; hint?: boolean } | null>(null);
   const [blockerIntro, setBlockerIntro] = useState<BlockerIntroKind | null>(null);
-  const [confirmSpend, setConfirmSpend] = useState<"hint" | "shuffle" | null>(null);
+  const [confirmSpend, setConfirmSpend] = useState<"hint" | "shuffle" | "restart" | null>(null);
   const levelScoreRef = useRef(levelScore);
   const levelHandsRef = useRef(levelHands);
   const levelHandCountsRef = useRef<HandCounts>(levelHandCounts);
@@ -286,29 +286,6 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
     return true;
   }, [cfg.challenges, levelHandCounts, handleBoardFeedback]);
 
-  const resolveConfirmSpend = useCallback(() => {
-    const action = confirmSpend;
-    if (!action) return;
-    const cost = action === "hint" ? HINT_COST : SHUFFLE_COST;
-    if (credits < cost) {
-      setConfirmSpend(null);
-      setGemShopEnergyFocus(false);
-      setShowGemShop(true);
-      return;
-    }
-    let performed = true;
-    if (action === "hint") {
-      performed = revealHintNow();
-    } else {
-      boardRef.current?.shuffle();
-    }
-    if (performed) {
-      setRun((prev) => ({ ...prev, credits: Math.max(0, prev.credits - cost) }));
-      refreshWallet();
-    }
-    setConfirmSpend(null);
-  }, [confirmSpend, credits, revealHintNow, refreshWallet]);
-
   const advanceLevel = useCallback(() => {
     advancingRef.current = false;
     clearEnergyPaidLevel();
@@ -366,6 +343,35 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
     setPhase("playing");
     setBoardKey((k) => k + 1);
   }, [level, tutorialStep, refreshWallet]);
+
+  const resolveConfirmSpend = useCallback(() => {
+    const action = confirmSpend;
+    if (!action) return;
+    setConfirmSpend(null);
+
+    if (action === "restart") {
+      // retryLevel spends 1 energy (and opens the shop if empty).
+      retryLevel();
+      return;
+    }
+
+    const cost = action === "hint" ? HINT_COST : SHUFFLE_COST;
+    if (credits < cost) {
+      setGemShopEnergyFocus(false);
+      setShowGemShop(true);
+      return;
+    }
+    let performed = true;
+    if (action === "hint") {
+      performed = revealHintNow();
+    } else {
+      boardRef.current?.shuffle();
+    }
+    if (performed) {
+      setRun((prev) => ({ ...prev, credits: Math.max(0, prev.credits - cost) }));
+      refreshWallet();
+    }
+  }, [confirmSpend, credits, revealHintNow, refreshWallet, retryLevel]);
 
   useEffect(() => {
     if (phase !== "round_complete") return;
@@ -672,63 +678,60 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
             </span>
           </div>
 
-          {(tutorialActive || tutorialFreePlay) && (
-            tutorialFreePlay ? (
-              <div className="tutorial-banner tutorial-banner--free tutorial-banner--compact">
-                <div className="tutorial-banner__summary-row">
-                  <span className="tutorial-banner__tag">🎯 Your turn</span>
-                  <span className="tutorial-banner__title">
-                    💰 {levelScore.toLocaleString()} / {cfg.targetPoints.toLocaleString()} pts
-                  </span>
-                </div>
-                <p className="tutorial-banner__summary">
-                  Swipe any path through 5 touching cards to reach the target.
-                </p>
-                {cfg.challenges.length > 0 && (
-                  <div className="tutorial-banner__goals">
-                    <span className="tutorial-banner__goals-label">Goals</span>
-                    {cfg.challenges.map((c) => {
-                      const have = levelHandCounts[c.hand] ?? 0;
-                      const done = have >= c.minCount;
-                      return (
-                        <span
-                          key={`${c.hand}-${c.minCount}`}
-                          className={`tutorial-goal-chip${done ? " tutorial-goal-chip--done" : ""}`}
-                        >
-                          {done ? "✓" : "○"} {formatChallenge(c)} ({Math.min(have, c.minCount)}/{c.minCount})
-                        </span>
-                      );
-                    })}
-                  </div>
-                )}
+          {tutorialActive && tutorialConfig && (
+            <div className="tutorial-banner tutorial-banner--compact">
+              <div className="tutorial-banner__summary-row">
+                <span className="tutorial-banner__tag">🎓 Lesson {tutorialConfig.lesson}/3</span>
+                <span className="tutorial-banner__title">{tutorialConfig.title}</span>
               </div>
-            ) : tutorialConfig ? (
-              <div className="tutorial-banner tutorial-banner--compact">
-                <div className="tutorial-banner__summary-row">
-                  <span className="tutorial-banner__tag">🎓 Lesson {tutorialConfig.lesson}/3</span>
-                  <span className="tutorial-banner__title">{tutorialConfig.title}</span>
-                </div>
-                <p className="tutorial-banner__summary">{tutorialConfig.summary}</p>
-                <details className="tutorial-banner__details">
-                  <summary className="tutorial-banner__more">Show More Info</summary>
-                  <p className="tutorial-banner__text">{tutorialConfig.message}</p>
-                </details>
-              </div>
-            ) : null
+              <p className="tutorial-banner__summary">{tutorialConfig.summary}</p>
+              <details className="tutorial-banner__details">
+                <summary className="tutorial-banner__more">Show More Info</summary>
+                <p className="tutorial-banner__text">{tutorialConfig.message}</p>
+              </details>
+            </div>
           )}
         </header>
+
+        {showChallengeUi && (
+          <div className="game-goalbar" aria-label="Level target and goals">
+            <div className="game-goalbar__points">
+              <span className="game-goalbar__label">🎯 Target</span>
+              <span className="game-goalbar__val">
+                💰 {levelScore.toLocaleString()} / {cfg.targetPoints.toLocaleString()}
+              </span>
+            </div>
+            {cfg.challenges.length > 0 && (
+              <div className="game-goalbar__goals">
+                {cfg.challenges.map((c) => {
+                  const have = levelHandCounts[c.hand] ?? 0;
+                  const done = have >= c.minCount;
+                  return (
+                    <span
+                      key={`${c.hand}-${c.minCount}`}
+                      className={`tutorial-goal-chip${done ? " tutorial-goal-chip--done" : ""}`}
+                    >
+                      {done ? "✓" : "○"} {formatChallenge(c)} ({Math.min(have, c.minCount)}/{c.minCount})
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        )}
 
         <div className="mobile-shell__play">
           <nav className="action-bar action-bar--rail" aria-label="Game actions">
             <button
               type="button"
               className="action-btn action-btn--restart"
-              onClick={retryLevel}
+              onClick={() => setConfirmSpend("restart")}
               disabled={boardLocked || tutorialActive}
-              title={tutorialActive ? "Finish the lesson first" : "Restart this level"}
+              title={tutorialActive ? "Finish the lesson first" : "Restart this level — costs 1 energy"}
             >
               <span className="action-btn__icon">↺</span>
               <span className="action-btn__label">Restart</span>
+              <span className="action-btn__cost action-btn__cost--energy">⚡1</span>
             </button>
             <button
               type="button"
@@ -997,47 +1000,81 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
 
       {confirmSpend &&
         gamePortal(
-        <div
-          className="modal-overlay scores-overlay"
-          onClick={() => setConfirmSpend(null)}
-          role="presentation"
-        >
-          <div
-            className="modal scores-modal spend-confirm-modal"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-labelledby="spend-confirm-title"
-          >
-            <div className="spend-confirm__icon" aria-hidden>
-              {confirmSpend === "hint" ? "💡" : "🔀"}
-            </div>
-            <h2 id="spend-confirm-title">
-              {confirmSpend === "hint" ? "Get a hint?" : "Shuffle the board?"}
-            </h2>
-            <p className="scores-note spend-confirm__note">
-              {confirmSpend === "hint"
+          (() => {
+            const isEnergy = confirmSpend === "restart";
+            const cost =
+              confirmSpend === "hint"
+                ? HINT_COST
+                : confirmSpend === "shuffle"
+                  ? SHUFFLE_COST
+                  : 1;
+            const icon =
+              confirmSpend === "hint" ? "💡" : confirmSpend === "shuffle" ? "🔀" : "↺";
+            const title =
+              confirmSpend === "hint"
+                ? "Get a hint?"
+                : confirmSpend === "shuffle"
+                  ? "Shuffle the board?"
+                  : "Restart this level?";
+            const desc =
+              confirmSpend === "hint"
                 ? "Reveal a card to start a goal hand."
-                : "Reshuffle every card on the board."}
-              {" "}
-              This costs <strong>💎 {confirmSpend === "hint" ? HINT_COST : SHUFFLE_COST} gem</strong>.
-            </p>
-            <p className="spend-confirm__balance">You have 💎 {credits} gems</p>
-            <div className="spend-confirm__actions">
-              <button
-                type="button"
-                className="btn ghost"
+                : confirmSpend === "shuffle"
+                  ? "Reshuffle every card on the board."
+                  : "Start this level over with a fresh board.";
+            const currencyIcon = isEnergy ? "⚡" : "💎";
+            const currencyName = isEnergy ? "energy" : "gem";
+            const balance = isEnergy ? energy : credits;
+            const balanceUnit = isEnergy ? "energy" : "gems";
+            const canAfford = balance >= cost;
+            const confirmLabel = canAfford
+              ? `Use ${currencyIcon} ${cost}`
+              : isEnergy
+                ? "Get energy"
+                : "Get gems";
+            return (
+              <div
+                className="modal-overlay scores-overlay"
                 onClick={() => setConfirmSpend(null)}
+                role="presentation"
               >
-                Cancel
-              </button>
-              <button type="button" className="btn" onClick={resolveConfirmSpend}>
-                {credits < (confirmSpend === "hint" ? HINT_COST : SHUFFLE_COST)
-                  ? "Get gems"
-                  : `Use 💎 ${confirmSpend === "hint" ? HINT_COST : SHUFFLE_COST}`}
-              </button>
-            </div>
-          </div>
-        </div>
+                <div
+                  className="modal scores-modal spend-confirm-modal"
+                  onClick={(e) => e.stopPropagation()}
+                  role="dialog"
+                  aria-labelledby="spend-confirm-title"
+                >
+                  <div className="spend-confirm__icon" aria-hidden>
+                    {icon}
+                  </div>
+                  <h2 id="spend-confirm-title">{title}</h2>
+                  <p className="scores-note spend-confirm__note">
+                    {desc}{" "}
+                    This costs{" "}
+                    <strong>
+                      {currencyIcon} {cost} {currencyName}
+                    </strong>
+                    .
+                  </p>
+                  <p className="spend-confirm__balance">
+                    You have {currencyIcon} {balance} {balanceUnit}
+                  </p>
+                  <div className="spend-confirm__actions">
+                    <button
+                      type="button"
+                      className="btn ghost"
+                      onClick={() => setConfirmSpend(null)}
+                    >
+                      Cancel
+                    </button>
+                    <button type="button" className="btn" onClick={resolveConfirmSpend}>
+                      {confirmLabel}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })()
         )}
 
       {blockerIntro &&

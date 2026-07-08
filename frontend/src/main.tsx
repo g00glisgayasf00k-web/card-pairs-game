@@ -24,6 +24,23 @@ if (isAdminRoute) {
 } else {
   void initNativeShell();
   if (isLoggedIn()) initProgressSync();
+
+  // Actively poll for a newer service worker so a fresh deploy is picked up
+  // without a manual hard refresh (autoUpdate reloads once the new SW controls).
+  if ("serviceWorker" in navigator) {
+    const checkForUpdate = () => {
+      navigator.serviceWorker
+        .getRegistration()
+        .then((reg) => reg?.update())
+        .catch(() => {});
+    };
+    window.addEventListener("focus", checkForUpdate);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") checkForUpdate();
+    });
+    window.setInterval(checkForUpdate, 60_000);
+  }
+
   createRoot(document.getElementById("root")!).render(
     <StrictMode>
       <ErrorBoundary>

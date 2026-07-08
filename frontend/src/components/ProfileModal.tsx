@@ -104,6 +104,8 @@ export function ProfileModal({ username, onClose, onAccountChange, onSignOut }: 
         <button type="button" className="btn scores-close" onClick={onClose}>
           Close
         </button>
+
+        <p className="profile-modal__version">Version {__APP_VERSION__}</p>
       </div>
     </div>
   );

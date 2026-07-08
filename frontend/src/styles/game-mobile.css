@@ -1153,6 +1153,44 @@
   opacity: 0.65;
 }
 
+.blocker-intro-modal {
+  max-width: 320px;
+  text-align: center;
+}
+
+.blocker-intro__icon {
+  font-size: 2.6rem;
+  line-height: 1;
+  margin-bottom: 0.35rem;
+}
+
+.blocker-intro__list {
+  list-style: none;
+  margin: 0.5rem 0 1rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  text-align: left;
+}
+
+.blocker-intro__list li {
+  position: relative;
+  padding-left: 1.15rem;
+  font-size: 0.82rem;
+  line-height: 1.35;
+  opacity: 0.92;
+}
+
+.blocker-intro__list li::before {
+  content: "◆";
+  position: absolute;
+  left: 0;
+  top: 0.05rem;
+  color: var(--mg-gold);
+  font-size: 0.7rem;
+}
+
 .scores-list {
   list-style: none;
   margin: 0 0 0.85rem;

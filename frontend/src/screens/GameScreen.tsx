@@ -22,7 +22,13 @@ import {
   trySpendEnergyForRetry,
 } from "../lib/energy";
 import { beginLevelAttempt, levelAttemptCostsEnergy } from "../lib/levelAttempt";
-import { blockersGuideText } from "../lib/blockers";
+import {
+  blockerIntroContent,
+  blockersGuideText,
+  markBlockerIntroSeen,
+  pendingBlockerIntro,
+  type BlockerIntroKind,
+} from "../lib/blockers";
 import {
   clearProgress,
   defaultProgress,
@@ -155,6 +161,7 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
   const [energyBlocked, setEnergyBlocked] = useState(false);
   const [boardKey, setBoardKey] = useState(0);
   const [boardFeedback, setBoardFeedback] = useState<{ text: string; hint?: boolean } | null>(null);
+  const [blockerIntro, setBlockerIntro] = useState<BlockerIntroKind | null>(null);
   const levelScoreRef = useRef(levelScore);
   const levelHandsRef = useRef(levelHands);
   const levelHandCountsRef = useRef<HandCounts>(levelHandCounts);
@@ -342,6 +349,15 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
     const id = window.setTimeout(advanceLevel, ROUND_COMPLETE_MS);
     return () => window.clearTimeout(id);
   }, [phase, advanceLevel, onMenu]);
+
+  useEffect(() => {
+    if (phase !== "playing") return;
+    const kind = pendingBlockerIntro(getLevelConfig(level).blockers);
+    if (kind) {
+      markBlockerIntroSeen(kind);
+      setBlockerIntro(kind);
+    }
+  }, [level, phase]);
 
   const tryAdvanceLevel = useCallback(
     (score: number, handCounts: HandCounts, hands: number) => {
@@ -920,6 +936,35 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
             </div>
             <button type="button" className="btn" onClick={finishCampaign}>
               Finish →
+            </button>
+          </div>
+        </div>
+        )}
+
+      {blockerIntro &&
+        gamePortal(
+        <div
+          className="modal-overlay scores-overlay"
+          onClick={() => setBlockerIntro(null)}
+          role="presentation"
+        >
+          <div
+            className="modal scores-modal blocker-intro-modal"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-labelledby="blocker-intro-title"
+          >
+            <div className="blocker-intro__icon" aria-hidden>
+              {blockerIntroContent(blockerIntro).icon}
+            </div>
+            <h2 id="blocker-intro-title">{blockerIntroContent(blockerIntro).title}</h2>
+            <ul className="blocker-intro__list">
+              {blockerIntroContent(blockerIntro).lines.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+            <button type="button" className="btn" onClick={() => setBlockerIntro(null)}>
+              Got it
             </button>
           </div>
         </div>

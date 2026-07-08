@@ -13,7 +13,9 @@ import {
 import { campaignLeaderboardPoints, campaignLeaderboardPointsFromProgress, computeLevelStars, formatChallenge, getLevelConfig, levelPointsMet, levelRequirementsMet, movesRemaining, MAX_LEVEL, outOfMoves, type HandCounts } from "../lib/levels";
 import {
   canAffordMovesPack,
+  HINT_COST,
   MOVES_PACKS,
+  SHUFFLE_COST,
 } from "../lib/credits";
 import {
   MAX_ENERGY,
@@ -163,6 +165,7 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
   const [boardKey, setBoardKey] = useState(0);
   const [boardFeedback, setBoardFeedback] = useState<{ text: string; hint?: boolean } | null>(null);
   const [blockerIntro, setBlockerIntro] = useState<BlockerIntroKind | null>(null);
+  const [confirmSpend, setConfirmSpend] = useState<"hint" | "shuffle" | null>(null);
   const levelScoreRef = useRef(levelScore);
   const levelHandsRef = useRef(levelHands);
   const levelHandCountsRef = useRef<HandCounts>(levelHandCounts);
@@ -270,18 +273,42 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
     setBoardFeedback(null);
   }, []);
 
-  const handleHint = useCallback(() => {
+  const revealHintNow = useCallback((): boolean => {
     const priorityHands = cfg.challenges
       .filter((c) => (levelHandCounts[c.hand] ?? 0) < c.minCount)
       .map((c) => c.hand);
     const result = boardRef.current?.revealHint(priorityHands);
     if (!result) {
       handleBoardFeedback("No helpful hand found — try shuffle", true);
-      return;
+      return false;
     }
     const label = HAND_DISPLAY[result.hand] ?? result.hand.replace(/_/g, " ");
     handleBoardFeedback(`Start here for a ${label}`, true);
+    return true;
   }, [cfg.challenges, levelHandCounts, handleBoardFeedback]);
+
+  const resolveConfirmSpend = useCallback(() => {
+    const action = confirmSpend;
+    if (!action) return;
+    const cost = action === "hint" ? HINT_COST : SHUFFLE_COST;
+    if (credits < cost) {
+      setConfirmSpend(null);
+      setGemShopEnergyFocus(false);
+      setShowGemShop(true);
+      return;
+    }
+    let performed = true;
+    if (action === "hint") {
+      performed = revealHintNow();
+    } else {
+      boardRef.current?.shuffle();
+    }
+    if (performed) {
+      setRun((prev) => ({ ...prev, credits: Math.max(0, prev.credits - cost) }));
+      refreshWallet();
+    }
+    setConfirmSpend(null);
+  }, [confirmSpend, credits, revealHintNow, refreshWallet]);
 
   const advanceLevel = useCallback(() => {
     advancingRef.current = false;
@@ -683,22 +710,24 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
             <button
               type="button"
               className="action-btn action-btn--hint"
-              onClick={handleHint}
+              onClick={() => setConfirmSpend("hint")}
               disabled={boardLocked || tutorialActive}
-              title={tutorialActive ? "Finish the lesson first" : "Show a card to start toward a goal hand"}
+              title={tutorialActive ? "Finish the lesson first" : `Show a card to start toward a goal hand — costs ${HINT_COST} gem`}
             >
               <span className="action-btn__icon">💡</span>
               <span className="action-btn__label">Hint</span>
+              <span className="action-btn__cost action-btn__cost--gem">💎{HINT_COST}</span>
             </button>
             <button
               type="button"
               className="action-btn action-btn--shuffle"
-              onClick={() => boardRef.current?.shuffle()}
+              onClick={() => setConfirmSpend("shuffle")}
               disabled={boardLocked || tutorialActive}
-              title={tutorialActive ? "Finish the lesson first" : "Shuffle the board"}
+              title={tutorialActive ? "Finish the lesson first" : `Shuffle the board — costs ${SHUFFLE_COST} gem`}
             >
               <span className="action-btn__icon">🔀</span>
               <span className="action-btn__label">Shuffle</span>
+              <span className="action-btn__cost action-btn__cost--gem">💎{SHUFFLE_COST}</span>
             </button>
             <button
               type="button"
@@ -939,6 +968,51 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
             <button type="button" className="btn" onClick={finishCampaign}>
               Finish →
             </button>
+          </div>
+        </div>
+        )}
+
+      {confirmSpend &&
+        gamePortal(
+        <div
+          className="modal-overlay scores-overlay"
+          onClick={() => setConfirmSpend(null)}
+          role="presentation"
+        >
+          <div
+            className="modal scores-modal spend-confirm-modal"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-labelledby="spend-confirm-title"
+          >
+            <div className="spend-confirm__icon" aria-hidden>
+              {confirmSpend === "hint" ? "💡" : "🔀"}
+            </div>
+            <h2 id="spend-confirm-title">
+              {confirmSpend === "hint" ? "Get a hint?" : "Shuffle the board?"}
+            </h2>
+            <p className="scores-note spend-confirm__note">
+              {confirmSpend === "hint"
+                ? "Reveal a card to start a goal hand."
+                : "Reshuffle every card on the board."}
+              {" "}
+              This costs <strong>💎 {confirmSpend === "hint" ? HINT_COST : SHUFFLE_COST} gem</strong>.
+            </p>
+            <p className="spend-confirm__balance">You have 💎 {credits} gems</p>
+            <div className="spend-confirm__actions">
+              <button
+                type="button"
+                className="btn ghost"
+                onClick={() => setConfirmSpend(null)}
+              >
+                Cancel
+              </button>
+              <button type="button" className="btn" onClick={resolveConfirmSpend}>
+                {credits < (confirmSpend === "hint" ? HINT_COST : SHUFFLE_COST)
+                  ? "Get gems"
+                  : `Use 💎 ${confirmSpend === "hint" ? HINT_COST : SHUFFLE_COST}`}
+              </button>
+            </div>
           </div>
         </div>
         )}

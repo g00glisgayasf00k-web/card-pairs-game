@@ -1,6 +1,11 @@
 /** Starting balance for new players. */
 export const STARTING_CREDITS = 200;
 
+/** Gem cost to reveal a hint. */
+export const HINT_COST = 1;
+/** Gem cost to shuffle the board. */
+export const SHUFFLE_COST = 1;
+
 export interface MovesPack {
   id: string;
   moves: number;

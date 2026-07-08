@@ -1153,6 +1153,41 @@
   opacity: 0.65;
 }
 
+.action-btn__cost--gem {
+  color: #bfe3ff;
+  background: rgba(12, 40, 72, 0.6);
+}
+
+.spend-confirm-modal {
+  max-width: 320px;
+  text-align: center;
+}
+
+.spend-confirm__icon {
+  font-size: 2.4rem;
+  line-height: 1;
+  margin-bottom: 0.3rem;
+}
+
+.spend-confirm__note {
+  opacity: 0.85;
+  margin-bottom: 0.4rem;
+}
+
+.spend-confirm__balance {
+  margin: 0 0 1rem;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--mg-gold);
+}
+
+.spend-confirm__actions {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
 .blocker-intro-modal {
   max-width: 320px;
   text-align: center;

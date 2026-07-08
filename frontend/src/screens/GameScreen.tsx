@@ -10,7 +10,7 @@ import {
   type FullHandResult,
   type HandLabel,
 } from "../lib/pokerHands";
-import { campaignLeaderboardPointsFromProgress, computeLevelStars, formatChallenge, getLevelConfig, levelPointsMet, levelRequirementsMet, movesRemaining, MAX_LEVEL, outOfMoves, type HandCounts } from "../lib/levels";
+import { campaignLeaderboardPoints, campaignLeaderboardPointsFromProgress, computeLevelStars, formatChallenge, getLevelConfig, levelPointsMet, levelRequirementsMet, movesRemaining, MAX_LEVEL, outOfMoves, type HandCounts } from "../lib/levels";
 import {
   canAffordMovesPack,
   MOVES_PACKS,
@@ -113,6 +113,7 @@ function initRunState(startLevel?: number): RunState {
       levelScore: saved.levelScore,
       levelHands: saved.levelHands,
       levelHandCounts: saved.levelHandCounts ?? {},
+      lifetimeHandCounts: saved.lifetimeHandCounts ?? {},
       handsCleared: saved.handsCleared,
       bestHand: saved.bestHand,
       credits: saved.credits,
@@ -410,9 +411,10 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
           HAND_RANK_ORDER[result.hand] > HAND_RANK_ORDER[prev.bestHand]
             ? result.hand
             : prev.bestHand;
+        const prevLifetime = prev.lifetimeHandCounts ?? {};
         const nextLifetime: HandCounts = {
-          ...prev.lifetimeHandCounts,
-          [result.hand]: (prev.lifetimeHandCounts[result.hand] ?? 0) + 1,
+          ...prevLifetime,
+          [result.hand]: (prevLifetime[result.hand] ?? 0) + 1,
         };
         bestHandRef.current = nextBest;
         handsClearedRef.current = prev.handsCleared + 1;

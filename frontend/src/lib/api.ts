@@ -246,6 +246,16 @@ export async function grantAdminUserResources(
   });
 }
 
+export async function setAdminUserRole(userId: number, isAdmin: boolean) {
+  return request<{ updated: boolean; username: string; is_admin: boolean }>(
+    `/api/admin/users/${userId}/admin`,
+    {
+      method: "POST",
+      body: JSON.stringify({ is_admin: isAdmin }),
+    }
+  );
+}
+
 export async function resetAdminUserPassword(userId: number, password?: string) {
   return request<{ reset: boolean; username: string; temporary_password: string }>(
     `/api/admin/users/${userId}/reset-password`,

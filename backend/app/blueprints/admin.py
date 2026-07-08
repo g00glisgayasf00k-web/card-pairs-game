@@ -420,6 +420,41 @@ def admin_grant_resources(user_id: int):
     ), 200
 
 
+@admin_bp.post("/users/<int:user_id>/admin")
+@admin_required
+def admin_set_role(user_id: int):
+    """Promote a player to admin or revoke an existing admin's access."""
+    actor_id = int(get_jwt_identity())
+    if user_id == actor_id:
+        return jsonify({"error": "You cannot change your own admin status"}), 400
+
+    user = db.session.get(User, user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    data = request.get_json(silent=True) or {}
+    make_admin = data.get("is_admin")
+    if not isinstance(make_admin, bool):
+        return jsonify({"error": "is_admin must be true or false"}), 400
+
+    if user.is_admin == make_admin:
+        return jsonify(
+            {"updated": False, "username": user.username, "is_admin": user.is_admin}
+        ), 200
+
+    if not make_admin:
+        admin_count = User.query.filter(User.is_admin.is_(True)).count()
+        if admin_count <= 1:
+            return jsonify({"error": "Cannot revoke the last remaining admin"}), 400
+
+    user.is_admin = make_admin
+    db.session.commit()
+
+    return jsonify(
+        {"updated": True, "username": user.username, "is_admin": user.is_admin}
+    ), 200
+
+
 @admin_bp.post("/users/<int:user_id>/reset-password")
 @admin_required
 def admin_reset_password(user_id: int):

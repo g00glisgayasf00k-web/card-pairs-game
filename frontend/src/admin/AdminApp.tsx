@@ -10,6 +10,7 @@ import {
   login,
   resetAdminUser,
   resetAdminUserPassword,
+  setAdminUserRole,
   type AdminUserRow,
   type LeaderboardsPayload,
 } from "../lib/api";
@@ -204,6 +205,35 @@ export function AdminApp() {
 
   const canModerate = (userId: number, isAdmin: boolean) =>
     !isAdmin && adminUserId !== null && userId !== adminUserId;
+
+  const canManageRole = (userId: number) =>
+    adminUserId !== null && userId !== adminUserId;
+
+  const handleToggleAdmin = async (userId: number, name: string, makeAdmin: boolean) => {
+    if (
+      !window.confirm(
+        makeAdmin
+          ? `Make "${name}" an admin?\n\nThey will get full access to this console — including managing players and other admins.`
+          : `Revoke admin access for "${name}"?\n\nThey become a regular player and lose access to this console.`
+      )
+    ) {
+      return;
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      await setAdminUserRole(userId, makeAdmin);
+      if (selectedUserId === userId) {
+        setUserDetail(await fetchAdminUserDetail(userId));
+      }
+      await loadUsers(userOffset, search);
+      await loadStats();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not update admin status");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleResetUser = async (userId: number, name: string) => {
     if (
@@ -616,7 +646,7 @@ export function AdminApp() {
                       </td>
                       <td>{u.created_at ? fmtShortDate(u.created_at) : "—"}</td>
                       <td className="admin-table__actions-col">
-                        {canModerate(u.id, u.is_admin) ? (
+                        {canManageRole(u.id) ? (
                           <div className="admin-row-actions">
                             <button
                               type="button"
@@ -626,25 +656,48 @@ export function AdminApp() {
                             >
                               View
                             </button>
-                            <button
-                              type="button"
-                              className="admin-btn admin-btn--warn admin-btn--xs"
-                              disabled={loading}
-                              onClick={() => void handleResetUser(u.id, u.username)}
-                            >
-                              Reset
-                            </button>
-                            <button
-                              type="button"
-                              className="admin-btn admin-btn--danger admin-btn--xs"
-                              disabled={loading}
-                              onClick={() => void handleDeleteUser(u.id, u.username)}
-                            >
-                              Delete
-                            </button>
+                            {canModerate(u.id, u.is_admin) && (
+                              <>
+                                <button
+                                  type="button"
+                                  className="admin-btn admin-btn--warn admin-btn--xs"
+                                  disabled={loading}
+                                  onClick={() => void handleResetUser(u.id, u.username)}
+                                >
+                                  Reset
+                                </button>
+                                <button
+                                  type="button"
+                                  className="admin-btn admin-btn--danger admin-btn--xs"
+                                  disabled={loading}
+                                  onClick={() => void handleDeleteUser(u.id, u.username)}
+                                >
+                                  Delete
+                                </button>
+                              </>
+                            )}
+                            {u.is_admin ? (
+                              <button
+                                type="button"
+                                className="admin-btn admin-btn--warn admin-btn--xs"
+                                disabled={loading}
+                                onClick={() => void handleToggleAdmin(u.id, u.username, false)}
+                              >
+                                Revoke admin
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                className="admin-btn admin-btn--ghost admin-btn--xs"
+                                disabled={loading}
+                                onClick={() => void handleToggleAdmin(u.id, u.username, true)}
+                              >
+                                Make admin
+                              </button>
+                            )}
                           </div>
                         ) : (
-                          <span className="admin-muted admin-table__protected">Protected</span>
+                          <span className="admin-muted admin-table__protected">You</span>
                         )}
                       </td>
                     </tr>
@@ -740,6 +793,38 @@ export function AdminApp() {
               </div>
             ) : (
               <p className="admin-muted">No cloud save on record.</p>
+            )}
+
+            {canManageRole(userDetail.id) && (
+              <div className="admin-role">
+                <h3>Admin role</h3>
+                <p className="admin-muted">
+                  {userDetail.is_admin
+                    ? "This account has full admin access. Revoke it to turn them back into a regular player. To reset, delete, or grant resources, revoke admin first."
+                    : "Promote this player to an admin with full access to this console. Player moderation actions stay disabled while an account is an admin."}
+                </p>
+                <div className="admin-role__actions">
+                  {userDetail.is_admin ? (
+                    <button
+                      type="button"
+                      className="admin-btn admin-btn--warn"
+                      disabled={loading}
+                      onClick={() => void handleToggleAdmin(userDetail.id, userDetail.username, false)}
+                    >
+                      Revoke admin access
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="admin-btn admin-btn--primary"
+                      disabled={loading}
+                      onClick={() => void handleToggleAdmin(userDetail.id, userDetail.username, true)}
+                    >
+                      Make admin
+                    </button>
+                  )}
+                </div>
+              </div>
             )}
 
             {!userDetail.is_admin && (

@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import { AdminApp } from "./admin/AdminApp";
+import { ErrorBoundary } from "./components/ErrorBoundary";
 import { PortraitGate } from "./components/PortraitGate";
 import { initProgressSync } from "./lib/progressSync";
 import { initNativeShell } from "./lib/nativeShell";
@@ -25,9 +26,11 @@ if (isAdminRoute) {
   if (isLoggedIn()) initProgressSync();
   createRoot(document.getElementById("root")!).render(
     <StrictMode>
-      <PortraitGate>
-        <App />
-      </PortraitGate>
+      <ErrorBoundary>
+        <PortraitGate>
+          <App />
+        </PortraitGate>
+      </ErrorBoundary>
     </StrictMode>
   );
 }

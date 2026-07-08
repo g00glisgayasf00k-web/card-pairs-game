@@ -43,7 +43,6 @@ import {
   getTutorialStepConfig,
   isLevel1TutorialActive,
   TUTORIAL_FREE_STEP,
-  tutorialFreePlayMessage,
 } from "../lib/tutorialLevel1";
 import { SpecialArt } from "../components/SpecialArt";
 import {
@@ -676,8 +675,32 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
           {(tutorialActive || tutorialFreePlay) && (
             tutorialFreePlay ? (
               <div className="tutorial-banner tutorial-banner--free tutorial-banner--compact">
-                <span className="tutorial-banner__tag">🎯 Your turn</span>
-                <p className="tutorial-banner__summary">{tutorialFreePlayMessage()}</p>
+                <div className="tutorial-banner__summary-row">
+                  <span className="tutorial-banner__tag">🎯 Your turn</span>
+                  <span className="tutorial-banner__title">
+                    💰 {levelScore.toLocaleString()} / {cfg.targetPoints.toLocaleString()} pts
+                  </span>
+                </div>
+                <p className="tutorial-banner__summary">
+                  Swipe any path through 5 touching cards to reach the target.
+                </p>
+                {cfg.challenges.length > 0 && (
+                  <div className="tutorial-banner__goals">
+                    <span className="tutorial-banner__goals-label">Goals</span>
+                    {cfg.challenges.map((c) => {
+                      const have = levelHandCounts[c.hand] ?? 0;
+                      const done = have >= c.minCount;
+                      return (
+                        <span
+                          key={`${c.hand}-${c.minCount}`}
+                          className={`tutorial-goal-chip${done ? " tutorial-goal-chip--done" : ""}`}
+                        >
+                          {done ? "✓" : "○"} {formatChallenge(c)} ({Math.min(have, c.minCount)}/{c.minCount})
+                        </span>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             ) : tutorialConfig ? (
               <div className="tutorial-banner tutorial-banner--compact">

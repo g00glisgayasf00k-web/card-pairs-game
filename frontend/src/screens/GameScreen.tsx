@@ -186,7 +186,6 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
 
   const cfg = getLevelConfig(level);
   const effectiveMoveLimit = cfg.moveLimit + bonusMoves;
-  const levelProgress = Math.min(1, levelScore / cfg.targetPoints);
   const pointsMet = levelScore >= cfg.targetPoints;
   const nextCfg = getLevelConfig(level + 1);
 
@@ -668,16 +667,6 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
             </button>
           </div>
 
-          <div className="xp-track">
-            <div
-              className={`xp-fill${pointsMet && (tutorialFreePlay || level > 1) ? " xp-fill--done" : ""}`}
-              style={{ width: `${levelProgress * 100}%` }}
-            />
-            <span className="xp-label">
-              💰 {levelScore.toLocaleString()} / {cfg.targetPoints.toLocaleString()}
-            </span>
-          </div>
-
           {tutorialActive && tutorialConfig && (
             <div className="tutorial-banner tutorial-banner--compact">
               <div className="tutorial-banner__summary-row">
@@ -711,7 +700,7 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
                       key={`${c.hand}-${c.minCount}`}
                       className={`tutorial-goal-chip${done ? " tutorial-goal-chip--done" : ""}`}
                     >
-                      {done ? "✓" : "○"} {formatChallenge(c)} ({Math.min(have, c.minCount)}/{c.minCount})
+                      {done ? "✓" : "○"} {HAND_DISPLAY[c.hand]} ({Math.min(have, c.minCount)}/{c.minCount})
                     </span>
                   );
                 })}
@@ -721,7 +710,7 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
         )}
 
         <div className="mobile-shell__play">
-          <nav className="action-bar action-bar--rail" aria-label="Game actions">
+          <nav className="action-bar action-bar--bottom" aria-label="Game actions">
             <button
               type="button"
               className="action-btn action-btn--restart"

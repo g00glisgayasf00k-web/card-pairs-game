@@ -77,7 +77,7 @@
   flex: 1 1 0;
   min-height: 0;
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: stretch;
   gap: 0.35rem;
 }
@@ -1858,46 +1858,42 @@
   padding: 0.15rem 0;
 }
 
-.action-bar--rail {
-  flex-direction: column;
-  justify-content: flex-start;
-  width: 3.35rem;
-  min-width: 3.35rem;
-  max-height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
-  padding-left: max(0, env(safe-area-inset-left));
-  padding-bottom: max(0.15rem, env(safe-area-inset-bottom));
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
+/* Bottom action bar — full width under the board, wraps to rows */
+.action-bar--bottom {
+  order: 2;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.3rem;
+  padding: 0.15rem max(0, env(safe-area-inset-left)) max(0.15rem, env(safe-area-inset-bottom));
 }
 
-.action-bar--rail::-webkit-scrollbar {
-  display: none;
+.board-stage {
+  order: 1;
 }
 
-.action-bar--rail .action-btn {
-  flex: 0 0 auto;
-  width: 100%;
+.action-bar--bottom .action-btn {
+  flex: 1 1 calc(33.333% - 0.3rem);
   min-width: 0;
-  padding: 0.42rem 0.12rem 0.36rem;
+  max-width: calc(33.333% - 0.2rem);
+  padding: 0.42rem 0.2rem 0.36rem;
 }
 
-.action-bar--rail .action-btn__icon {
-  font-size: 1.2rem;
+.action-bar--bottom .action-btn__icon {
+  font-size: 1.25rem;
 }
 
-.action-bar--rail .action-btn__label {
-  font-size: 0.48rem;
+.action-bar--bottom .action-btn__label {
+  font-size: 0.6rem;
   letter-spacing: 0.02em;
   line-height: 1.1;
 }
 
-.action-bar--rail .action-btn__cost {
+.action-bar--bottom .action-btn__cost {
   top: 0.15rem;
-  right: 0.12rem;
-  font-size: 0.5rem;
-  padding: 0.05rem 0.22rem;
+  right: 0.22rem;
+  font-size: 0.55rem;
+  padding: 0.05rem 0.24rem;
 }
 
 .action-btn {

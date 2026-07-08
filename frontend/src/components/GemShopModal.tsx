@@ -110,8 +110,8 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
   const saved = loadProgress();
   const { energy } = syncEnergyState();
   const gems = saved?.credits ?? 0;
-  const canBuyEnergy =
-    PURCHASES_ENABLED && energy < MAX_ENERGY && gems >= ENERGY_BUY_TEN_COST;
+  const energyFull = energy >= MAX_ENERGY;
+  const canBuyEnergy = !energyFull && gems >= ENERGY_BUY_TEN_COST;
   const gemAdsLeft = gemVideoAdsRemaining();
   const energyAdsLeft = energyVideoAdsRemaining();
   const canWatchGemAd = gemAdsLeft > 0 && !adKind;
@@ -169,7 +169,6 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
   };
 
   const handleBuyEnergy = () => {
-    if (!PURCHASES_ENABLED) return;
     if (buyTenEnergy()) refresh();
   };
 
@@ -249,20 +248,23 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
       <p className="royal-shop__section-note">
         Max {MAX_ENERGY} energy · +1 every 2 hours · each level attempt costs 1
       </p>
-      <div className={`royal-shop-card royal-shop-card--row${!PURCHASES_ENABLED ? " royal-shop-card--locked" : ""}`}>
+      <div className={`royal-shop-card royal-shop-card--row${!canBuyEnergy ? " royal-shop-card--locked" : ""}`}>
         <span className="royal-shop-card__icon">⚡</span>
         <div className="royal-shop-card__meta">
           <span className="royal-shop-card__label">Full bar</span>
-          <span className="royal-shop-card__detail">+{MAX_ENERGY} energy instantly</span>
+          <span className="royal-shop-card__detail">
+            {energyFull
+              ? `Energy already full (${MAX_ENERGY}/${MAX_ENERGY})`
+              : `Refill to ${MAX_ENERGY} instantly · costs ${ENERGY_BUY_TEN_COST} 💎`}
+          </span>
         </div>
         <button
           type="button"
-          className="royal-shop-card__btn royal-shop-card__btn--soon"
+          className="royal-shop-card__btn"
           onClick={handleBuyEnergy}
-          disabled={!PURCHASES_ENABLED || !canBuyEnergy}
-          aria-disabled={!PURCHASES_ENABLED}
+          disabled={!canBuyEnergy}
         >
-          {PURCHASES_ENABLED ? `${ENERGY_BUY_TEN_COST} 💎` : COMING_SOON_LABEL}
+          {energyFull ? "Full" : `${ENERGY_BUY_TEN_COST} 💎`}
         </button>
       </div>
     </section>

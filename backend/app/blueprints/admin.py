@@ -324,8 +324,6 @@ def admin_reset_user(user_id: int):
     user = db.session.get(User, user_id)
     if not user:
         return jsonify({"error": "User not found"}), 404
-    if user.is_admin:
-        return jsonify({"error": "Admin accounts cannot be reset"}), 400
 
     Score.query.filter_by(user_id=user.id).delete()
     PlayerProgress.query.filter_by(user_id=user.id).delete()
@@ -344,8 +342,6 @@ def admin_delete_user(user_id: int):
     user = db.session.get(User, user_id)
     if not user:
         return jsonify({"error": "User not found"}), 404
-    if user.is_admin:
-        return jsonify({"error": "Admin accounts cannot be deleted"}), 400
 
     username = user.username
     Score.query.filter_by(user_id=user.id).delete()
@@ -362,8 +358,6 @@ def admin_grant_resources(user_id: int):
     user = db.session.get(User, user_id)
     if not user:
         return jsonify({"error": "User not found"}), 404
-    if user.is_admin:
-        return jsonify({"error": "Cannot grant resources to admin accounts"}), 400
 
     data = request.get_json(silent=True) or {}
     gems_raw = data.get("gems")
@@ -466,8 +460,6 @@ def admin_reset_password(user_id: int):
     user = db.session.get(User, user_id)
     if not user:
         return jsonify({"error": "User not found"}), 404
-    if user.is_admin:
-        return jsonify({"error": "Cannot reset passwords for admin accounts"}), 400
 
     data = request.get_json(silent=True) or {}
     custom = (data.get("password") or "").strip()

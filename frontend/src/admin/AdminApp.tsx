@@ -203,8 +203,8 @@ export function AdminApp() {
     void loadUsers(0, searchInput.trim());
   };
 
-  const canModerate = (userId: number, isAdmin: boolean) =>
-    !isAdmin && adminUserId !== null && userId !== adminUserId;
+  const canModerate = (userId: number) =>
+    adminUserId !== null && userId !== adminUserId;
 
   const canManageRole = (userId: number) =>
     adminUserId !== null && userId !== adminUserId;
@@ -646,37 +646,37 @@ export function AdminApp() {
                       </td>
                       <td>{u.created_at ? fmtShortDate(u.created_at) : "—"}</td>
                       <td className="admin-table__actions-col">
-                        {canManageRole(u.id) ? (
-                          <div className="admin-row-actions">
-                            <button
-                              type="button"
-                              className="admin-btn admin-btn--ghost admin-btn--xs"
-                              disabled={loading}
-                              onClick={() => openUser(u.id)}
-                            >
-                              View
-                            </button>
-                            {canModerate(u.id, u.is_admin) && (
-                              <>
-                                <button
-                                  type="button"
-                                  className="admin-btn admin-btn--warn admin-btn--xs"
-                                  disabled={loading}
-                                  onClick={() => void handleResetUser(u.id, u.username)}
-                                >
-                                  Reset
-                                </button>
-                                <button
-                                  type="button"
-                                  className="admin-btn admin-btn--danger admin-btn--xs"
-                                  disabled={loading}
-                                  onClick={() => void handleDeleteUser(u.id, u.username)}
-                                >
-                                  Delete
-                                </button>
-                              </>
-                            )}
-                            {u.is_admin ? (
+                        <div className="admin-row-actions">
+                          <button
+                            type="button"
+                            className="admin-btn admin-btn--ghost admin-btn--xs"
+                            disabled={loading}
+                            onClick={() => openUser(u.id)}
+                          >
+                            View
+                          </button>
+                          {canModerate(u.id) && (
+                            <>
+                              <button
+                                type="button"
+                                className="admin-btn admin-btn--warn admin-btn--xs"
+                                disabled={loading}
+                                onClick={() => void handleResetUser(u.id, u.username)}
+                              >
+                                Reset
+                              </button>
+                              <button
+                                type="button"
+                                className="admin-btn admin-btn--danger admin-btn--xs"
+                                disabled={loading}
+                                onClick={() => void handleDeleteUser(u.id, u.username)}
+                              >
+                                Delete
+                              </button>
+                            </>
+                          )}
+                          {canManageRole(u.id) &&
+                            (u.is_admin ? (
                               <button
                                 type="button"
                                 className="admin-btn admin-btn--warn admin-btn--xs"
@@ -694,11 +694,11 @@ export function AdminApp() {
                               >
                                 Make admin
                               </button>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="admin-muted admin-table__protected">You</span>
-                        )}
+                            ))}
+                          {u.id === adminUserId && (
+                            <span className="admin-badge">you</span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -800,8 +800,8 @@ export function AdminApp() {
                 <h3>Admin role</h3>
                 <p className="admin-muted">
                   {userDetail.is_admin
-                    ? "This account has full admin access. Revoke it to turn them back into a regular player. To reset, delete, or grant resources, revoke admin first."
-                    : "Promote this player to an admin with full access to this console. Player moderation actions stay disabled while an account is an admin."}
+                    ? "This account has full admin access. Revoke it to turn them back into a regular player."
+                    : "Promote this player to an admin with full access to this console."}
                 </p>
                 <div className="admin-role__actions">
                   {userDetail.is_admin ? (
@@ -827,7 +827,7 @@ export function AdminApp() {
               </div>
             )}
 
-            {!userDetail.is_admin && (
+            {userDetail.id !== adminUserId && (
               <div className="admin-password-reset">
                 <h3>Password recovery</h3>
                 <p className="admin-muted">
@@ -875,11 +875,12 @@ export function AdminApp() {
               </div>
             )}
 
-            {!userDetail.is_admin && (
+            {(
               <div className="admin-grant">
                 <h3>Grant resources</h3>
                 <p className="admin-muted">
-                  Adds gems or energy to the player&apos;s cloud save. The player sees it within a minute, or immediately if they refocus the game tab.
+                  Adds gems or energy to the {userDetail.is_admin ? "account" : "player"}&apos;s cloud save. It appears within a minute, or immediately on refocusing the game tab.
+                  {userDetail.id === adminUserId && " This is your own account."}
                   {!userDetail.progress_summary && " A new cloud save will be created if needed."}
                 </p>
                 <div className="admin-grant__grid">
@@ -980,7 +981,7 @@ export function AdminApp() {
               </div>
             )}
 
-            {canModerate(userDetail.id, userDetail.is_admin) && (
+            {canModerate(userDetail.id) && (
               <div className="admin-moderation">
                 <h3>Moderation</h3>
                 <p className="admin-muted">

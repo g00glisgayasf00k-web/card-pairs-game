@@ -9,10 +9,8 @@ import {
   clearProgress,
   defaultProgress,
   getProgressOwner,
-  importProgress,
   isFreshAccountProgress,
   loadProgress,
-  mergeImportedResources,
   saveProgress,
   setProgressOwner,
   setProgressSyncHook,
@@ -65,13 +63,6 @@ async function pushProgress(payload?: SavedProgress): Promise<void> {
   }
 }
 
-function shouldMergeRemoteResources(local: SavedProgress | null, remote: RemoteProgressResponse): boolean {
-  if (!local || !remote.progress) return false;
-  const remoteParsed = importProgress(remote.progress);
-  if (!remoteParsed) return false;
-  return remoteParsed.credits > local.credits || remoteParsed.energy > local.energy;
-}
-
 export async function pullRemoteProgress(): Promise<boolean> {
   if (!hasAuthToken()) return false;
 
@@ -104,16 +95,6 @@ export async function pullRemoteProgress(): Promise<boolean> {
     if (!local || remoteTs > localTs) {
       if (isPullStale(generation)) return false;
       return applyImportedProgress(remote.progress);
-    }
-
-    const remoteParsed = importProgress(remote.progress);
-    if (local && remoteParsed && shouldMergeRemoteResources(local, remote)) {
-      if (isPullStale(generation)) return false;
-      const merged = mergeImportedResources(local, remoteParsed);
-      if (merged && !isPullStale(generation)) {
-        await pushProgress(loadProgress() ?? undefined);
-      }
-      return merged;
     }
 
     if (localTs > remoteTs && !isPullStale(generation)) {

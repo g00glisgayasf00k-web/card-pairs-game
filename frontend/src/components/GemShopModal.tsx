@@ -7,6 +7,7 @@ import {
   syncEnergyState,
 } from "../lib/energy";
 import { clearGemRewardAd, mountGemRewardAd } from "../lib/adsense";
+import { nativeAdsAvailable, showRewardedEnergyAd } from "../lib/nativeAds";
 import { GEM_SHOP_PACKS, grantGemPack } from "../lib/credits";
 import { loadProgress, saveProgress } from "../lib/progress";
 import {
@@ -106,6 +107,7 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
   const [balanceTick, setBalanceTick] = useState(0);
   const [adKind, setAdKind] = useState<AdKind | null>(null);
   const [adProgress, setAdProgress] = useState(0);
+  const [energyAdBusy, setEnergyAdBusy] = useState(false);
 
   const saved = loadProgress();
   const { energy } = syncEnergyState();
@@ -179,6 +181,25 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
     setAdKind(kind);
   };
 
+  // Energy boost: real AdMob rewarded video on the native app, web fallback otherwise.
+  const handleEnergyAd = async () => {
+    if (!canWatchEnergyAd || energyAdBusy) return;
+    if (nativeAdsAvailable()) {
+      setEnergyAdBusy(true);
+      try {
+        const rewarded = await showRewardedEnergyAd();
+        if (rewarded && recordEnergyVideoAd()) {
+          grantEnergyFromVideo(ENERGY_VIDEO_REWARD);
+          refresh();
+        }
+      } finally {
+        setEnergyAdBusy(false);
+      }
+      return;
+    }
+    startAd("energy");
+  };
+
   const cancelAd = () => {
     setAdKind(null);
     setAdProgress(0);
@@ -221,10 +242,10 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
             <button
               type="button"
               className="royal-shop-card__btn royal-shop-card__btn--video"
-              onClick={() => startAd("energy")}
-              disabled={!canWatchEnergyAd}
+              onClick={() => void handleEnergyAd()}
+              disabled={!canWatchEnergyAd || energyAdBusy}
             >
-              ▶ Free
+              {energyAdBusy ? "Loading…" : "▶ Free"}
             </button>
           </div>
         </li>

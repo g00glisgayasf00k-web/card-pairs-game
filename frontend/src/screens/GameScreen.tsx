@@ -54,6 +54,7 @@ import { formatLevelId } from "../lib/levelMap";
 import { GameBoard, type GameBoardHandle } from "../components/GameBoard";
 import { ProfileModal } from "../components/ProfileModal";
 import { GemShopModal } from "../components/GemShopModal";
+import { OutOfEnergyModal } from "../components/OutOfEnergyModal";
 
 interface Props {
   username: string | null;
@@ -161,6 +162,8 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
   const [gemShopEnergyFocus, setGemShopEnergyFocus] = useState(false);
   const [walletTick, setWalletTick] = useState(0);
   const [energyBlocked, setEnergyBlocked] = useState(false);
+  const [showOutOfEnergy, setShowOutOfEnergy] = useState(false);
+  const energyBlockedActionRef = useRef<"start" | "advance" | "retry" | null>(null);
   const [boardKey, setBoardKey] = useState(0);
   const [boardFeedback, setBoardFeedback] = useState<{ text: string; hint?: boolean } | null>(null);
   const [blockerIntro, setBlockerIntro] = useState<BlockerIntroKind | null>(null);
@@ -290,8 +293,8 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
     clearEnergyPaidLevel();
     const nextLevel = levelRef.current + 1;
     if (!beginLevelAttempt(nextLevel)) {
-      setGemShopEnergyFocus(true);
-      setShowGemShop(true);
+      energyBlockedActionRef.current = "advance";
+      setShowOutOfEnergy(true);
       setEnergyBlocked(true);
       return;
     }
@@ -318,8 +321,8 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
   const retryLevel = useCallback(() => {
     advancingRef.current = false;
     if (!trySpendEnergyForRetry(level)) {
-      setGemShopEnergyFocus(true);
-      setShowGemShop(true);
+      energyBlockedActionRef.current = "retry";
+      setShowOutOfEnergy(true);
       return;
     }
     refreshWallet();
@@ -342,6 +345,24 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
     setPhase("playing");
     setBoardKey((k) => k + 1);
   }, [level, tutorialStep, refreshWallet]);
+
+  const resumeAfterEnergy = useCallback(() => {
+    setShowOutOfEnergy(false);
+    setShowGemShop(false);
+    refreshWallet();
+    const saved = loadProgress();
+    if (saved) setRun((prev) => ({ ...prev, credits: saved.credits }));
+    const action = energyBlockedActionRef.current;
+    energyBlockedActionRef.current = null;
+    setEnergyBlocked(false);
+    if (action === "advance") {
+      advanceLevel();
+    } else if (action === "retry") {
+      retryLevel();
+    } else if (action === "start" && startLevel !== undefined) {
+      beginLevelAttempt(startLevel);
+    }
+  }, [refreshWallet, advanceLevel, retryLevel, startLevel]);
 
   const resolveConfirmSpend = useCallback(() => {
     const action = confirmSpend;
@@ -544,9 +565,9 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
     refreshWallet();
     if (!levelAttemptCostsEnergy(startLevel)) return;
     if (!beginLevelAttempt(startLevel)) {
+      energyBlockedActionRef.current = "start";
       setEnergyBlocked(true);
-      setGemShopEnergyFocus(true);
-      setShowGemShop(true);
+      setShowOutOfEnergy(true);
     }
   }, [startLevel, refreshWallet]);
 
@@ -556,13 +577,10 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
     if (saved) {
       setRun((prev) => ({ ...prev, credits: saved.credits }));
     }
-    if (startLevel !== undefined && energyBlocked && hasEnergyFromSync()) {
-      if (beginLevelAttempt(startLevel)) {
-        setEnergyBlocked(false);
-        setShowGemShop(false);
-      }
+    if (energyBlockedActionRef.current && hasEnergyFromSync()) {
+      resumeAfterEnergy();
     }
-  }, [refreshWallet, startLevel, energyBlocked]);
+  }, [refreshWallet, resumeAfterEnergy]);
 
   function hasEnergyFromSync(): boolean {
     return syncEnergyState().energy >= 1;
@@ -1300,6 +1318,18 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
           emphasizeEnergy={gemShopEnergyFocus}
           onClose={() => setShowGemShop(false)}
           onBalanceChange={handleWalletChange}
+        />
+      )}
+
+      {showOutOfEnergy && !showGemShop && (
+        <OutOfEnergyModal
+          onClose={() => setShowOutOfEnergy(false)}
+          onRefilled={resumeAfterEnergy}
+          onOpenTreasury={() => {
+            setShowOutOfEnergy(false);
+            setGemShopEnergyFocus(true);
+            setShowGemShop(true);
+          }}
         />
       )}
     </div>

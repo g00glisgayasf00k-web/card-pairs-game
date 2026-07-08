@@ -1268,6 +1268,74 @@
   flex-wrap: wrap;
 }
 
+.out-of-energy-overlay {
+  z-index: 6000;
+}
+
+.out-of-energy {
+  max-width: 340px;
+  text-align: center;
+}
+
+.out-of-energy__icon {
+  font-size: 3rem;
+  line-height: 1;
+  margin-bottom: 0.2rem;
+  filter: drop-shadow(0 3px 6px rgba(0, 0, 0, 0.45));
+}
+
+.out-of-energy__lead {
+  opacity: 0.88;
+  margin: 0.2rem 0 0.9rem;
+}
+
+.out-of-energy__timer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0.7rem 1rem;
+  margin: 0 auto 1rem;
+  border-radius: 14px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(245, 208, 96, 0.28);
+}
+
+.out-of-energy__timer-label {
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  opacity: 0.75;
+}
+
+.out-of-energy__timer-val {
+  font-size: 1.5rem;
+  font-weight: 800;
+  color: var(--mg-gold);
+}
+
+.out-of-energy__timer-sub {
+  font-size: 0.68rem;
+  opacity: 0.65;
+  margin-top: 0.15rem;
+}
+
+.out-of-energy__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+}
+
+.out-of-energy__note {
+  margin: -0.2rem 0 0.1rem;
+  font-size: 0.78rem;
+  opacity: 0.8;
+}
+
+.out-of-energy__back {
+  opacity: 0.85;
+}
+
 .blocker-intro-modal {
   max-width: 320px;
   text-align: center;

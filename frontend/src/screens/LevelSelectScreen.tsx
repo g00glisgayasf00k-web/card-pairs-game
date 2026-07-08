@@ -28,6 +28,7 @@ import { canBeginLevelAttempt } from "../lib/levelAttempt";
 import { MAX_ENERGY, syncEnergyState } from "../lib/energy";
 import { loadProgress, PROGRESS_IMPORTED_EVENT } from "../lib/progress";
 import { GemShopModal } from "../components/GemShopModal";
+import { OutOfEnergyModal } from "../components/OutOfEnergyModal";
 import { ResourceBar } from "../components/ResourceBar";
 
 interface Props {
@@ -123,6 +124,7 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
   const [tick, setTick] = useState(0);
   const [walletTick, setWalletTick] = useState(0);
   const [showGemShop, setShowGemShop] = useState(false);
+  const [showOutOfEnergy, setShowOutOfEnergy] = useState(false);
   const [pendingLevel, setPendingLevel] = useState<number | null>(null);
   const currentRef = useRef<HTMLDivElement>(null);
 
@@ -160,7 +162,7 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
     if (!isLevelPlayable(globalLevel)) return;
     if (!canBeginLevelAttempt(globalLevel)) {
       setPendingLevel(globalLevel);
-      setShowGemShop(true);
+      setShowOutOfEnergy(true);
       return;
     }
     onSelectLevel(globalLevel);
@@ -178,6 +180,7 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
       const level = pendingLevel;
       setPendingLevel(null);
       setShowGemShop(false);
+      setShowOutOfEnergy(false);
       onSelectLevel(level);
     }
   };
@@ -337,6 +340,20 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
             setPendingLevel(null);
           }}
           onBalanceChange={handleWalletChange}
+        />
+      )}
+
+      {showOutOfEnergy && !showGemShop && (
+        <OutOfEnergyModal
+          onClose={() => {
+            setShowOutOfEnergy(false);
+            setPendingLevel(null);
+          }}
+          onRefilled={handleWalletChange}
+          onOpenTreasury={() => {
+            setShowOutOfEnergy(false);
+            setShowGemShop(true);
+          }}
         />
       )}
     </div>

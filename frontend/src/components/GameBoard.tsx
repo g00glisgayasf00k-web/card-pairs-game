@@ -50,6 +50,8 @@ const GRID_PAD = 5;
 const CELL_ASPECT = 5 / 7;
 /** Room for border + outer glow so nothing clips */
 const GRID_VISUAL_INSET = 6;
+/** Felt frame border + padding to leave around the fitted grid */
+const FRAME_INSET = 12;
 
 /** Keep in sync with CSS animation durations (game-mobile / index.css) */
 const ANIM = {
@@ -295,10 +297,12 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
       if (!embedded) return;
       const el = fitRef.current;
       if (!el) return;
+      // Measure the stage (stable available area); the frame now shrink-wraps the grid.
+      const stage = (el.closest(".board-stage") as HTMLElement | null) ?? el;
 
       const measure = () => {
-        const { width, height } = el.getBoundingClientRect();
-        const next = computeGridFit(width, height);
+        const { width, height } = stage.getBoundingClientRect();
+        const next = computeGridFit(width - FRAME_INSET, height - FRAME_INSET);
         setGridFit((prev) => {
           if (!next) return prev;
           if (prev?.width === next.width && prev?.height === next.height) return prev;
@@ -308,7 +312,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
 
       measure();
       const ro = new ResizeObserver(measure);
-      ro.observe(el);
+      ro.observe(stage);
       window.addEventListener("resize", measure);
       const vv = window.visualViewport;
       vv?.addEventListener("resize", measure);

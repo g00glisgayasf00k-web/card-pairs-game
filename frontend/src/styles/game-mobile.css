@@ -85,7 +85,7 @@
 .game-goalbar {
   flex-shrink: 0;
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 0.3rem 0.5rem;
   padding: 0.3rem 0.5rem;
@@ -93,6 +93,12 @@
   border-radius: 10px;
   background: rgba(0, 0, 0, 0.28);
   border: 1px solid rgba(245, 208, 96, 0.22);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.game-goalbar::-webkit-scrollbar {
+  display: none;
 }
 
 .game-goalbar__points {
@@ -100,6 +106,7 @@
   align-items: baseline;
   gap: 0.3rem;
   white-space: nowrap;
+  flex-shrink: 0;
 }
 
 .game-goalbar__label {
@@ -118,10 +125,15 @@
 
 .game-goalbar__goals {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
   gap: 0.3rem;
   margin-left: auto;
+  flex-shrink: 0;
+}
+
+.game-goalbar__goals .tutorial-goal-chip {
+  white-space: nowrap;
 }
 
 .action-btn__cost--energy {
@@ -1719,7 +1731,7 @@
 .board-stage {
   flex: 1 1 0;
   display: flex;
-  align-items: stretch;
+  align-items: center;
   justify-content: center;
   position: relative;
   min-height: 0;
@@ -1740,14 +1752,16 @@
 .board-stage__frame {
   position: relative;
   z-index: 1;
-  flex: 1 1 0;
-  width: 100%;
+  flex: 0 1 auto;
+  width: auto;
+  height: auto;
+  max-width: 100%;
   max-height: 100%;
   min-height: 0;
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  padding: 0.1rem;
+  padding: 0.25rem;
   border-radius: 20px;
   background:
     linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, transparent 30%),
@@ -1760,10 +1774,11 @@
     0 0 40px rgba(26, 107, 69, 0.25);
 }
 
-/* Embedded board — flex fill + JS fit inside .board-fit */
+/* Embedded board — shrink-wraps the JS-fitted grid so the felt frame hugs it */
 .game-panel--embedded {
-  flex: 1 1 0;
-  width: 100%;
+  flex: 0 1 auto;
+  width: auto;
+  height: auto;
   min-height: 0;
   display: flex;
   flex-direction: column;
@@ -1772,9 +1787,10 @@
 }
 
 .board-fit {
-  flex: 1 1 0;
-  min-height: 8rem;
-  width: 100%;
+  flex: 0 0 auto;
+  min-height: 0;
+  width: auto;
+  height: auto;
   display: flex;
   align-items: center;
   justify-content: center;

@@ -7,7 +7,7 @@ import {
   syncEnergyState,
 } from "../lib/energy";
 import { clearGemRewardAd, mountGemRewardAd } from "../lib/adsense";
-import { nativeAdsAvailable, showRewardedEnergyAd } from "../lib/nativeAds";
+import { nativeAdsAvailable, showRewardedEnergyAd, showRewardedGemAd } from "../lib/nativeAds";
 import { GEM_SHOP_PACKS, grantGemPack } from "../lib/credits";
 import { loadProgress, saveProgress } from "../lib/progress";
 import {
@@ -107,6 +107,7 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
   const [balanceTick, setBalanceTick] = useState(0);
   const [adKind, setAdKind] = useState<AdKind | null>(null);
   const [adProgress, setAdProgress] = useState(0);
+  const [gemAdBusy, setGemAdBusy] = useState(false);
   const [energyAdBusy, setEnergyAdBusy] = useState(false);
 
   const saved = loadProgress();
@@ -116,8 +117,8 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
   const canBuyEnergy = !energyFull && gems >= ENERGY_BUY_TEN_COST;
   const gemAdsLeft = gemVideoAdsRemaining();
   const energyAdsLeft = energyVideoAdsRemaining();
-  const canWatchGemAd = gemAdsLeft > 0 && !adKind;
-  const canWatchEnergyAd = energyAdsLeft > 0 && energy < MAX_ENERGY && !adKind;
+  const canWatchGemAd = gemAdsLeft > 0 && !adKind && !gemAdBusy;
+  const canWatchEnergyAd = energyAdsLeft > 0 && energy < MAX_ENERGY && !adKind && !energyAdBusy;
 
   const refresh = useCallback(() => {
     setBalanceTick((t) => t + 1);
@@ -181,6 +182,28 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
     setAdKind(kind);
   };
 
+  // Free gems: real AdMob rewarded video on the native app, web fallback otherwise.
+  const handleGemAd = async () => {
+    if (!canWatchGemAd || gemAdBusy) return;
+    if (nativeAdsAvailable()) {
+      setGemAdBusy(true);
+      try {
+        const rewarded = await showRewardedGemAd();
+        if (rewarded && recordGemVideoAd()) {
+          const progress = loadProgress();
+          if (progress) {
+            saveProgress({ ...progress, credits: progress.credits + GEM_VIDEO_REWARD });
+          }
+          refresh();
+        }
+      } finally {
+        setGemAdBusy(false);
+      }
+      return;
+    }
+    startAd("gems");
+  };
+
   // Energy boost: real AdMob rewarded video on the native app, web fallback otherwise.
   const handleEnergyAd = async () => {
     if (!canWatchEnergyAd || energyAdBusy) return;
@@ -222,10 +245,10 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
             <button
               type="button"
               className="royal-shop-card__btn royal-shop-card__btn--video"
-              onClick={() => startAd("gems")}
-              disabled={!canWatchGemAd}
+              onClick={() => void handleGemAd()}
+              disabled={!canWatchGemAd || gemAdBusy}
             >
-              ▶ Free
+              {gemAdBusy ? "Loading…" : "▶ Free"}
             </button>
           </div>
         </li>

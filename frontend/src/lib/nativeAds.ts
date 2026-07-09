@@ -5,6 +5,8 @@ import {
   type AdMobRewardItem,
 } from "@capacitor-community/admob";
 
+/** Rewarded ad unit for free gems (AdMob). */
+const REWARDED_GEM_AD_ID = "ca-app-pub-5778254002496678/3894214791";
 /** Rewarded ad unit for the energy boost (AdMob). */
 const REWARDED_ENERGY_AD_ID = "ca-app-pub-5778254002496678/5322012388";
 
@@ -26,11 +28,11 @@ async function ensureInitialized(): Promise<void> {
 }
 
 /**
- * Show an AdMob rewarded video for the energy boost.
+ * Show an AdMob rewarded video.
  * Resolves true only if the user watched long enough to earn the reward.
  * Returns false on the web or if the ad fails to load/show.
  */
-export async function showRewardedEnergyAd(): Promise<boolean> {
+async function showRewardedAd(adId: string): Promise<boolean> {
   if (!nativeAdsAvailable()) return false;
 
   try {
@@ -48,7 +50,7 @@ export async function showRewardedEnergyAd(): Promise<boolean> {
   );
 
   try {
-    await AdMob.prepareRewardVideoAd({ adId: REWARDED_ENERGY_AD_ID });
+    await AdMob.prepareRewardVideoAd({ adId });
     await AdMob.showRewardVideoAd();
   } catch {
     earned = false;
@@ -57,4 +59,12 @@ export async function showRewardedEnergyAd(): Promise<boolean> {
   }
 
   return earned;
+}
+
+export function showRewardedGemAd(): Promise<boolean> {
+  return showRewardedAd(REWARDED_GEM_AD_ID);
+}
+
+export function showRewardedEnergyAd(): Promise<boolean> {
+  return showRewardedAd(REWARDED_ENERGY_AD_ID);
 }

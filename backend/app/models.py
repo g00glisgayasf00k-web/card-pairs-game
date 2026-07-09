@@ -51,3 +51,21 @@ class Score(db.Model):
     )
 
     user = db.relationship("User", back_populates="scores")
+
+
+class PurchaseRecord(db.Model):
+    __tablename__ = "purchase_records"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    pack_id = db.Column(db.String(32), nullable=False)
+    square_payment_id = db.Column(db.String(128), unique=True, nullable=False, index=True)
+    amount_cents = db.Column(db.Integer, nullable=False)
+    currency = db.Column(db.String(8), nullable=False, default="USD")
+    gems_granted = db.Column(db.Integer, nullable=False)
+    status = db.Column(db.String(32), nullable=False, default="completed")
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+
+    user = db.relationship("User", backref=db.backref("purchases", lazy="dynamic"))

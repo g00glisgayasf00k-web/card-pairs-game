@@ -765,6 +765,48 @@ button.royal-resource:active {
   width: calc(100% - 1.7rem);
 }
 
+.square-checkout-overlay {
+  z-index: 7000;
+}
+
+.square-checkout {
+  max-width: 380px;
+}
+
+.square-checkout__summary {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--mg-gold, #f5d060);
+  margin: 0.2rem 0 0.35rem;
+}
+
+.square-checkout__note {
+  font-size: 0.78rem;
+  opacity: 0.75;
+  margin: 0 0 0.85rem;
+}
+
+.square-checkout__card {
+  min-height: 5.5rem;
+  margin-bottom: 0.85rem;
+  padding: 0.65rem;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.square-checkout__error {
+  color: #fecaca;
+  font-size: 0.82rem;
+  margin: 0 0 0.75rem;
+}
+
+.square-checkout__actions {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: flex-end;
+}
+
 /* Mock rewarded video overlay */
 .royal-shop-ad {
   position: absolute;

@@ -28,3 +28,10 @@ class Config:
     SMTP_PASSWORD = os.environ.get("SMTP_PASSWORD", "")
     MAIL_FROM = os.environ.get("MAIL_FROM", "")
     SMTP_USE_TLS = os.environ.get("SMTP_USE_TLS", "true").lower() in ("1", "true", "yes")
+
+    # Square payments (gem shop)
+    SQUARE_ACCESS_TOKEN = os.environ.get("SQUARE_ACCESS_TOKEN", "")
+    SQUARE_APPLICATION_ID = os.environ.get("SQUARE_APPLICATION_ID", "")
+    SQUARE_LOCATION_ID = os.environ.get("SQUARE_LOCATION_ID", "")
+    SQUARE_ENVIRONMENT = os.environ.get("SQUARE_ENVIRONMENT", "sandbox")
+    SQUARE_WEBHOOK_SIGNATURE_KEY = os.environ.get("SQUARE_WEBHOOK_SIGNATURE_KEY", "")

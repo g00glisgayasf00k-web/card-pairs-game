@@ -8,7 +8,8 @@ import {
 } from "../lib/energy";
 import { clearGemRewardAd, mountGemRewardAd } from "../lib/adsense";
 import { nativeAdsAvailable, showRewardedEnergyAd, showRewardedGemAd } from "../lib/nativeAds";
-import { GEM_SHOP_PACKS, grantGemPack } from "../lib/credits";
+import { GEM_SHOP_PACKS } from "../lib/credits";
+import { fetchPaymentConfig, type PaymentConfig, type PaymentPack } from "../lib/payments";
 import { loadProgress, saveProgress } from "../lib/progress";
 import {
   ENERGY_VIDEO_REWARD,
@@ -22,6 +23,7 @@ import {
   recordGemVideoAd,
 } from "../lib/treasuryAds";
 import { ResourceBar } from "./ResourceBar";
+import { SquareCheckoutModal } from "./SquareCheckoutModal";
 
 interface Props {
   onClose: () => void;
@@ -40,9 +42,14 @@ const PACK_ICONS: Record<string, string> = {
 
 const FEATURED_PACK_ID = "treasure";
 
-/** Real-money gem packs and gem-for-energy purchases are disabled until payments launch. */
-const PURCHASES_ENABLED = false;
-const COMING_SOON_LABEL = "Coming soon";
+const FALLBACK_PACKS: PaymentPack[] = GEM_SHOP_PACKS.map((p) => ({
+  id: p.id,
+  gems: p.gems,
+  label: p.label,
+  price_cents: 0,
+  currency: "USD",
+  price_label: p.priceLabel,
+}));
 
 function VideoAdOverlay({
   kind,
@@ -109,6 +116,12 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
   const [adProgress, setAdProgress] = useState(0);
   const [gemAdBusy, setGemAdBusy] = useState(false);
   const [energyAdBusy, setEnergyAdBusy] = useState(false);
+  const [paymentConfig, setPaymentConfig] = useState<PaymentConfig | null>(null);
+  const [checkoutPack, setCheckoutPack] = useState<PaymentPack | null>(null);
+
+  const loggedIn = typeof localStorage !== "undefined" && !!localStorage.getItem("token");
+  const purchasesEnabled = Boolean(paymentConfig?.enabled && loggedIn);
+  const shopPacks = paymentConfig?.packs?.length ? paymentConfig.packs : FALLBACK_PACKS;
 
   const saved = loadProgress();
   const { energy } = syncEnergyState();
@@ -146,6 +159,12 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
   );
 
   useEffect(() => {
+    void fetchPaymentConfig()
+      .then(setPaymentConfig)
+      .catch(() => setPaymentConfig(null));
+  }, []);
+
+  useEffect(() => {
     if (!adKind) return;
 
     const start = Date.now();
@@ -163,11 +182,12 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
     return () => window.clearInterval(timer);
   }, [adKind, finishAd]);
 
-  const handleBuyGems = (packId: string) => {
-    if (!PURCHASES_ENABLED) return;
-    const amount = grantGemPack(packId);
-    if (!amount || !saved) return;
-    saveProgress({ ...saved, credits: saved.credits + amount });
+  const handlePurchaseSuccess = (credits: number) => {
+    const progress = loadProgress();
+    if (progress) {
+      saveProgress({ ...progress, credits, updatedAt: Date.now() });
+    }
+    setCheckoutPack(null);
     refresh();
   };
 
@@ -276,11 +296,15 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
     </section>
   );
 
-  const comingSoonBanner = (
+  const purchaseBanner = !paymentConfig?.enabled ? (
     <p className="royal-shop-coming-soon" role="status">
-      Purchases are coming soon. Free video rewards are still available below.
+      Gem purchases are not available yet. Free video rewards are still available below.
     </p>
-  );
+  ) : !loggedIn ? (
+    <p className="royal-shop-coming-soon" role="status">
+      Sign in to buy gems with Square. Free video rewards are still available below.
+    </p>
+  ) : null;
 
   const energySection = (
     <section className="royal-shop-section royal-shop-energy">
@@ -318,17 +342,19 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
     <section className="royal-shop-section">
       <h3 className="royal-shop__section-title">Buy gems</h3>
       <p className="royal-shop__section-note">
-        {PURCHASES_ENABLED
-          ? "Demo store — connect real payments later."
-          : "Gem packs will be available here soon."}
+        {purchasesEnabled
+          ? "Secure card checkout powered by Square."
+          : paymentConfig?.enabled
+            ? "Sign in to purchase gem packs."
+            : "Gem packs will be available here soon."}
       </p>
       <ul className="royal-shop-grid">
-        {GEM_SHOP_PACKS.map((pack) => {
+        {shopPacks.map((pack) => {
           const featured = pack.id === FEATURED_PACK_ID;
           return (
             <li key={pack.id}>
               <div
-                className={`royal-shop-card${featured ? " royal-shop-card--featured" : ""}${!PURCHASES_ENABLED ? " royal-shop-card--locked" : ""}`}
+                className={`royal-shop-card${featured ? " royal-shop-card--featured" : ""}${!purchasesEnabled ? " royal-shop-card--locked" : ""}`}
               >
                 {featured && <span className="royal-shop-card__badge">Best value</span>}
                 <span className="royal-shop-card__icon">{PACK_ICONS[pack.id] ?? "💎"}</span>
@@ -336,12 +362,11 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
                 <span className="royal-shop-card__detail">+{pack.gems.toLocaleString()} gems</span>
                 <button
                   type="button"
-                  className="royal-shop-card__btn royal-shop-card__btn--soon"
-                  onClick={() => handleBuyGems(pack.id)}
-                  disabled={!PURCHASES_ENABLED}
-                  aria-disabled={!PURCHASES_ENABLED}
+                  className={`royal-shop-card__btn${!purchasesEnabled ? " royal-shop-card__btn--soon" : ""}`}
+                  onClick={() => purchasesEnabled && setCheckoutPack(pack)}
+                  disabled={!purchasesEnabled}
                 >
-                  {PURCHASES_ENABLED ? pack.priceLabel : COMING_SOON_LABEL}
+                  {purchasesEnabled ? pack.price_label : "Sign in"}
                 </button>
               </div>
             </li>
@@ -383,7 +408,7 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
         )}
 
         <div className="royal-shop__body">
-          {!PURCHASES_ENABLED && comingSoonBanner}
+          {purchaseBanner}
           {sections}
         </div>
 
@@ -395,6 +420,15 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
           <VideoAdOverlay kind={adKind} progress={adProgress} onCancel={cancelAd} />
         )}
       </div>
+
+      {checkoutPack && paymentConfig && (
+        <SquareCheckoutModal
+          pack={checkoutPack}
+          config={paymentConfig}
+          onClose={() => setCheckoutPack(null)}
+          onSuccess={(credits) => handlePurchaseSuccess(credits)}
+        />
+      )}
     </div>
   );
 }

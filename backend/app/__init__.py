@@ -21,12 +21,14 @@ def create_app(config_class=Config):
     from app.blueprints.scores import scores_bp
     from app.blueprints.progress import progress_bp
     from app.blueprints.admin import admin_bp
+    from app.blueprints.payments import payments_bp
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(game_bp, url_prefix="/api/game")
     app.register_blueprint(scores_bp, url_prefix="/api/scores")
     app.register_blueprint(progress_bp, url_prefix="/api/progress")
     app.register_blueprint(admin_bp, url_prefix="/api/admin")
+    app.register_blueprint(payments_bp, url_prefix="/api/payments")
 
     @app.route("/api/health")
     def health():

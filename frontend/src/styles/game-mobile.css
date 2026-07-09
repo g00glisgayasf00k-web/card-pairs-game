@@ -321,16 +321,22 @@
   display: flex;
   align-items: baseline;
   justify-content: center;
-  gap: 0.25rem;
+  flex-wrap: wrap;
+  gap: 0.15rem 0.25rem;
   margin-bottom: 0.2rem;
 }
 
 .moves-banner__label {
-  font-size: 0.58rem;
+  font-size: 0.62rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  color: rgba(224, 242, 254, 0.88);
+  text-transform: none;
+}
+
+.moves-banner__label--warn {
   font-weight: 800;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: rgba(224, 242, 254, 0.85);
+  color: #fde68a;
 }
 
 .moves-banner__count {
@@ -426,6 +432,24 @@
 
 .moves-banner--critical .moves-banner__fill {
   background: linear-gradient(90deg, #f87171, #ef4444);
+}
+
+.moves-banner--over-star {
+  border-color: rgba(251, 191, 36, 0.55);
+  background: linear-gradient(180deg, #4a3a14 0%, #2e250c 100%);
+  box-shadow:
+    0 2px 0 #1a1408,
+    0 0 10px rgba(251, 191, 36, 0.2);
+}
+
+.moves-banner--over-star .moves-banner__count {
+  color: #fde68a;
+  text-shadow: 0 0 8px rgba(251, 191, 36, 0.35);
+}
+
+.moves-banner--over-star .moves-banner__fill {
+  width: 0 !important;
+  background: linear-gradient(90deg, #fbbf24, #f59e0b);
 }
 
 @keyframes moves-banner-pulse {

@@ -192,9 +192,18 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
   const pointsMet = levelScore >= cfg.targetPoints;
   const nextCfg = getLevelConfig(level + 1);
 
+  const starMoveTarget = cfg.starMoveLimits.three;
+  const twoStarMoveTarget = cfg.starMoveLimits.two;
+  const oneStarMoveTarget = cfg.starMoveLimits.one;
+  const effectiveThreeStarLimit = starMoveTarget + bonusMoves;
   const movesLeft = movesRemaining(effectiveMoveLimit, levelHands);
-  const movesLow = movesLeft <= 3 && movesLeft > 0;
+  const movesLeftFor3 = movesRemaining(effectiveThreeStarLimit, levelHands);
+  const threeStarBudgetLost = levelHands > effectiveThreeStarLimit;
+  const movesLow = movesLeftFor3 <= 2 && movesLeftFor3 > 0;
   const movesCritical = movesLeft === 0;
+  const movesOverStar = threeStarBudgetLost && movesLeft > 0;
+  const movesEfficientFor2 = levelHands <= twoStarMoveTarget;
+  const movesEfficientFor3 = levelHands <= starMoveTarget;
   const challengesComplete = cfg.challenges.every(
     (c) => (levelHandCounts[c.hand] ?? 0) >= c.minCount
   );
@@ -544,12 +553,6 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
 
   const boardLocked = phase !== "playing" || energyBlocked;
 
-  const starMoveTarget = cfg.starMoveLimits.three;
-  const twoStarMoveTarget = cfg.starMoveLimits.two;
-  const oneStarMoveTarget = cfg.starMoveLimits.one;
-  const movesEfficientFor2 = levelHands <= twoStarMoveTarget;
-  const movesEfficientFor3 = levelHands <= starMoveTarget;
-
   const energyState = syncEnergyState();
   const energy = energyState.energy;
   void walletTick;
@@ -591,10 +594,14 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
       <div className="mobile-shell mobile-shell--framed">
         <header className={`game-hud${tutorialActive || tutorialFreePlay ? " game-hud--lesson" : ""}`}>
           <div
-            className={`moves-banner${movesLow ? " moves-banner--low" : ""}${movesCritical || phase === "moves_failed" ? " moves-banner--critical" : ""}`}
+            className={`moves-banner${movesLow ? " moves-banner--low" : ""}${movesOverStar ? " moves-banner--over-star" : ""}${movesCritical || phase === "moves_failed" ? " moves-banner--critical" : ""}`}
             role="status"
             aria-live="polite"
-            title={`${movesLeft} of ${effectiveMoveLimit} hands remaining`}
+            title={
+              threeStarBudgetLost
+                ? `3★ budget used — ${movesLeft} move${movesLeft === 1 ? "" : "s"} left to clear the level`
+                : `${movesLeftFor3} of ${effectiveThreeStarLimit} moves left for 3★ (${movesLeft} total remaining)`
+            }
           >
             <div className="moves-banner__row">
               <button
@@ -608,9 +615,22 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
               </button>
               <div className="moves-banner__main">
                 <div className="moves-banner__head">
-                  <span className="moves-banner__label">Moves left</span>
-                  <span className="moves-banner__count">{movesLeft}</span>
-                  <span className="moves-banner__limit">/ {effectiveMoveLimit}</span>
+                  {threeStarBudgetLost ? (
+                    <>
+                      <span className="moves-banner__label moves-banner__label--warn">3★ budget used</span>
+                      <span className="moves-banner__limit">
+                        · {movesLeft} move{movesLeft === 1 ? "" : "s"} to clear
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      <span className="moves-banner__count">{movesLeftFor3}</span>
+                      <span className="moves-banner__label">
+                        move{movesLeftFor3 === 1 ? "" : "s"} left for 3★
+                      </span>
+                      <span className="moves-banner__limit">/ {effectiveThreeStarLimit}</span>
+                    </>
+                  )}
                   <button
                     type="button"
                     className="moves-banner__gems"
@@ -627,7 +647,7 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
                 <div className="moves-banner__track">
                   <div
                     className="moves-banner__fill"
-                    style={{ width: `${Math.max(0, (movesLeft / effectiveMoveLimit) * 100)}%` }}
+                    style={{ width: `${Math.max(0, (movesLeftFor3 / effectiveThreeStarLimit) * 100)}%` }}
                   />
                 </div>
               </div>
@@ -1127,7 +1147,10 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
                 Score {cfg.targetPoints.toLocaleString()} pts within {oneStarMoveTarget} moves
               </span>
               <span className="challenges-modal__points-sub">
-                {cfg.moveLimit} max moves · {movesLeft} left
+                3★ budget: {effectiveThreeStarLimit} moves · {movesLeftFor3} left for 3★
+                {movesLeft !== movesLeftFor3
+                  ? ` · ${movesLeft} total to clear`
+                  : ""}
                 {cfg.challenges.length > 0
                   ? ` · ${cfg.challenges.length} milestone hand${cfg.challenges.length === 1 ? "" : "s"} along the way`
                   : ""}

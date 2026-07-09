@@ -128,8 +128,10 @@
   flex-wrap: nowrap;
   align-items: center;
   gap: 0.3rem;
-  margin-left: auto;
-  flex-shrink: 0;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
 }
 
 .game-goalbar__goals .tutorial-goal-chip {
@@ -255,32 +257,39 @@
   background: transparent;
 }
 
+.moves-banner .game-back-btn {
+  width: 2rem;
+  height: 2rem;
+  font-size: 1rem;
+  border-radius: 10px;
+}
+
 .moves-banner__profile.hud-labeled-chip .hud-labeled-chip__body {
-  width: 2.35rem;
-  height: 2.35rem;
-  border-radius: 12px;
+  width: 2rem;
+  height: 2rem;
+  border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   background: rgba(0, 0, 0, 0.28);
-  font-size: 1.15rem;
+  font-size: 1rem;
   line-height: 1;
 }
 
 /* Prominent moves-left banner (top of HUD) */
 .moves-banner {
-  margin-bottom: 0.15rem;
-  padding: 0.45rem 0.55rem 0.4rem;
-  border-radius: 12px;
+  margin-bottom: 0.1rem;
+  padding: 0.28rem 0.4rem 0.25rem;
+  border-radius: 10px;
   background: linear-gradient(180deg, #1e4a7a 0%, #123055 100%);
   border: 2px solid rgba(56, 189, 248, 0.5);
   box-shadow:
-    0 3px 0 #0a1a28,
-    0 0 14px rgba(56, 189, 248, 0.22);
+    0 2px 0 #0a1a28,
+    0 0 10px rgba(56, 189, 248, 0.2);
 }
 
 .moves-banner__row {
   display: flex;
   align-items: stretch;
-  gap: 0.45rem;
+  gap: 0.35rem;
 }
 
 .moves-banner__main {
@@ -312,35 +321,68 @@
   display: flex;
   align-items: baseline;
   justify-content: center;
-  gap: 0.35rem;
-  margin-bottom: 0.3rem;
+  gap: 0.25rem;
+  margin-bottom: 0.2rem;
 }
 
 .moves-banner__label {
-  font-size: 0.72rem;
+  font-size: 0.58rem;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   color: rgba(224, 242, 254, 0.85);
 }
 
 .moves-banner__count {
   font-family: "Crimson Pro", Georgia, serif;
-  font-size: 2rem;
+  font-size: 1.35rem;
   font-weight: 900;
   line-height: 1;
   color: #e0f2fe;
-  text-shadow: 0 0 12px rgba(56, 189, 248, 0.55);
+  text-shadow: 0 0 10px rgba(56, 189, 248, 0.45);
 }
 
 .moves-banner__limit {
-  font-size: 0.85rem;
+  font-size: 0.72rem;
   font-weight: 700;
   color: rgba(224, 242, 254, 0.55);
 }
 
+.moves-banner__gems {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
+  margin-left: 0.35rem;
+  padding: 0.12rem 0.4rem;
+  border-radius: 999px;
+  border: 1px solid rgba(167, 139, 250, 0.45);
+  background: rgba(0, 0, 0, 0.28);
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.12s ease;
+}
+
+.moves-banner__gems:active {
+  transform: scale(0.96);
+}
+
+.moves-banner__gems-icon {
+  font-size: 0.7rem;
+  line-height: 1;
+}
+
+.moves-banner__gems-val {
+  font-family: "Crimson Pro", Georgia, serif;
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #c4b5fd;
+  line-height: 1;
+}
+
 .moves-banner__track {
-  height: 8px;
+  height: 5px;
   border-radius: 999px;
   background: rgba(0, 0, 0, 0.35);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -407,7 +449,24 @@
 }
 
 .score-chip--compact .score-chip__value {
-  font-size: 1rem;
+  font-size: 0.9rem;
+}
+
+.score-chip--target .score-chip__sep,
+.score-chip--target .score-chip__target {
+  font-family: "Crimson Pro", Georgia, serif;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.score-chip--target .score-chip__sep {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.score-chip--target .score-chip__target {
+  font-size: 0.8rem;
+  color: rgba(245, 208, 96, 0.75);
 }
 
 /* Level badge */

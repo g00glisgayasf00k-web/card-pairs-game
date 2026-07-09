@@ -611,6 +611,18 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
                   <span className="moves-banner__label">Moves left</span>
                   <span className="moves-banner__count">{movesLeft}</span>
                   <span className="moves-banner__limit">/ {effectiveMoveLimit}</span>
+                  <button
+                    type="button"
+                    className="moves-banner__gems"
+                    onClick={() => {
+                      setGemShopEnergyFocus(false);
+                      setShowGemShop(true);
+                    }}
+                    title="Gems — tap to buy more"
+                  >
+                    <span className="moves-banner__gems-icon" aria-hidden>💎</span>
+                    <span className="moves-banner__gems-val">{credits}</span>
+                  </button>
                 </div>
                 <div className="moves-banner__track">
                   <div
@@ -644,11 +656,13 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
               </span>
             </div>
 
-            <div className="score-chip score-chip--compact hud-labeled-chip" title={`Goal: ${cfg.targetPoints.toLocaleString()} pts`}>
-              <span className="hud-labeled-chip__label">Score</span>
+            <div className="score-chip score-chip--compact score-chip--target hud-labeled-chip" title={`Target: ${levelScore.toLocaleString()} / ${cfg.targetPoints.toLocaleString()} points`}>
+              <span className="hud-labeled-chip__label">Target</span>
               <span className="hud-labeled-chip__body">
                 <span className="score-chip__icon" aria-hidden>💰</span>
                 <span className="score-chip__value">{levelScore.toLocaleString()}</span>
+                <span className="score-chip__sep">/</span>
+                <span className="score-chip__target">{cfg.targetPoints.toLocaleString()}</span>
               </span>
             </div>
 
@@ -668,21 +682,6 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
               </span>
             </button>
 
-            <button
-              type="button"
-              className="credits-chip hud-chip-btn hud-labeled-chip"
-              onClick={() => {
-                setGemShopEnergyFocus(false);
-                setShowGemShop(true);
-              }}
-              title="Gems — tap to buy more"
-            >
-              <span className="hud-labeled-chip__label">Gems</span>
-              <span className="hud-labeled-chip__body">
-                <span className="credits-chip__icon" aria-hidden>💎</span>
-                <span className="credits-chip__val">{credits}</span>
-              </span>
-            </button>
           </div>
 
           {tutorialActive && tutorialConfig && (
@@ -700,30 +699,22 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
           )}
         </header>
 
-        {showChallengeUi && (
-          <div className="game-goalbar" aria-label="Level target and goals">
-            <div className="game-goalbar__points">
-              <span className="game-goalbar__label">🎯 Target</span>
-              <span className="game-goalbar__val">
-                💰 {levelScore.toLocaleString()} / {cfg.targetPoints.toLocaleString()}
-              </span>
+        {showChallengeUi && cfg.challenges.length > 0 && (
+          <div className="game-goalbar" aria-label="Level goals">
+            <div className="game-goalbar__goals">
+              {cfg.challenges.map((c) => {
+                const have = levelHandCounts[c.hand] ?? 0;
+                const done = have >= c.minCount;
+                return (
+                  <span
+                    key={`${c.hand}-${c.minCount}`}
+                    className={`tutorial-goal-chip${done ? " tutorial-goal-chip--done" : ""}`}
+                  >
+                    {done ? "✓" : "○"} {HAND_DISPLAY[c.hand]} ({Math.min(have, c.minCount)}/{c.minCount})
+                  </span>
+                );
+              })}
             </div>
-            {cfg.challenges.length > 0 && (
-              <div className="game-goalbar__goals">
-                {cfg.challenges.map((c) => {
-                  const have = levelHandCounts[c.hand] ?? 0;
-                  const done = have >= c.minCount;
-                  return (
-                    <span
-                      key={`${c.hand}-${c.minCount}`}
-                      className={`tutorial-goal-chip${done ? " tutorial-goal-chip--done" : ""}`}
-                    >
-                      {done ? "✓" : "○"} {HAND_DISPLAY[c.hand]} ({Math.min(have, c.minCount)}/{c.minCount})
-                    </span>
-                  );
-                })}
-              </div>
-            )}
           </div>
         )}
 

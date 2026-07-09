@@ -7,12 +7,12 @@ on:
 
 concurrency:
   group: android-apk-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       VERSION_CODE: ${{ github.run_number }}
       VERSION_NAME: 1.2.${{ github.run_number }}

@@ -3,6 +3,7 @@ import { AuthPanel } from "../components/AuthPanel";
 import { Leaderboard } from "../components/Leaderboard";
 import { ProfileModal } from "../components/ProfileModal";
 import { clearProgress, loadProgress } from "../lib/progress";
+import { MAX_LEVEL } from "../lib/levels";
 
 interface Props {
   username: string | null;
@@ -122,7 +123,7 @@ export function OnboardingScreen({
               <span className="btn-royal-cta__main">Enter the table</span>
               <span className="btn-royal-cta__sub">
                 {saved
-                  ? `${(saved.completedLevels ?? []).length} / 100 levels cleared`
+                  ? `${(saved.completedLevels ?? []).length} / ${MAX_LEVEL} levels cleared`
                   : "Choose your level"}
               </span>
             </button>

@@ -1,5 +1,10 @@
 import { HAND_DISPLAY, HAND_SCORES, type HandLabel } from "./pokerHands";
-import { blockersForLevel, type BlockerSpawnConfig } from "./blockers";
+import {
+  blockersForLevel,
+  fixedObstaclesForLevel,
+  type BlockerSpawnConfig,
+  type FixedObstacle,
+} from "./blockers";
 
 export interface HandChallenge {
   hand: HandLabel;
@@ -22,22 +27,24 @@ export interface LevelConfig {
   estimatedMoves: number;
   /** Max hands before game over — 1★ budget. */
   moveLimit: number;
-  /** Glass / crate overlays from level 11+. */
+  /** Glass / crate overlays from level 31+. */
   blockers: BlockerSpawnConfig | null;
+  /** Permanent pillars from level 101+ — cannot be moved or destroyed. */
+  fixedObstacles: FixedObstacle[];
 }
 
 export type HandCounts = Partial<Record<HandLabel, number>>;
 
-export const MAX_LEVEL = 100;
+export const MAX_LEVEL = 500;
 
 /** Typical points earned per hand/swipe (used for move budgets). */
 export const AVG_PTS_PER_MOVE = 360;
 
-/** World N starts at N×1000 pts; ~8% growth per stage within a world. */
+/** World N starts at N×1000 pts; ~9% growth per stage within a world. */
 const WORLD_BASE_POINTS = 1000;
-const STAGE_TARGET_GROWTH = 1.08;
+const STAGE_TARGET_GROWTH = 1.09;
 /** Applied after world × stage scale. */
-const TARGET_POINT_BOOST = 1.12;
+const TARGET_POINT_BOOST = 1.3;
 
 /**
  * Each world introduces one new hand type for milestone goals.
@@ -94,26 +101,27 @@ function sortChallengesByHand(challenges: HandChallenge[]): HandChallenge[] {
   );
 }
 
-/** Light milestone hands — points target is the main goal; 1–2 hands per level max. */
+/** Light milestone hands — points target is the main goal; scales up in later worlds. */
 function challengesForLevel(level: number): HandChallenge[] {
   const world = worldForLevel(level);
   const step = stepInTier(level);
-  const introHand = WORLD_INTRO_HAND[world - 1] ?? "royal_flush";
+  const introHand = WORLD_INTRO_HAND[Math.min(world - 1, WORLD_INTRO_HAND.length - 1)] ?? "royal_flush";
+  const bump = world > 10 ? Math.floor((world - 10) / 4) : 0;
 
   if (step === 1) {
-    return [{ hand: "pair", minCount: 2 }];
+    return [{ hand: "pair", minCount: 2 + Math.min(bump, 2) }];
   }
 
   if (world === 1) {
     if (step <= 5) {
-      return [{ hand: "pair", minCount: step <= 3 ? 2 : 3 }];
+      return [{ hand: "pair", minCount: (step <= 3 ? 2 : 3) + Math.min(bump, 1) }];
     }
     if (step <= 7) {
-      return [{ hand: "two_pair", minCount: 1 }];
+      return [{ hand: "two_pair", minCount: 1 + Math.min(bump, 1) }];
     }
     return sortChallengesByHand([
-      { hand: "pair", minCount: 2 },
-      { hand: "two_pair", minCount: 1 },
+      { hand: "pair", minCount: 2 + Math.min(bump, 1) },
+      { hand: "two_pair", minCount: 1 + Math.min(bump, 1) },
     ]);
   }
 
@@ -123,27 +131,30 @@ function challengesForLevel(level: number): HandChallenge[] {
       : "pair";
 
   if (step <= 5) {
-    return [{ hand: introHand, minCount: 1 }];
+    return [{ hand: introHand, minCount: 1 + Math.min(bump, 2) }];
   }
   if (step <= 8) {
     return sortChallengesByHand([
-      { hand: "pair", minCount: 2 },
-      { hand: introHand, minCount: 1 },
+      { hand: "pair", minCount: 2 + Math.min(bump, 1) },
+      { hand: introHand, minCount: 1 + Math.min(bump, 1) },
     ]);
   }
   return sortChallengesByHand([
-    { hand: prevHand, minCount: 1 },
-    { hand: introHand, minCount: 2 },
+    { hand: prevHand, minCount: 1 + Math.min(bump, 1) },
+    { hand: introHand, minCount: 2 + Math.min(bump, 2) },
   ]);
 }
 
 function worldForLevel(level: number): number {
-  return Math.min(CAMPAIGN_TIERS.length, Math.ceil(level / 10));
+  return Math.ceil(level / 10);
 }
 
 function tierForLevel(level: number): string {
-  const idx = Math.min(CAMPAIGN_TIERS.length - 1, Math.floor((level - 1) / 10));
-  return CAMPAIGN_TIERS[idx] ?? "Elite";
+  const world = worldForLevel(level);
+  const base = CAMPAIGN_TIERS[(world - 1) % CAMPAIGN_TIERS.length] ?? "Elite";
+  const cycle = Math.floor((world - 1) / CAMPAIGN_TIERS.length);
+  if (cycle === 0) return base;
+  return `${base} ${cycle + 1}`;
 }
 
 function stepInTier(level: number): number {
@@ -280,7 +291,11 @@ function targetPointsForLevel(level: number): number {
   const stage = stepInTier(level);
   const worldStart = world * WORLD_BASE_POINTS;
   const scaled = Math.round(worldStart * STAGE_TARGET_GROWTH ** (stage - 1));
-  return Math.round(scaled * TARGET_POINT_BOOST);
+  let pts = Math.round(scaled * TARGET_POINT_BOOST);
+  if (level > 50) {
+    pts = Math.round(pts * (1 + (level - 50) * 0.003));
+  }
+  return pts;
 }
 
 function buildLevelConfig(level: number): LevelConfig {
@@ -288,6 +303,7 @@ function buildLevelConfig(level: number): LevelConfig {
   const { challengePoints, challengeHands } = challengeMetrics(challenges);
   const targetPoints = targetPointsForLevel(level);
   const starMoveLimits = starMoveLimitsForTarget(targetPoints, challengeHands);
+  const fixedObstacles = fixedObstaclesForLevel(level);
   return {
     level,
     tier: tierForLevel(level),
@@ -300,6 +316,7 @@ function buildLevelConfig(level: number): LevelConfig {
     estimatedMoves: computeEstimatedMoves(targetPoints, challenges),
     moveLimit: starMoveLimits.one,
     blockers: blockersForLevel(level),
+    fixedObstacles,
   };
 }
 

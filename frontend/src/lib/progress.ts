@@ -24,7 +24,7 @@ export function setProgressSyncHook(hook: ProgressSyncHook | null): void {
 
 export interface SavedProgress {
   v: typeof VERSION;
-  /** Furthest level the player may start (1–100). */
+  /** Furthest level the player may start (1–500). */
   highestUnlocked: number;
   /** Global levels cleared at least once. */
   completedLevels: number[];

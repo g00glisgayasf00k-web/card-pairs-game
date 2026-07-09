@@ -414,7 +414,7 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
 
   useEffect(() => {
     if (phase !== "playing") return;
-    const kind = pendingBlockerIntro(getLevelConfig(level).blockers);
+    const kind = pendingBlockerIntro(getLevelConfig(level).blockers, getLevelConfig(level).fixedObstacles);
     if (kind) {
       markBlockerIntroSeen(kind);
       setBlockerIntro(kind);
@@ -821,6 +821,7 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
               tutorialWrongSwipeHint={tutorialConfig?.wrongSwipeHint}
               onTutorialStepComplete={tutorialActive ? handleTutorialStepComplete : undefined}
               blockerConfig={cfg.blockers}
+              fixedObstacles={cfg.fixedObstacles}
               onHand={handleHand}
               onActivation={handleActivation}
               onFeedback={handleBoardFeedback}
@@ -829,31 +830,16 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
 
           {boardFeedback && (
             boardFeedback.hint ? (
-              <div
-                className="board-hint-overlay"
-                role="dialog"
-                aria-modal="true"
-                aria-labelledby="board-hint-title"
-              >
+              <div className="board-hint-banner" role="status" aria-live="polite">
+                <p className="board-hint-banner__text">{boardFeedback.text}</p>
                 <button
                   type="button"
-                  className="board-hint-overlay__backdrop"
-                  aria-label="Dismiss message"
+                  className="board-hint-banner__dismiss"
                   onClick={dismissBoardFeedback}
-                />
-                <div className="board-hint-modal">
-                  <p id="board-hint-title" className="board-hint-modal__text">
-                    {boardFeedback.text}
-                  </p>
-                  <button
-                    type="button"
-                    className="board-hint-modal__btn"
-                    onClick={dismissBoardFeedback}
-                    autoFocus
-                  >
-                    Got it
-                  </button>
-                </div>
+                  aria-label="Dismiss hint message"
+                >
+                  ×
+                </button>
               </div>
             ) : (
               <div className="board-hand-toast" role="status" aria-live="polite">
@@ -1212,8 +1198,10 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
               </>
             )}
 
-            {cfg.blockers && (
-              <p className="scores-note scores-note--blockers">🧊 {blockersGuideText()}</p>
+            {(cfg.blockers || cfg.fixedObstacles.length > 0) && (
+              <p className="scores-note scores-note--blockers">
+                🧊 {blockersGuideText(cfg.fixedObstacles.length > 0)}
+              </p>
             )}
 
             {pointsMet && !challengesComplete && (
@@ -1280,8 +1268,10 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
           >
             <h2 id="specials-title">Power-ups</h2>
             <p className="scores-note">Earned by clearing big hands — spawn where you started the swipe</p>
-            {cfg.blockers && (
-              <p className="scores-note scores-note--blockers">🧊 {blockersGuideText()}</p>
+            {(cfg.blockers || cfg.fixedObstacles.length > 0) && (
+              <p className="scores-note scores-note--blockers">
+                🧊 {blockersGuideText(cfg.fixedObstacles.length > 0)}
+              </p>
             )}
             <ul className="specials-list">
               {SPECIALS_GUIDE.map((sp) => (

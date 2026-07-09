@@ -2,7 +2,7 @@ import { MAX_LEVEL } from "./levels";
 
 export type LevelNodeState = "locked" | "unlocked" | "completed";
 
-export const WORLDS = 10;
+export const WORLDS = 50;
 export const STAGES_PER_WORLD = 10;
 export const TOTAL_LEVELS = MAX_LEVEL;
 
@@ -42,8 +42,11 @@ const TIER_NAMES = [
 
 export function worldTitle(world: number): string {
   const n = Math.min(Math.max(1, Math.floor(world)), WORLDS);
-  const tier = TIER_NAMES[n - 1] ?? "Elite";
-  return `${tier} ${displayWorld(n)}`;
+  const tierIndex = (n - 1) % TIER_NAMES.length;
+  const base = TIER_NAMES[tierIndex] ?? "Elite";
+  const cycle = Math.floor((n - 1) / TIER_NAMES.length);
+  const suffix = cycle === 0 ? "" : ` ${cycle + 1}`;
+  return `${base}${suffix} ${displayWorld(n)}`;
 }
 
 export function allWorlds(): number[] {
@@ -87,5 +90,6 @@ const WORLD_THEMES: WorldTheme[] = [
 
 export function worldTheme(world: number): WorldTheme {
   const n = Math.min(Math.max(1, Math.floor(world)), WORLDS);
-  return WORLD_THEMES[n - 1] ?? WORLD_THEMES[0]!;
+  const idx = (n - 1) % WORLD_THEMES.length;
+  return WORLD_THEMES[idx] ?? WORLD_THEMES[0]!;
 }

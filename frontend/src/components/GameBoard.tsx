@@ -26,11 +26,14 @@ import {
 import { pathMatchesGuide } from "../lib/tutorialLevel1";
 import {
   applyBlockerDamage,
+  buildBlockerGrid,
   emptyBlockerGrid,
   isBlocked,
-  spawnBlockers,
+  isFixedBlocker,
+  type Blocker,
   type BlockerGrid,
   type BlockerSpawnConfig,
+  type FixedObstacle,
 } from "../lib/blockers";
 import { findHintPath, type HintPath } from "../lib/hintFinder";
 import { useSwipePath } from "../hooks/useSwipePath";
@@ -107,6 +110,7 @@ function computeGridFit(availW: number, availH: number): { width: number; height
 export interface GameBoardHandle {
   shuffle: () => void;
   revealHint: (priorityHands: HandLabel[]) => HintPath | null;
+  clearHint: () => void;
 }
 
 interface Props {
@@ -126,13 +130,27 @@ interface Props {
   tutorialWrongSwipeHint?: string;
   /** Skip gravity — parent loads the next lesson board */
   onTutorialStepComplete?: () => void;
-  /** Glass / crate overlays (level 11+). */
+  /** Glass / crate overlays (level 31+). */
   blockerConfig?: BlockerSpawnConfig | null;
+  /** Permanent pillars (level 101+) — cannot move or be destroyed. */
+  fixedObstacles?: FixedObstacle[];
   /** Parent HUD feedback — avoids board overlay flash in embedded mode */
   onFeedback?: (message: string | null, hint?: boolean) => void;
 }
 
 // ── Gravity ───────────────────────────────────────────────────────────────────
+
+function columnSegments(rows: number, fixedRows: number[]): [number, number][] {
+  const sorted = [...fixedRows].sort((a, b) => a - b);
+  const segments: [number, number][] = [];
+  let start = 0;
+  for (const fixed of sorted) {
+    if (start <= fixed - 1) segments.push([start, fixed - 1]);
+    start = fixed + 1;
+  }
+  if (start <= rows - 1) segments.push([start, rows - 1]);
+  return segments;
+}
 
 function applyGravity(
   board: (Card | null)[][],
@@ -156,22 +174,49 @@ function applyGravity(
   const newKeys = new Set<string>();
 
   for (let c = 0; c < COLS; c++) {
-    let write = ROWS - 1;
-    for (let r = ROWS - 1; r >= 0; r--) {
-      const key = `${r},${c}`;
-      if (board[r]?.[c] && !clearedKeys.has(key)) {
-        newBoard[write]![c] = board[r]![c];
-        newBlockers[write]![c] = damagedBlockers[r]?.[c]
-          ? { ...damagedBlockers[r]![c]! }
-          : null;
-        const dropped = write - r;
-        if (dropped > 0) dropMap.set(`${write},${c}`, dropped);
-        write--;
+    const fixedRows: number[] = [];
+    for (let r = 0; r < ROWS; r++) {
+      if (isFixedBlocker(damagedBlockers[r]?.[c])) fixedRows.push(r);
+    }
+
+    for (const [segStart, segEnd] of columnSegments(ROWS, fixedRows)) {
+      const floating: { card: Card; blocker: Blocker | null; fromRow: number }[] = [];
+      for (let r = segEnd; r >= segStart; r--) {
+        const key = `${r},${c}`;
+        if (clearedKeys.has(key)) continue;
+        const card = board[r]?.[c];
+        if (!card) continue;
+        const b = damagedBlockers[r]?.[c];
+        floating.push({
+          card,
+          blocker: b && !isFixedBlocker(b) ? { ...b } : null,
+          fromRow: r,
+        });
+      }
+
+      let floatIdx = 0;
+      for (let r = segEnd; r >= segStart; r--) {
+        if (floatIdx < floating.length) {
+          const f = floating[floatIdx++]!;
+          newBoard[r]![c] = f.card;
+          newBlockers[r]![c] = f.blocker;
+          const dropped = r - f.fromRow;
+          if (dropped > 0) dropMap.set(`${r},${c}`, dropped);
+        } else {
+          newBoard[r]![c] = randomCard();
+          newKeys.add(`${r},${c}`);
+        }
       }
     }
-    for (let r = write; r >= 0; r--) {
-      newBoard[r]![c] = randomCard();
-      newKeys.add(`${r},${c}`);
+
+    for (const r of fixedRows) {
+      const key = `${r},${c}`;
+      newBlockers[r]![c] = { kind: "fixed", hp: 999 };
+      if (!clearedKeys.has(key) && board[r]?.[c]) {
+        newBoard[r]![c] = board[r]![c];
+      } else if (!newBoard[r]![c]) {
+        newBoard[r]![c] = randomCard();
+      }
     }
   }
 
@@ -229,6 +274,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
       tutorialWrongSwipeHint,
       onTutorialStepComplete,
       blockerConfig,
+      fixedObstacles = [],
       onFeedback,
     },
     ref
@@ -237,9 +283,9 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
       seedBoard ? cloneSeedBoard(seedBoard) : createBoard(ROWS, COLS)
     );
     const [blockers, setBlockers] = useState<BlockerGrid>(() =>
-      seedBoard || !blockerConfig
+      seedBoard
         ? emptyBlockerGrid(ROWS, COLS)
-        : spawnBlockers(ROWS, COLS, blockerConfig)
+        : buildBlockerGrid(ROWS, COLS, blockerConfig ?? null, fixedObstacles)
     );
     const [message, setMessage] = useState<string | null>(null);
     const [toastHint, setToastHint] = useState(false);
@@ -250,7 +296,6 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
     const [arrowSweep, setArrowSweep] = useState<ArrowSweep | null>(null);
     const [bombBurst, setBombBurst] = useState<BombBurst | null>(null);
     const [hintCell, setHintCell] = useState<{ row: number; col: number } | null>(null);
-    const hintTimerRef = useRef<number | null>(null);
     const [dropMap, setDropMap] = useState<Map<string, number>>(new Map());
     const [newKeys, setNewKeys] = useState<Set<string>>(new Set());
     const [busy, setBusy] = useState(false);
@@ -259,12 +304,6 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
     const finishingSwipe = useRef(false);
     const [gridFit, setGridFit] = useState<{ width: number; height: number } | null>(null);
     const seedBoardKeyRef = useRef<string | null>(null);
-
-    useEffect(() => {
-      return () => {
-        if (hintTimerRef.current) window.clearTimeout(hintTimerRef.current);
-      };
-    }, []);
 
     useEffect(() => {
       if (!seedBoard) return;
@@ -286,12 +325,10 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
     useEffect(() => {
       if (seedBoard) {
         setBlockers(emptyBlockerGrid(ROWS, COLS));
-      } else if (blockerConfig) {
-        setBlockers(spawnBlockers(ROWS, COLS, blockerConfig));
       } else {
-        setBlockers(emptyBlockerGrid(ROWS, COLS));
+        setBlockers(buildBlockerGrid(ROWS, COLS, blockerConfig ?? null, fixedObstacles));
       }
-    }, [seedBoard, blockerConfig]);
+    }, [seedBoard, blockerConfig, fixedObstacles]);
 
     useEffect(() => {
       if (!embedded) return;
@@ -363,12 +400,22 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
     useImperativeHandle(ref, () => ({
       shuffle: () => {
         if (busy || locked) return;
+        setHintCell(null);
         setBoard((prev) => {
-          const flat = prev.flat().filter(Boolean) as Card[];
-          const shuffled = fisherYatesShuffle(flat);
-          return Array.from({ length: ROWS }, (_, r) =>
-            Array.from({ length: COLS }, (_, c) => shuffled[r * COLS + c] ?? null)
-          );
+          const slots: { r: number; c: number; card: Card }[] = [];
+          for (let r = 0; r < ROWS; r++) {
+            for (let c = 0; c < COLS; c++) {
+              if (isFixedBlocker(blockers[r]?.[c])) continue;
+              const card = prev[r]?.[c];
+              if (card) slots.push({ r, c, card });
+            }
+          }
+          const shuffled = fisherYatesShuffle(slots.map((s) => s.card));
+          const next = prev.map((row) => [...row]);
+          slots.forEach((slot, i) => {
+            next[slot.r]![slot.c] = shuffled[i]!;
+          });
+          return next;
         });
       },
       revealHint: (priorityHands: HandLabel[]) => {
@@ -377,10 +424,9 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
         if (!result) return null;
         const first = result.path[0]!;
         setHintCell({ row: first.row, col: first.col });
-        if (hintTimerRef.current) window.clearTimeout(hintTimerRef.current);
-        hintTimerRef.current = window.setTimeout(() => setHintCell(null), 2400);
         return result;
       },
+      clearHint: () => setHintCell(null),
     }), [busy, locked, board, blockers]);
 
     // ── Shared gravity commit ─────────────────────────────────────────────────
@@ -418,8 +464,10 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
         setArrowSweep(null);
         setBombBurst(null);
 
-        if (isHand) onHand(isHand);
-        else onActivation(pts);
+        if (isHand) {
+          setHintCell(null);
+          onHand(isHand);
+        } else onActivation(pts);
 
         await delay(waitForSettle());
         setDropMap(new Map());
@@ -591,8 +639,11 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
       if (swipePath.length === 1) {
         const { row, col } = swipePath[0]!;
         if (isBlocked(blockers[row]?.[col])) {
-          if (embedded) showFeedback("Break the glass or crate first", true);
-          else setMessage("Break the glass or crate first");
+          const msg = isFixedBlocker(blockers[row]?.[col])
+            ? "Stone pillars can't be cleared — route around them"
+            : "Break the glass or crate first";
+          if (embedded) showFeedback(msg, true);
+          else setMessage(msg);
           clear();
           return;
         }
@@ -620,8 +671,12 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
       }
 
       if (swipePath.some((p) => isBlocked(blockers[p.row]?.[p.col]))) {
-        if (embedded) showFeedback("Clear the glass or crate blocking that card", true);
-        else setMessage("Clear the glass or crate blocking that card");
+        const hitsFixed = swipePath.some((p) => isFixedBlocker(blockers[p.row]?.[p.col]));
+        const msg = hitsFixed
+          ? "Can't swipe through stone pillars"
+          : "Clear the glass or crate blocking that card";
+        if (embedded) showFeedback(msg, true);
+        else setMessage(msg);
         clear();
         return;
       }
@@ -835,7 +890,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
             const isBlasting = blasting.has(key);
             const isBombOrigin = bombBurst?.row === r && bombBurst?.col === c;
             const isHinted =
-              hintCell?.row === r && hintCell?.col === c && !busy && !locked && !blocked;
+              hintCell?.row === r && hintCell?.col === c && !locked && !blocked;
             const cardStyle: CSSProperties | undefined =
               drop > 0
                 ? { "--drop-n": drop }
@@ -846,7 +901,12 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
                     : undefined;
 
             return (
-              <div key={`${r}-${c}`} className="cell" data-row={r} data-col={c}>
+              <div
+                key={`${r}-${c}`}
+                className={`cell${isHinted ? " cell--hint-active" : ""}`}
+                data-row={r}
+                data-col={c}
+              >
                 {cell && (
                   <div
                     data-row={r}

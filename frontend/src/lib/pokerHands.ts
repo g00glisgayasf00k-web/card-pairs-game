@@ -25,15 +25,15 @@ export type HandLabel =
   | "full_house" | "four_of_a_kind" | "straight_flush" | "royal_flush";
 
 export const HAND_SCORES: Record<HandLabel, number> = {
-  pair: 100,
-  two_pair: 250,
-  three_of_a_kind: 400,
-  straight: 600,
-  flush: 800,
-  full_house: 1200,
-  four_of_a_kind: 1800,
-  straight_flush: 3000,
-  royal_flush: 5000,
+  pair: 50,
+  two_pair: 150,
+  three_of_a_kind: 200,
+  straight: 300,
+  flush: 400,
+  full_house: 600,
+  four_of_a_kind: 900,
+  straight_flush: 1500,
+  royal_flush: 2500,
 };
 
 export const HAND_DISPLAY: Record<HandLabel, string> = {

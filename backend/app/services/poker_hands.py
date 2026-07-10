@@ -30,15 +30,15 @@ HAND_LABELS = {
 }
 
 HAND_SCORES = {
-    HandRank.PAIR: 100,
-    HandRank.TWO_PAIR: 250,
-    HandRank.THREE_OF_A_KIND: 400,
-    HandRank.STRAIGHT: 600,
-    HandRank.FLUSH: 800,
-    HandRank.FULL_HOUSE: 1200,
-    HandRank.FOUR_OF_A_KIND: 1800,
-    HandRank.STRAIGHT_FLUSH: 3000,
-    HandRank.ROYAL_FLUSH: 5000,
+    HandRank.PAIR: 50,
+    HandRank.TWO_PAIR: 150,
+    HandRank.THREE_OF_A_KIND: 200,
+    HandRank.STRAIGHT: 300,
+    HandRank.FLUSH: 400,
+    HandRank.FULL_HOUSE: 600,
+    HandRank.FOUR_OF_A_KIND: 900,
+    HandRank.STRAIGHT_FLUSH: 1500,
+    HandRank.ROYAL_FLUSH: 2500,
 }
 
 RANK_VALUES = {

@@ -25,6 +25,12 @@ import {
 } from "../lib/energy";
 import { beginLevelAttempt, levelAttemptCostsEnergy } from "../lib/levelAttempt";
 import {
+  claimMilestoneChest,
+  hasClaimedMilestoneChest,
+  isMilestoneChestLevel,
+  rollMilestoneChestGems,
+} from "../lib/milestoneChest";
+import {
   blockerIntroContent,
   blockersGuideText,
   markBlockerIntroSeen,
@@ -168,6 +174,11 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
     handCounts: HandCounts;
   } | null>(null);
   const [challengeResult, setChallengeResult] = useState<ChallengeDto | null>(null);
+  const [chestReward, setChestReward] = useState<{
+    level: number;
+    gems: number;
+    opened: boolean;
+  } | null>(null);
   const [showScores, setShowScores] = useState(false);
   const [showSpecials, setShowSpecials] = useState(false);
   const [showChallenges, setShowChallenges] = useState(false);
@@ -255,6 +266,7 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
       energyPaidLevel: saved.energyPaidLevel ?? null,
       streak: 0,
       tutorialStep: next.level === 1 ? next.tutorialStep : saved.tutorialStep,
+      milestoneChestsClaimed: saved.milestoneChestsClaimed ?? [],
     });
   }, []);
 
@@ -346,6 +358,23 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
     setPhase("playing");
   }, []);
 
+  const openMilestoneChest = useCallback(() => {
+    setChestReward((prev) => (prev && !prev.opened ? { ...prev, opened: true } : prev));
+  }, []);
+
+  const claimMilestoneChestReward = useCallback(() => {
+    if (!chestReward) return;
+    const nextCredits = claimMilestoneChest(chestReward.level, chestReward.gems);
+    setRun((prev) => ({ ...prev, credits: nextCredits }));
+    setChestReward(null);
+    savedSnapshot.current = loadProgress();
+    if (isReplaySession.current || levelRef.current >= MAX_LEVEL) {
+      if (isReplaySession.current) onMenu();
+      return;
+    }
+    advanceLevel();
+  }, [chestReward, advanceLevel, onMenu]);
+
   const retryLevel = useCallback(() => {
     advancingRef.current = false;
     if (!trySpendEnergyForRetry(level)) {
@@ -424,13 +453,14 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
   useEffect(() => {
     if (phase !== "round_complete") return;
     if (isChallenge) return;
+    if (chestReward) return;
     if (isReplaySession.current) {
       const id = window.setTimeout(onMenu, ROUND_COMPLETE_MS);
       return () => window.clearTimeout(id);
     }
     const id = window.setTimeout(advanceLevel, ROUND_COMPLETE_MS);
     return () => window.clearTimeout(id);
-  }, [phase, advanceLevel, onMenu, isChallenge]);
+  }, [phase, advanceLevel, onMenu, isChallenge, chestReward]);
 
   useEffect(() => {
     if (phase !== "playing") return;
@@ -472,6 +502,18 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
       savedSnapshot.current = loadProgress();
       setCompletedLevel(level);
       setCompletedStats({ score, hands, stars: savedStars, handCounts: { ...handCounts } });
+
+      if (
+        !isReplaySession.current &&
+        isMilestoneChestLevel(level) &&
+        !hasClaimedMilestoneChest(level)
+      ) {
+        setChestReward({
+          level,
+          gems: rollMilestoneChestGems(level),
+          opened: false,
+        });
+      }
 
       if (level >= MAX_LEVEL) {
         setPhase("campaign_complete");
@@ -1044,12 +1086,68 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
                 <span>Up next: {nextCfg.label}</span>
               </div>
             </div>
-            <p className="round-complete-hint">Starting level {level + 1}…</p>
-            <button type="button" className="btn ghost" onClick={advanceLevel}>
-              Continue now →
+            <p className="round-complete-hint">
+              {chestReward
+                ? "Milestone chest ready — open it for gems!"
+                : `Starting level ${level + 1}…`}
+            </p>
+            <button
+              type="button"
+              className="btn ghost"
+              onClick={() => {
+                if (chestReward) return;
+                advanceLevel();
+              }}
+              disabled={Boolean(chestReward)}
+            >
+              {chestReward ? "Open chest first" : "Continue now →"}
             </button>
           </div>
         </div>
+        )}
+
+      {chestReward &&
+        gamePortal(
+          <div className="modal-overlay levelup-overlay milestone-chest-overlay">
+            <div className="modal levelup-modal milestone-chest-modal" role="dialog" aria-labelledby="milestone-chest-title">
+              <div className="levelup-badge round-complete-badge">MILESTONE!</div>
+              <h2 id="milestone-chest-title">Level {chestReward.level} chest</h2>
+              <p className="levelup-label">
+                {chestReward.opened
+                  ? "Gems added to your balance"
+                  : "Tap the chest to open your reward"}
+              </p>
+              <button
+                type="button"
+                className={`milestone-chest${chestReward.opened ? " milestone-chest--open" : ""}`}
+                onClick={() => {
+                  if (!chestReward.opened) openMilestoneChest();
+                }}
+                aria-label={chestReward.opened ? `${chestReward.gems} gems` : "Open chest"}
+              >
+                <img
+                  src="/assets/pixellab/star-chest.png"
+                  alt=""
+                  className="milestone-chest__art"
+                />
+                {chestReward.opened && (
+                  <span className="milestone-chest__gems">
+                    <img src="/assets/header/icon_gems.svg" alt="" width={22} height={22} />
+                    +{chestReward.gems}
+                  </span>
+                )}
+              </button>
+              {chestReward.opened ? (
+                <button type="button" className="btn" onClick={claimMilestoneChestReward}>
+                  Collect &amp; continue
+                </button>
+              ) : (
+                <button type="button" className="btn" onClick={openMilestoneChest}>
+                  Open chest
+                </button>
+              )}
+            </div>
+          </div>
         )}
 
       {phase === "moves_failed" &&

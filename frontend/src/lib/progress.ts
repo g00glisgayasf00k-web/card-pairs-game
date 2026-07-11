@@ -50,6 +50,8 @@ export interface SavedProgress {
   streak: number;
   /** Beginner 1 guided lesson progress (0–3). 3 = free play on level 1. */
   tutorialStep: number;
+  /** Milestone gem chests already claimed (levels 10, 20, 30…). */
+  milestoneChestsClaimed: number[];
   updatedAt: number;
 }
 
@@ -177,6 +179,10 @@ function parseProgress(raw: string | null): SavedProgress | null {
     const energyPaidLevel =
       typeof data.energyPaidLevel === "number" ? Math.floor(data.energyPaidLevel) : null;
 
+    const milestoneChestsClaimed = parseCompletedLevels(data.milestoneChestsClaimed).filter(
+      (n) => n >= 10 && n % 10 === 0
+    );
+
     return {
       v: VERSION,
       highestUnlocked,
@@ -195,6 +201,7 @@ function parseProgress(raw: string | null): SavedProgress | null {
       energyPaidLevel,
       streak: 0,
       tutorialStep,
+      milestoneChestsClaimed,
       updatedAt: typeof data.updatedAt === "number" ? data.updatedAt : Date.now(),
     };
   } catch {
@@ -294,6 +301,7 @@ export function defaultProgress(): Omit<SavedProgress, "v" | "updatedAt"> {
     energyPaidLevel: null,
     streak: 0,
     tutorialStep: 0,
+    milestoneChestsClaimed: [],
   };
 }
 

@@ -2624,6 +2624,54 @@
   animation: round-complete-pulse 1.4s ease-in-out infinite;
 }
 
+.milestone-chest-overlay {
+  z-index: 80;
+}
+
+.milestone-chest-modal {
+  text-align: center;
+}
+
+.milestone-chest {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem;
+  width: 100%;
+  margin: 0.75rem 0 1rem;
+  padding: 0.85rem;
+  border: none;
+  border-radius: 16px;
+  background: rgba(0, 0, 0, 0.28);
+  cursor: pointer;
+}
+
+.milestone-chest__art {
+  width: 7.5rem;
+  height: auto;
+  filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.45));
+  transition: transform 0.25s ease;
+}
+
+.milestone-chest:not(.milestone-chest--open):active .milestone-chest__art {
+  transform: scale(0.96);
+}
+
+.milestone-chest--open .milestone-chest__art {
+  transform: scale(1.05);
+}
+
+.milestone-chest__gems {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 1.55rem;
+  font-weight: 900;
+  color: #ffd700;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.45);
+}
+
 .round-complete-stars {
   display: flex;
   justify-content: center;

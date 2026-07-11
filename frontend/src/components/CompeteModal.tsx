@@ -125,10 +125,11 @@ export function CompeteModal({ onClose, onPlaySolo, onPlayChallenge }: Props) {
             <div className="play-mode-modal__body">
               <div className="play-mode-sent">
                 <p>Same seeded board. Best stars win — then fewest moves, then score.</p>
+                <p className="play-mode-modal__hint">Costs 1 ⚡ energy to play.</p>
               </div>
               <div className="play-mode-modal__actions">
                 <button type="button" className="btn-primary" onClick={playMatched}>
-                  Play now
+                  Play now · ⚡1
                 </button>
               </div>
             </div>

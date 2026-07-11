@@ -20,7 +20,7 @@ interface Props {
   challengeCount?: number;
 }
 
-type Tab = "play" | "friends" | "inbox";
+type Tab = "play" | "friends" | "inbox" | "results";
 
 function myAttempt(c: ChallengeDto) {
   return c.you_are === "challenger" ? c.challenger_result : c.opponent_result;
@@ -40,6 +40,42 @@ function challengeOutcome(c: ChallengeDto): string | null {
   return c.winner_user_id === myId ? "You win" : "You lose";
 }
 
+function opponentName(c: ChallengeDto): string {
+  return (c.you_are === "challenger" ? c.opponent?.username : c.challenger?.username) ?? "?";
+}
+
+function ResultCard({ c }: { c: ChallengeDto }) {
+  const mine = myAttempt(c);
+  const theirs = theirAttempt(c);
+  const other = opponentName(c);
+  const outcome = challengeOutcome(c);
+
+  return (
+    <li className="challenge-results-card challenge-results-card--list">
+      <div className="challenge-results-card__head">
+        <strong>
+          vs {other} · {formatLevelId(c.level)}
+        </strong>
+        {outcome ? (
+          <span className="challenge-results-card__outcome">{outcome}</span>
+        ) : (
+          <span className="challenge-inbox-item__meta">Waiting</span>
+        )}
+      </div>
+      <p>
+        You {mine?.stars ?? 0}★ / {mine?.moves ?? 0}m / {(mine?.score ?? 0).toLocaleString()}
+      </p>
+      {theirs ? (
+        <p>
+          {other} {theirs.stars}★ / {theirs.moves}m / {theirs.score.toLocaleString()}
+        </p>
+      ) : (
+        <p className="play-mode-modal__hint">Waiting for {other}…</p>
+      )}
+    </li>
+  );
+}
+
 export function ChallengeFriendModal({
   onClose,
   onPlayChallenge,
@@ -56,7 +92,6 @@ export function ChallengeFriendModal({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
-  const [viewing, setViewing] = useState<ChallengeDto | null>(null);
 
   const reload = useCallback(async () => {
     setError(null);
@@ -76,24 +111,33 @@ export function ChallengeFriendModal({
     void reload();
   }, [reload]);
 
-  const pendingInbox = challenges.filter(
-    (c) =>
-      (c.status === "pending" && c.you_are === "opponent") ||
-      c.status === "active" ||
-      (c.status === "completed" &&
-        Date.now() - new Date(c.created_at).getTime() < 7 * 24 * 60 * 60 * 1000)
-  );
+  const pendingInbox = challenges.filter((c) => {
+    const mine = myAttempt(c);
+    if (c.status === "pending" && c.you_are === "opponent") return true;
+    if (mine) return false;
+    return (
+      c.status === "active" || (c.status === "pending" && c.you_are === "challenger")
+    );
+  });
+
+  const resultsList = challenges
+    .filter((c) => {
+      const mine = myAttempt(c);
+      if (!mine) return false;
+      if (c.status === "completed" || c.status === "active") return true;
+      return (
+        c.status === "expired" &&
+        Date.now() - new Date(c.created_at).getTime() < 7 * 24 * 60 * 60 * 1000
+      );
+    })
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   const friendsBadge = Math.max(friendRequestCount, incoming.length);
   const inboxBadge = Math.max(
     challengeCount,
-    challenges.filter((c) => {
-      if (c.status === "pending" && c.you_are === "opponent") return true;
-      if (c.status !== "active") return false;
-      if (c.you_are === "challenger") return !c.challenger_result;
-      return !c.opponent_result;
-    }).length
+    pendingInbox.length
   );
+  const resultsBadge = resultsList.filter((c) => c.status === "completed").length;
 
   const sendFriendRequest = async () => {
     if (!addName.trim()) return;
@@ -149,9 +193,17 @@ export function ChallengeFriendModal({
         </header>
 
         <div className="play-mode-tabs" role="tablist">
-          {(["play", "friends", "inbox"] as Tab[]).map((t) => {
+          {(["play", "friends", "inbox", "results"] as Tab[]).map((t) => {
             const badge =
-              t === "friends" ? friendsBadge : t === "inbox" ? inboxBadge : 0;
+              t === "friends"
+                ? friendsBadge
+                : t === "inbox"
+                  ? inboxBadge
+                  : t === "results"
+                    ? resultsBadge
+                    : 0;
+            const label =
+              t === "play" ? "New" : t === "friends" ? "Friends" : t === "inbox" ? "Inbox" : "Results";
             return (
               <button
                 key={t}
@@ -161,7 +213,7 @@ export function ChallengeFriendModal({
                 className={`play-mode-tab${tab === t ? " play-mode-tab--on" : ""}`}
                 onClick={() => setTab(t)}
               >
-                {t === "play" ? "New" : t === "friends" ? "Friends" : "Inbox"}
+                {label}
                 {badge > 0 && (
                   <span className="play-mode-tab__badge" aria-hidden>
                     {badge > 99 ? "99+" : badge}
@@ -314,31 +366,20 @@ export function ChallengeFriendModal({
           {tab === "inbox" && (
             <div className="play-mode-panel">
               {pendingInbox.length === 0 ? (
-                <p className="play-mode-modal__hint">No challenges yet.</p>
+                <p className="play-mode-modal__hint">
+                  Nothing to play — check Results for finished matches.
+                </p>
               ) : (
                 <ul className="challenge-inbox-list">
                   {pendingInbox.map((c) => {
-                    const other =
-                      c.you_are === "challenger" ? c.opponent?.username : c.challenger?.username;
-                    const mine = myAttempt(c);
-                    const theirs = theirAttempt(c);
-                    const outcome = challengeOutcome(c);
-                    const canPlay =
-                      !mine &&
-                      (c.status === "active" ||
-                        (c.status === "pending" && c.you_are === "challenger"));
-                    const canView = Boolean(mine);
-                    let meta = c.status;
-                    if (mine && !theirs) meta = "your score in · waiting";
-                    else if (outcome) meta = outcome;
-                    else if (mine && theirs) meta = "both scores in";
+                    const other = opponentName(c);
                     return (
                       <li key={c.id} className="challenge-inbox-item">
                         <div>
                           <strong>
-                            vs {other ?? "?"} · {formatLevelId(c.level)}
+                            vs {other} · {formatLevelId(c.level)}
                           </strong>
-                          <span className="challenge-inbox-item__meta">{meta}</span>
+                          <span className="challenge-inbox-item__meta">{c.status}</span>
                         </div>
                         <div className="challenge-inbox-item__actions">
                           {c.status === "pending" && c.you_are === "opponent" && (
@@ -365,7 +406,8 @@ export function ChallengeFriendModal({
                               </button>
                             </>
                           )}
-                          {canPlay && (
+                          {(c.status === "active" ||
+                            (c.status === "pending" && c.you_are === "challenger")) && (
                             <button
                               type="button"
                               className="play-mode-wager play-mode-wager--on"
@@ -374,62 +416,27 @@ export function ChallengeFriendModal({
                               Play
                             </button>
                           )}
-                          {canView && (
-                            <button
-                              type="button"
-                              className="play-mode-wager"
-                              onClick={() => setViewing(c)}
-                            >
-                              Results
-                            </button>
-                          )}
                         </div>
                       </li>
                     );
                   })}
                 </ul>
               )}
-              {viewing && (
-                <div className="challenge-results-card" role="status">
-                  <strong>
-                    vs{" "}
-                    {viewing.you_are === "challenger"
-                      ? viewing.opponent?.username
-                      : viewing.challenger?.username}{" "}
-                    · {formatLevelId(viewing.level)}
-                  </strong>
-                  {(() => {
-                    const mine = myAttempt(viewing);
-                    const theirs = theirAttempt(viewing);
-                    const otherName =
-                      viewing.you_are === "challenger"
-                        ? viewing.opponent?.username
-                        : viewing.challenger?.username;
-                    const outcome = challengeOutcome(viewing);
-                    return (
-                      <>
-                        {outcome && <p className="challenge-results-card__outcome">{outcome}</p>}
-                        <p>
-                          You {mine?.stars ?? 0}★ / {mine?.moves ?? 0}m /{" "}
-                          {(mine?.score ?? 0).toLocaleString()}
-                        </p>
-                        {theirs ? (
-                          <p>
-                            {otherName ?? "Opp"} {theirs.stars}★ / {theirs.moves}m /{" "}
-                            {theirs.score.toLocaleString()}
-                          </p>
-                        ) : (
-                          <p className="play-mode-modal__hint">
-                            Waiting for {otherName ?? "opponent"}…
-                          </p>
-                        )}
-                      </>
-                    );
-                  })()}
-                  <button type="button" className="btn ghost" onClick={() => setViewing(null)}>
-                    Close results
-                  </button>
-                </div>
+            </div>
+          )}
+
+          {tab === "results" && (
+            <div className="play-mode-panel">
+              {resultsList.length === 0 ? (
+                <p className="play-mode-modal__hint">
+                  No results yet — finish a challenge to see scores here.
+                </p>
+              ) : (
+                <ul className="challenge-results-list">
+                  {resultsList.map((c) => (
+                    <ResultCard key={c.id} c={c} />
+                  ))}
+                </ul>
               )}
             </div>
           )}

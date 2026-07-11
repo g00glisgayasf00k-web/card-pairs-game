@@ -1280,11 +1280,32 @@ button.royal-resource:active {
   gap: 0.35rem;
 }
 
+.challenge-results-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.challenge-results-card--list {
+  margin-top: 0;
+}
+
+.challenge-results-card__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
 .challenge-results-card__outcome {
   margin: 0.15rem 0 0;
-  font-size: 1rem;
+  font-size: 0.85rem;
   font-weight: 800;
   color: #ffd700;
+  white-space: nowrap;
 }
 
 .challenge-results-card p {

@@ -1,4 +1,11 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import {
+  joinQuickMatch,
+  leaveQuickMatch,
+  pollQuickMatch,
+  type ChallengeDto,
+} from "../lib/api";
+import { formatLevelId } from "../lib/levelMap";
 
 type Ladder = "daily" | "quick";
 
@@ -9,20 +16,95 @@ const DAILY_ROWS = [
   { rank: 4, name: "Lowball", stars: 2, moves: 15, score: "3,990" },
 ];
 
-const QUEUE = [
-  { name: "NightOwl", rating: 1280, region: "EU" },
-  { name: "FlushKing", rating: 1410, region: "US" },
-  { name: "Lowball", rating: 1195, region: "EU" },
-];
-
 interface Props {
   onClose: () => void;
   onPlaySolo: () => void;
+  onPlayChallenge: (challenge: ChallengeDto) => void;
 }
 
-export function CompeteModal({ onClose, onPlaySolo }: Props) {
-  const [ladder, setLadder] = useState<Ladder>("daily");
-  const [ready, setReady] = useState(false);
+export function CompeteModal({ onClose, onPlaySolo, onPlayChallenge }: Props) {
+  const [ladder, setLadder] = useState<Ladder>("quick");
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<"idle" | "waiting" | "matched">("idle");
+  const [error, setError] = useState<string | null>(null);
+  const [matched, setMatched] = useState<ChallengeDto | null>(null);
+  const pollingRef = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      pollingRef.current = false;
+      void leaveQuickMatch().catch(() => undefined);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (status !== "waiting") return;
+    pollingRef.current = true;
+    const id = window.setInterval(() => {
+      void pollQuickMatch()
+        .then((r) => {
+          if (!pollingRef.current) return;
+          if (r.status === "matched" && r.challenge) {
+            setMatched(r.challenge);
+            setStatus("matched");
+            setBusy(false);
+          } else if (r.status === "idle") {
+            setStatus("idle");
+            setBusy(false);
+            setError("Match timed out — try again");
+          }
+        })
+        .catch(() => undefined);
+    }, 1500);
+    return () => {
+      window.clearInterval(id);
+      pollingRef.current = false;
+    };
+  }, [status]);
+
+  const findMatch = async () => {
+    setBusy(true);
+    setError(null);
+    setMatched(null);
+    try {
+      const r = await joinQuickMatch();
+      if (r.status === "matched" && r.challenge) {
+        setMatched(r.challenge);
+        setStatus("matched");
+      } else {
+        setStatus("waiting");
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Matchmaking failed");
+      setStatus("idle");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const cancelQueue = async () => {
+    setBusy(true);
+    try {
+      await leaveQuickMatch();
+    } catch {
+      /* ignore */
+    }
+    setStatus("idle");
+    setBusy(false);
+  };
+
+  const playMatched = () => {
+    if (!matched) return;
+    onClose();
+    onPlayChallenge(matched);
+  };
+
+  const opponentName =
+    matched == null
+      ? null
+      : matched.you_are === "challenger"
+        ? matched.opponent?.username
+        : matched.challenger?.username;
 
   return (
     <div className="modal-overlay scores-overlay home-menu-overlay" onClick={onClose} role="presentation">
@@ -32,7 +114,25 @@ export function CompeteModal({ onClose, onPlaySolo }: Props) {
         role="dialog"
         aria-labelledby="compete-title"
       >
-        {!ready ? (
+        {status === "matched" && matched ? (
+          <>
+            <h2 id="compete-title">Match ready</h2>
+            <p className="play-mode-modal__lead">
+              vs {opponentName ?? "opponent"} · {formatLevelId(matched.level)}
+            </p>
+            <div className="play-mode-sent">
+              <p>Same seeded board. Best stars win — then fewest moves, then score.</p>
+            </div>
+            <div className="play-mode-modal__actions">
+              <button type="button" className="btn btn-primary" onClick={playMatched}>
+                Play now
+              </button>
+              <button type="button" className="btn scores-close" onClick={onClose}>
+                Later
+              </button>
+            </div>
+          </>
+        ) : (
           <>
             <h2 id="compete-title">Compete</h2>
             <p className="play-mode-modal__lead">
@@ -43,41 +143,44 @@ export function CompeteModal({ onClose, onPlaySolo }: Props) {
               <button
                 type="button"
                 role="tab"
-                aria-selected={ladder === "daily"}
-                className={`play-mode-tab${ladder === "daily" ? " play-mode-tab--on" : ""}`}
-                onClick={() => setLadder("daily")}
-              >
-                Daily board
-              </button>
-              <button
-                type="button"
-                role="tab"
                 aria-selected={ladder === "quick"}
                 className={`play-mode-tab${ladder === "quick" ? " play-mode-tab--on" : ""}`}
                 onClick={() => setLadder("quick")}
               >
                 Quick match
               </button>
+              <button
+                type="button"
+                role="tab"
+                aria-selected={ladder === "daily"}
+                className={`play-mode-tab${ladder === "daily" ? " play-mode-tab--on" : ""}`}
+                onClick={() => setLadder("daily")}
+              >
+                Daily board
+              </button>
             </div>
+
+            {error && <p className="play-mode-modal__error">{error}</p>}
 
             {ladder === "daily" ? (
               <div className="play-mode-panel">
                 <div className="play-mode-stats">
                   <div>
-                    <span className="play-mode-stats__val">12h 14m</span>
+                    <span className="play-mode-stats__val">Soon</span>
                     <span className="play-mode-stats__label">Resets in</span>
                   </div>
                   <div>
-                    <span className="play-mode-stats__val">1,842</span>
+                    <span className="play-mode-stats__val">—</span>
                     <span className="play-mode-stats__label">Players today</span>
                   </div>
                   <div>
-                    <span className="play-mode-stats__val">#128</span>
+                    <span className="play-mode-stats__val">—</span>
                     <span className="play-mode-stats__label">Your rank</span>
                   </div>
                 </div>
                 <p className="play-mode-modal__hint">
-                  One seeded board worldwide. Ranking = stars, then moves, then score.
+                  One seeded board worldwide. Ranking = stars, then moves, then score. Coming soon —
+                  try Quick match or Solo for now.
                 </p>
                 <table className="play-mode-table">
                   <thead>
@@ -101,92 +204,42 @@ export function CompeteModal({ onClose, onPlaySolo }: Props) {
                     ))}
                   </tbody>
                 </table>
-                <button type="button" className="btn btn-primary" onClick={() => setReady(true)}>
-                  Play today&apos;s board
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => {
+                    onClose();
+                    onPlaySolo();
+                  }}
+                >
+                  Play Solo instead
                 </button>
               </div>
             ) : (
               <div className="play-mode-panel">
                 <p className="play-mode-modal__hint">
-                  Match vs a nearby rating. Same seed for both — better stars / moves wins.
+                  Matched vs a player near your campaign level. Same seed — better stars / moves wins.
                 </p>
-                <table className="play-mode-table">
-                  <thead>
-                    <tr>
-                      <th>In queue</th>
-                      <th>Rating</th>
-                      <th>Region</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {QUEUE.map((q) => (
-                      <tr key={q.name}>
-                        <td>{q.name}</td>
-                        <td>{q.rating}</td>
-                        <td>{q.region}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <div className="play-mode-stats play-mode-stats--2">
-                  <div>
-                    <span className="play-mode-stats__val">1,240</span>
-                    <span className="play-mode-stats__label">Your rating</span>
-                  </div>
-                  <div>
-                    <span className="play-mode-stats__val">~8s</span>
-                    <span className="play-mode-stats__label">Est. wait</span>
-                  </div>
-                </div>
-                <button type="button" className="btn btn-primary" onClick={() => setReady(true)}>
-                  Find match
-                </button>
+                {status === "waiting" ? (
+                  <>
+                    <div className="play-mode-sent">
+                      <p>Searching for a similar-level opponent…</p>
+                    </div>
+                    <button type="button" className="btn scores-close" disabled={busy} onClick={() => void cancelQueue()}>
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <button type="button" className="btn btn-primary" disabled={busy} onClick={() => void findMatch()}>
+                    {busy ? "Finding…" : "Find match"}
+                  </button>
+                )}
               </div>
             )}
 
             <button type="button" className="btn scores-close" onClick={onClose}>
               Close
             </button>
-          </>
-        ) : (
-          <>
-            <h2 id="compete-title">Match ready</h2>
-            <p className="play-mode-modal__lead">
-              {ladder === "daily" ? "Daily board — attempt queued" : "Matched vs FlushKing"}
-            </p>
-            <div className="play-mode-setup">
-              <div className="play-mode-setup__card">
-                <span className="play-mode-setup__label">Goals</span>
-                <strong>Pair of K&apos;s · 56789</strong>
-                <span className="play-mode-setup__hint">Target pts + 3★ move budget</span>
-              </div>
-              <div className="play-mode-setup__card">
-                <span className="play-mode-setup__label">Rules</span>
-                <strong>Seeded · fair</strong>
-                <span className="play-mode-setup__hint">Assists marked</span>
-              </div>
-            </div>
-            <div className="play-mode-sent">
-              <p>
-                Live ladders and matchmaking are next. Jump into Solo to keep playing while ranked tables
-                go live.
-              </p>
-            </div>
-            <div className="play-mode-modal__actions">
-              <button
-                type="button"
-                className="btn btn-primary"
-                onClick={() => {
-                  onClose();
-                  onPlaySolo();
-                }}
-              >
-                Play Solo instead
-              </button>
-              <button type="button" className="btn scores-close" onClick={() => setReady(false)}>
-                Back
-              </button>
-            </div>
           </>
         )}
       </div>

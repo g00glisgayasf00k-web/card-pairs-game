@@ -46,6 +46,19 @@ def ensure_schema():
         except OperationalError:
             cols = {c["name"] for c in inspector.get_columns("users")}
 
+    if "challenges" in inspector.get_table_names():
+        ch_cols = {c["name"] for c in inspector.get_columns("challenges")}
+        if "kind" not in ch_cols:
+            try:
+                with engine.begin() as conn:
+                    conn.execute(
+                        text(
+                            "ALTER TABLE challenges ADD COLUMN kind VARCHAR(16) DEFAULT 'friend' NOT NULL"
+                        )
+                    )
+            except OperationalError:
+                pass
+
 
 def ensure_admin_user():
     username = (os.environ.get("ADMIN_USERNAME") or "").strip()

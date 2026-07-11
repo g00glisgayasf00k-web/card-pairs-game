@@ -4,8 +4,10 @@ import { Leaderboard } from "../components/Leaderboard";
 import { ProfileModal } from "../components/ProfileModal";
 import { ChallengeFriendModal } from "../components/ChallengeFriendModal";
 import { CompeteModal } from "../components/CompeteModal";
+import { GemShopModal } from "../components/GemShopModal";
 import { clearProgress, loadProgress } from "../lib/progress";
 import { MAX_LEVEL } from "../lib/levels";
+import { formatLevelId } from "../lib/levelMap";
 import type { ChallengeDto } from "../lib/api";
 
 interface Props {
@@ -17,8 +19,9 @@ interface Props {
   onPlayChallenge: (challenge: ChallengeDto) => void;
 }
 
-type HomeMenu = "leaderboard" | "rules" | "account" | null;
+type HomeMenu = "leaderboard" | "rules" | "account" | "shop" | null;
 type PlaySheet = "challenge" | "compete" | null;
+type BottomTab = "play" | "scores" | "rules" | "shop" | "settings";
 
 export function OnboardingScreen({
   username,
@@ -30,7 +33,9 @@ export function OnboardingScreen({
 }: Props) {
   const [menu, setMenu] = useState<HomeMenu>(null);
   const [playSheet, setPlaySheet] = useState<PlaySheet>(null);
+  const [walletTick, setWalletTick] = useState(0);
   const saved = loadProgress();
+  void walletTick;
 
   const startFresh = () => {
     clearProgress();
@@ -41,108 +46,127 @@ export function OnboardingScreen({
 
   const handleAccountChange = () => {
     onSessionChange?.();
+    setWalletTick((t) => t + 1);
   };
 
   const cleared = (saved?.completedLevels ?? []).length;
+  const currentLevel = saved?.level ?? 1;
+  const gems = saved?.credits ?? 0;
+  const progressPct = Math.min(100, Math.round((cleared / MAX_LEVEL) * 100));
+
+  const openTab = (tab: BottomTab) => {
+    if (tab === "play") {
+      setMenu(null);
+      return;
+    }
+    if (tab === "scores") setMenu("leaderboard");
+    else if (tab === "rules") setMenu("rules");
+    else if (tab === "shop") setMenu("shop");
+    else setMenu("account");
+  };
+
+  const activeTab: BottomTab =
+    menu === "leaderboard"
+      ? "scores"
+      : menu === "rules"
+        ? "rules"
+        : menu === "shop"
+          ? "shop"
+          : menu === "account"
+            ? "settings"
+            : "play";
 
   return (
-    <div className="home-screen home-screen--royal">
+    <div className="home-screen home-screen--royal home-screen--v2">
       <div className="mobile-shell mobile-shell--home">
-        <header className="home-toolbar">
-          <span className="home-toolbar__brand" aria-hidden>
-            ♠
-          </span>
-          <div className="home-toolbar__actions">
+        <header className="home-topbar">
+          <button
+            type="button"
+            className="home-topbar__menu"
+            aria-label="Settings"
+            onClick={() => setMenu(menu === "account" ? null : "account")}
+          >
+            <span aria-hidden />
+            <span aria-hidden />
+            <span aria-hidden />
+          </button>
+
+          <div className="home-topbar__brand" aria-label="Royal Poker Match">
+            <span className="home-topbar__crown" aria-hidden>
+              👑
+            </span>
+            <span className="home-topbar__royal">Royal</span>
+            <span className="home-topbar__title">Poker Match</span>
+            <span className="home-topbar__suits" aria-hidden>
+              <span className="suit-spades">♠</span>
+              <span className="suit-hearts">♥</span>
+              <span className="suit-clubs">♣</span>
+              <span className="suit-diamonds">♦</span>
+            </span>
+          </div>
+
+          <div className="home-topbar__right">
+            {loggedIn && (
+              <button
+                type="button"
+                className="home-gem-chip"
+                onClick={() => setMenu("shop")}
+                aria-label={`${gems} gems`}
+              >
+                <span aria-hidden>💎</span>
+                <strong>{gems.toLocaleString()}</strong>
+                <span className="home-gem-chip__plus" aria-hidden>
+                  +
+                </span>
+              </button>
+            )}
             <button
               type="button"
-              className={`home-icon-btn home-icon-btn--labeled${menu === "leaderboard" ? " home-icon-btn--active" : ""}`}
-              aria-label="High scores"
-              onClick={() => setMenu(menu === "leaderboard" ? null : "leaderboard")}
-            >
-              <span className="home-icon-btn__label">Scores</span>
-              <span className="home-icon-btn__icon" aria-hidden>
-                🏆
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`home-icon-btn home-icon-btn--labeled${menu === "rules" ? " home-icon-btn--active" : ""}`}
-              aria-label="How to play"
-              onClick={() => setMenu(menu === "rules" ? null : "rules")}
-            >
-              <span className="home-icon-btn__label">Rules</span>
-              <span className="home-icon-btn__icon" aria-hidden>
-                📖
-              </span>
-            </button>
-            <button
-              type="button"
-              className={`home-icon-btn home-icon-btn--labeled home-icon-btn--account${menu === "account" ? " home-icon-btn--active" : ""}${loggedIn ? " home-icon-btn--signed-in" : ""}`}
-              aria-label={loggedIn ? `Account: ${username ?? "player"}` : "Sign in or create account"}
+              className={`home-avatar-btn${loggedIn ? " home-avatar-btn--on" : ""}`}
+              aria-label={loggedIn ? `Account: ${username ?? "player"}` : "Sign in"}
               onClick={() => setMenu(menu === "account" ? null : "account")}
             >
-              <span className="home-icon-btn__label">Account</span>
-              <span className="home-icon-btn__icon" aria-hidden>
-                👤
-              </span>
-              {loggedIn && <span className="home-icon-btn__dot" aria-hidden />}
+              👤
             </button>
           </div>
-        </header>
-
-        <header className={`home-hero${loggedIn ? " home-hero--compact" : ""}`}>
-          <div className="home-hero__shine" aria-hidden />
-
-          <div className={`royal-logo${loggedIn ? " royal-logo--compact" : ""}`}>
-            <div className="royal-logo__crown" aria-hidden>
-              👑
-            </div>
-            <div className="royal-logo__shield">
-              <span className="royal-logo__line">Royal</span>
-              <span className="royal-logo__line royal-logo__line--main">Poker Match</span>
-              <div className="royal-logo__suits" aria-hidden>
-                <span className="suit-spades">♠</span>
-                <span className="suit-hearts">♥</span>
-                <span className="suit-clubs">♣</span>
-                <span className="suit-diamonds">♦</span>
-              </div>
-            </div>
-          </div>
-
-          {!loggedIn && (
-            <>
-              <div className="home-hero__portrait" aria-hidden>
-                🦊
-              </div>
-              <div className="royal-plaque">
-                <span>Build hands</span>
-                <span>Beat levels</span>
-                <span>Become royal</span>
-              </div>
-              <div className="home-motto-chips" aria-hidden>
-                <span>🪙</span>
-                <span>🃏</span>
-                <span>👑</span>
-              </div>
-            </>
-          )}
-
-          {loggedIn && (
-            <p className="home-hero__ask">How do you want to play?</p>
-          )}
         </header>
 
         {loggedIn ? (
           <>
-            <div className="play-modes" role="group" aria-label="Play modes">
+            <section className="home-hero-banner" aria-label="Play modes">
+              <div className="home-hero-banner__art" aria-hidden>
+                <div className="home-hero-cards">
+                  <span className="home-hero-card home-hero-card--a">A♠</span>
+                  <span className="home-hero-card home-hero-card--k">K♥</span>
+                  <span className="home-hero-card home-hero-card--q">Q♣</span>
+                </div>
+                <div className="home-hero-chips">
+                  <span className="home-hero-chip home-hero-chip--red" />
+                  <span className="home-hero-chip home-hero-chip--blue" />
+                  <span className="home-hero-chip home-hero-chip--gold" />
+                </div>
+              </div>
+              <h1 className="home-hero-banner__ask">How do you want to play?</h1>
+            </section>
+
+            <div className="play-modes play-modes--v2" role="group" aria-label="Play modes">
               <button type="button" className="play-mode-card play-mode-card--solo" onClick={onPlay}>
-                <span className="play-mode-card__tag">Solo</span>
-                <span className="play-mode-card__title">Enter table</span>
-                <span className="play-mode-card__desc">
-                  Campaign levels, stars &amp; energy
+                <div className="play-mode-card__body">
+                  <span className="play-mode-card__tag">Solo</span>
+                  <span className="play-mode-card__title">Enter table</span>
+                  <span className="play-mode-card__desc">Campaign levels, stars &amp; energy</span>
+                  <span className="play-mode-card__progress-label">
+                    ★ {cleared} / {MAX_LEVEL} cleared
+                  </span>
+                  <span className="play-mode-card__progress" aria-hidden>
+                    <span style={{ width: `${progressPct}%` }} />
+                  </span>
+                </div>
+                <span className="play-mode-card__icon play-mode-card__icon--solo" aria-hidden>
+                  🏆
                 </span>
-                <span className="play-mode-card__meta">
-                  {saved ? `${cleared} / ${MAX_LEVEL} cleared` : "Choose your level"}
+                <span className="play-mode-card__chev" aria-hidden>
+                  ›
                 </span>
               </button>
 
@@ -151,12 +175,18 @@ export function OnboardingScreen({
                 className="play-mode-card play-mode-card--challenge"
                 onClick={() => setPlaySheet("challenge")}
               >
-                <span className="play-mode-card__tag">Async</span>
-                <span className="play-mode-card__title">Challenge a friend</span>
-                <span className="play-mode-card__desc">
-                  Same seed — best stars / fewest moves
+                <div className="play-mode-card__body">
+                  <span className="play-mode-card__tag">Async</span>
+                  <span className="play-mode-card__title">Challenge a friend</span>
+                  <span className="play-mode-card__desc">Same seed — best stars / fewest moves</span>
+                  <span className="play-mode-card__meta">💎 Optional gem wager</span>
+                </div>
+                <span className="play-mode-card__icon play-mode-card__icon--challenge" aria-hidden>
+                  ⚔️
                 </span>
-                <span className="play-mode-card__meta">Optional gem wager</span>
+                <span className="play-mode-card__chev" aria-hidden>
+                  ›
+                </span>
               </button>
 
               <button
@@ -164,25 +194,88 @@ export function OnboardingScreen({
                 className="play-mode-card play-mode-card--compete"
                 onClick={() => setPlaySheet("compete")}
               >
-                <span className="play-mode-card__tag">Ranked</span>
-                <span className="play-mode-card__title">Compete</span>
-                <span className="play-mode-card__desc">
-                  Daily board or quick match ladder
+                <div className="play-mode-card__body">
+                  <span className="play-mode-card__tag">Ranked</span>
+                  <span className="play-mode-card__title">Compete</span>
+                  <span className="play-mode-card__desc">Daily board or quick match ladder</span>
+                  <span className="play-mode-card__meta">🛡 No friends required</span>
+                </div>
+                <span className="play-mode-card__icon play-mode-card__icon--compete" aria-hidden>
+                  👑
                 </span>
-                <span className="play-mode-card__meta">No friends required</span>
+                <span className="play-mode-card__chev" aria-hidden>
+                  ›
+                </span>
               </button>
             </div>
 
-            {saved && (
-              <button type="button" className="home-start-over" onClick={startFresh}>
-                Start over from level 1
-              </button>
-            )}
+            <button type="button" className="home-level-strip" onClick={startFresh}>
+              <span className="home-level-strip__badge">{currentLevel}</span>
+              <span className="home-level-strip__text">
+                <strong>Level {formatLevelId(currentLevel)}</strong>
+                <span>Start over from level 1</span>
+              </span>
+              <span className="home-level-strip__chest" aria-hidden>
+                <span className="home-level-strip__bar">
+                  <span style={{ width: `${Math.min(100, (currentLevel % 20) * 5)}%` }} />
+                </span>
+                🧰
+              </span>
+            </button>
           </>
         ) : (
-          <div className="home-auth-inline">
-            <AuthPanel variant="home" onSuccess={() => handleAccountChange()} />
-          </div>
+          <>
+            <header className="home-hero home-hero--compact">
+              <div className="home-hero__shine" aria-hidden />
+              <div className="royal-logo">
+                <div className="royal-logo__crown" aria-hidden>
+                  👑
+                </div>
+                <div className="royal-logo__shield">
+                  <span className="royal-logo__line">Royal</span>
+                  <span className="royal-logo__line royal-logo__line--main">Poker Match</span>
+                  <div className="royal-logo__suits" aria-hidden>
+                    <span className="suit-spades">♠</span>
+                    <span className="suit-hearts">♥</span>
+                    <span className="suit-clubs">♣</span>
+                    <span className="suit-diamonds">♦</span>
+                  </div>
+                </div>
+              </div>
+              <div className="royal-plaque">
+                <span>Build hands</span>
+                <span>Beat levels</span>
+                <span>Become royal</span>
+              </div>
+            </header>
+            <div className="home-auth-inline">
+              <AuthPanel variant="home" onSuccess={() => handleAccountChange()} />
+            </div>
+          </>
+        )}
+
+        {loggedIn && (
+          <nav className="home-bottom-nav" aria-label="Main">
+            {(
+              [
+                ["play", "Play", "🏠"],
+                ["scores", "Scores", "🏆"],
+                ["rules", "Rules", "📖"],
+                ["shop", "Shop", "🛒"],
+                ["settings", "Settings", "⚙️"],
+              ] as const
+            ).map(([id, label, icon]) => (
+              <button
+                key={id}
+                type="button"
+                className={`home-bottom-nav__btn${activeTab === id ? " home-bottom-nav__btn--on" : ""}`}
+                onClick={() => openTab(id)}
+              >
+                <span aria-hidden>{icon}</span>
+                {label}
+              </button>
+            ))}
+          </nav>
         )}
       </div>
 
@@ -213,7 +306,9 @@ export function OnboardingScreen({
           >
             <h2 id="home-rules-title">How to play</h2>
             <ul className="home-rules-list home-rules-list--modal">
-              <li><strong>Swipe</strong> exactly five adjacent cards.</li>
+              <li>
+                <strong>Swipe</strong> exactly five adjacent cards.
+              </li>
               <li>Make poker hands to clear cards and score points.</li>
               <li>Reach the point goal before moves run out.</li>
               <li>Earn up to 3★ per level for speed and challenges.</li>
@@ -238,6 +333,15 @@ export function OnboardingScreen({
         />
       )}
 
+      {menu === "shop" && (
+        <GemShopModal
+          onClose={closeMenu}
+          onBalanceChange={() => {
+            handleAccountChange();
+          }}
+        />
+      )}
+
       {playSheet === "challenge" && (
         <ChallengeFriendModal
           onClose={() => setPlaySheet(null)}
@@ -249,7 +353,17 @@ export function OnboardingScreen({
       )}
 
       {playSheet === "compete" && (
-        <CompeteModal onClose={() => setPlaySheet(null)} onPlaySolo={onPlay} />
+        <CompeteModal
+          onClose={() => setPlaySheet(null)}
+          onPlaySolo={() => {
+            setPlaySheet(null);
+            onPlay();
+          }}
+          onPlayChallenge={(c) => {
+            setPlaySheet(null);
+            onPlayChallenge(c);
+          }}
+        />
       )}
     </div>
   );

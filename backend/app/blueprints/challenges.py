@@ -85,6 +85,7 @@ def _serialize(ch: Challenge, me: int) -> dict:
         "level": ch.level,
         "board_seed": ch.board_seed,
         "status": ch.status,
+        "kind": getattr(ch, "kind", None) or "friend",
         "wager_gems": ch.wager_gems,
         "expires_at": ch.expires_at.isoformat(),
         "challenger": _user_public(ch.challenger),
@@ -150,27 +151,22 @@ def create_challenge():
     me = int(get_jwt_identity())
     data = request.get_json(silent=True) or {}
     friend_id = data.get("friend_user_id")
-    level = data.get("level")
     try:
         friend_id = int(friend_id)
-        level = int(level)
     except (TypeError, ValueError):
-        return jsonify({"error": "friend_user_id and level required"}), 400
+        return jsonify({"error": "friend_user_id required"}), 400
 
     if friend_id == me:
         return jsonify({"error": "Cannot challenge yourself"}), 400
-    if level < 1 or level > MAX_LEVEL:
-        return jsonify({"error": "Invalid level"}), 400
     if not _are_friends(me, friend_id):
         return jsonify({"error": "You must be friends first"}), 403
-
-    unlocked = _highest_unlocked(me)
-    if level > unlocked:
-        return jsonify({"error": f"Level {level} is locked for you"}), 403
 
     opponent = User.query.get(friend_id)
     if not opponent:
         return jsonify({"error": "Player not found"}), 404
+
+    level = min(_highest_unlocked(me), _highest_unlocked(friend_id))
+    level = max(1, min(MAX_LEVEL, level))
 
     seed = secrets.randbits(31)
     ch = Challenge(
@@ -179,6 +175,7 @@ def create_challenge():
         level=level,
         board_seed=seed,
         status="pending",
+        kind="friend",
         wager_gems=0,
         expires_at=_utc_now() + timedelta(hours=CHALLENGE_TTL_HOURS),
     )

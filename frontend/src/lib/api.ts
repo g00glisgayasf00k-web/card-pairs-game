@@ -319,6 +319,7 @@ export interface ChallengeDto {
   level: number;
   board_seed: number;
   status: string;
+  kind?: "friend" | "quick" | string;
   wager_gems: number;
   expires_at: string;
   challenger: FriendUser | null;
@@ -334,10 +335,10 @@ export async function fetchChallenges() {
   return request<{ challenges: ChallengeDto[] }>("/api/challenges");
 }
 
-export async function createChallenge(friendUserId: number, level: number) {
+export async function createChallenge(friendUserId: number) {
   return request<{ challenge: ChallengeDto }>("/api/challenges", {
     method: "POST",
-    body: JSON.stringify({ friend_user_id: friendUserId, level }),
+    body: JSON.stringify({ friend_user_id: friendUserId }),
   });
 }
 
@@ -365,5 +366,24 @@ export async function submitChallenge(
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+export type MatchmakingStatus = "idle" | "waiting" | "matched";
+
+export async function joinQuickMatch() {
+  return request<{ status: MatchmakingStatus; ticket_id?: number; challenge?: ChallengeDto }>(
+    "/api/matchmaking/quick",
+    { method: "POST" }
+  );
+}
+
+export async function pollQuickMatch() {
+  return request<{ status: MatchmakingStatus; ticket_id?: number; challenge?: ChallengeDto }>(
+    "/api/matchmaking/quick"
+  );
+}
+
+export async function leaveQuickMatch() {
+  return request<{ ok: boolean }>("/api/matchmaking/quick", { method: "DELETE" });
 }
 

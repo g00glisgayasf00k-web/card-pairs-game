@@ -11,7 +11,6 @@ import {
   type ChallengeDto,
   type FriendshipItem,
 } from "../lib/api";
-import { getCurrentLevel } from "../lib/levelProgress";
 import { formatLevelId } from "../lib/levelMap";
 
 interface Props {
@@ -28,7 +27,6 @@ export function ChallengeFriendModal({ onClose, onPlayChallenge }: Props) {
   const [outgoing, setOutgoing] = useState<FriendshipItem[]>([]);
   const [challenges, setChallenges] = useState<ChallengeDto[]>([]);
   const [friendId, setFriendId] = useState<number | null>(null);
-  const [level, setLevel] = useState(() => getCurrentLevel());
   const [addName, setAddName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -41,7 +39,7 @@ export function ChallengeFriendModal({ onClose, onPlayChallenge }: Props) {
       setFriends(f.friends);
       setIncoming(f.incoming);
       setOutgoing(f.outgoing);
-      setChallenges(c.challenges);
+      setChallenges(c.challenges.filter((ch) => (ch.kind ?? "friend") === "friend"));
       if (friendId == null && f.friends[0]) setFriendId(f.friends[0].user.id);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not load friends");
@@ -86,8 +84,8 @@ export function ChallengeFriendModal({ onClose, onPlayChallenge }: Props) {
     setError(null);
     setInfo(null);
     try {
-      const { challenge } = await createChallenge(friendId, level);
-      setInfo(`Challenge sent — level ${formatLevelId(level)}`);
+      const { challenge } = await createChallenge(friendId);
+      setInfo(`Challenge sent — level ${formatLevelId(challenge.level)} (auto-matched)`);
       await reload();
       setTab("inbox");
       onPlayChallenge(challenge);
@@ -241,18 +239,9 @@ export function ChallengeFriendModal({ onClose, onPlayChallenge }: Props) {
             )}
 
             <h3 className="play-mode-modal__section">Level</h3>
-            <div className="challenge-level-row">
-              <label htmlFor="challenge-level">Campaign level</label>
-              <input
-                id="challenge-level"
-                type="number"
-                min={1}
-                max={500}
-                value={level}
-                onChange={(e) => setLevel(Math.max(1, Math.min(500, Number(e.target.value) || 1)))}
-              />
-              <span className="play-mode-modal__hint">{formatLevelId(level)}</span>
-            </div>
+            <p className="play-mode-modal__hint">
+              Board level is chosen automatically from both players&apos; campaign progress.
+            </p>
 
             <button
               type="button"

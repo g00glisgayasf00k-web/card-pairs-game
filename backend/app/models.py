@@ -104,6 +104,7 @@ class Challenge(db.Model):
     level = db.Column(db.Integer, nullable=False)
     board_seed = db.Column(db.BigInteger, nullable=False)
     status = db.Column(db.String(16), nullable=False, default="pending")
+    kind = db.Column(db.String(16), nullable=False, default="friend")
     wager_gems = db.Column(db.Integer, nullable=False, default=0)
     expires_at = db.Column(db.DateTime, nullable=False)
 
@@ -131,3 +132,20 @@ class Challenge(db.Model):
     challenger = db.relationship("User", foreign_keys=[challenger_id])
     opponent = db.relationship("User", foreign_keys=[opponent_id])
     winner = db.relationship("User", foreign_keys=[winner_user_id])
+
+
+class MatchTicket(db.Model):
+    __tablename__ = "match_tickets"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    unlocked_level = db.Column(db.Integer, nullable=False, default=1)
+    status = db.Column(db.String(16), nullable=False, default="waiting")
+    challenge_id = db.Column(db.Integer, db.ForeignKey("challenges.id"), nullable=True)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    expires_at = db.Column(db.DateTime, nullable=False)
+
+    user = db.relationship("User", foreign_keys=[user_id])
+    challenge = db.relationship("Challenge", foreign_keys=[challenge_id])

@@ -1,0 +1,55 @@
+@import "tailwindcss";
+
+/* Exact design-system tokens — do not invent values */
+@theme {
+  --color-home-bg: #061a17;
+  --color-home-gold: #ffd700;
+  --color-home-purple: #6c2bd9;
+  --color-home-blue: #0d47a1;
+  --color-home-green: #1b5e20;
+  --color-home-text: #ffffff;
+  --color-home-muted: #b8c4c2;
+  --color-home-grad-top: #0b2a24;
+  --color-home-grad-bottom: #04110f;
+  --radius-home-card: 20px;
+  --shadow-glow-purple: 0 0 30px rgba(108, 43, 217, 0.5);
+  --shadow-glow-blue: 0 0 30px rgba(13, 71, 161, 0.5);
+  --shadow-glow-green: 0 0 30px rgba(27, 94, 32, 0.5);
+}
+
+@utility bg-home-page {
+  background-color: #061a17;
+  background-image: linear-gradient(to bottom, #0b2a24, #04110f);
+}
+
+@utility shadow-glow-purple {
+  box-shadow: 0 0 30px rgba(108, 43, 217, 0.5);
+}
+
+@utility shadow-glow-blue {
+  box-shadow: 0 0 30px rgba(13, 71, 161, 0.5);
+}
+
+@utility shadow-glow-green {
+  box-shadow: 0 0 30px rgba(27, 94, 32, 0.5);
+}
+
+@utility rounded-home-card {
+  border-radius: 20px;
+}
+
+@utility bg-home-hero {
+  background-image: linear-gradient(to bottom, #0b2a24, #04110f);
+}
+
+@utility bg-mode-purple {
+  background-image: linear-gradient(135deg, #6c2bd9 0%, #061a17 100%);
+}
+
+@utility bg-mode-blue {
+  background-image: linear-gradient(135deg, #0d47a1 0%, #061a17 100%);
+}
+
+@utility bg-mode-green {
+  background-image: linear-gradient(135deg, #1b5e20 0%, #061a17 100%);
+}

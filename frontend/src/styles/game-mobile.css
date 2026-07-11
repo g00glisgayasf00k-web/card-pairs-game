@@ -39,68 +39,71 @@
   outline: none;
 }
 
-/* Play-mode color continuity from home cards */
+/* Play-mode color continuity from home cards — exact design-system hues */
 .app--theme-solo {
-  --mg-deep: #2e1065;
-  --mg-mid: #4c1d95;
-  --mg-light: #7c3aed;
-  --mg-neon: #c4b5fd;
-  --theme-glow: rgba(139, 92, 246, 0.16);
-  --theme-glow-soft: rgba(168, 85, 247, 0.1);
+  --mg-deep: #061a17;
+  --mg-mid: #6c2bd9;
+  --mg-light: #6c2bd9;
+  --mg-neon: #ffd700;
+  --theme-glow: rgba(108, 43, 217, 0.5);
+  --theme-glow-soft: rgba(108, 43, 217, 0.25);
   background:
-    radial-gradient(ellipse 120% 80% at 50% -20%, var(--theme-glow) 0%, transparent 55%),
-    radial-gradient(ellipse 80% 50% at 50% 100%, var(--theme-glow-soft) 0%, transparent 50%),
-    linear-gradient(180deg, #1e0b3d 0%, var(--mg-deep) 40%, #12061f 100%) !important;
+    radial-gradient(ellipse 120% 80% at 50% -20%, var(--theme-glow-soft) 0%, transparent 55%),
+    linear-gradient(to bottom, #0b2a24, #04110f) !important;
 }
 
 .app--theme-challenge {
-  --mg-deep: #0c2340;
-  --mg-mid: #123055;
-  --mg-light: #1e4a7a;
-  --mg-neon: #7dd3fc;
-  --theme-glow: rgba(56, 189, 248, 0.16);
-  --theme-glow-soft: rgba(56, 189, 248, 0.1);
+  --mg-deep: #061a17;
+  --mg-mid: #0d47a1;
+  --mg-light: #0d47a1;
+  --mg-neon: #ffd700;
+  --theme-glow: rgba(13, 71, 161, 0.5);
+  --theme-glow-soft: rgba(13, 71, 161, 0.25);
   background:
-    radial-gradient(ellipse 120% 80% at 50% -20%, var(--theme-glow) 0%, transparent 55%),
-    radial-gradient(ellipse 80% 50% at 50% 100%, var(--theme-glow-soft) 0%, transparent 50%),
-    linear-gradient(180deg, #0a1a30 0%, var(--mg-deep) 40%, #061018 100%) !important;
+    radial-gradient(ellipse 120% 80% at 50% -20%, var(--theme-glow-soft) 0%, transparent 55%),
+    linear-gradient(to bottom, #0b2a24, #04110f) !important;
 }
 
 .app--theme-compete {
-  --mg-deep: #0a2e1c;
-  --mg-mid: #0f4a2e;
-  --mg-light: #1a6b45;
-  --mg-neon: #7dffba;
-  --theme-glow: rgba(125, 255, 186, 0.12);
-  --theme-glow-soft: rgba(74, 222, 128, 0.08);
+  --mg-deep: #061a17;
+  --mg-mid: #1b5e20;
+  --mg-light: #1b5e20;
+  --mg-neon: #ffd700;
+  --theme-glow: rgba(27, 94, 32, 0.5);
+  --theme-glow-soft: rgba(27, 94, 32, 0.25);
   background:
-    radial-gradient(ellipse 120% 80% at 50% -20%, var(--theme-glow) 0%, transparent 55%),
-    radial-gradient(ellipse 80% 50% at 50% 100%, rgba(245, 208, 96, 0.06) 0%, transparent 50%),
-    linear-gradient(180deg, #062318 0%, var(--mg-deep) 35%, #051a10 100%) !important;
+    radial-gradient(ellipse 120% 80% at 50% -20%, var(--theme-glow-soft) 0%, transparent 55%),
+    linear-gradient(to bottom, #0b2a24, #04110f) !important;
 }
 
 .app--theme-solo .mobile-shell--framed,
 .app--theme-solo .mobile-shell--home {
   box-shadow:
     0 0 0 1px rgba(0, 0, 0, 0.5),
-    0 24px 64px rgba(0, 0, 0, 0.65),
-    0 0 80px rgba(139, 92, 246, 0.22);
-  background: linear-gradient(180deg, rgba(46, 16, 101, 0.95) 0%, rgba(18, 6, 31, 0.98) 100%);
+    0 0 30px rgba(108, 43, 217, 0.5);
+  background: linear-gradient(to bottom, #0b2a24, #04110f);
 }
 
 .app--theme-challenge .mobile-shell--framed,
 .app--theme-challenge .mobile-shell--home {
   box-shadow:
     0 0 0 1px rgba(0, 0, 0, 0.5),
-    0 24px 64px rgba(0, 0, 0, 0.65),
-    0 0 80px rgba(56, 189, 248, 0.2);
-  background: linear-gradient(180deg, rgba(12, 35, 64, 0.95) 0%, rgba(6, 16, 24, 0.98) 100%);
+    0 0 30px rgba(13, 71, 161, 0.5);
+  background: linear-gradient(to bottom, #0b2a24, #04110f);
+}
+
+.app--theme-compete .mobile-shell--framed,
+.app--theme-compete .mobile-shell--home {
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.5),
+    0 0 30px rgba(27, 94, 32, 0.5);
+  background: linear-gradient(to bottom, #0b2a24, #04110f);
 }
 
 .app--theme-solo .game-hud,
 .app--theme-challenge .game-hud,
 .app--theme-compete .game-hud {
-  border-color: color-mix(in srgb, var(--mg-neon) 35%, rgba(245, 208, 96, 0.25));
+  border-color: #ffd700;
 }
 
 /* ── Game screen root ── */
@@ -2643,10 +2646,8 @@
   padding: 0;
   margin: 0;
   border-radius: 0;
-  background:
-    radial-gradient(ellipse 120% 80% at 50% -20%, rgba(125, 255, 186, 0.08) 0%, transparent 55%),
-    radial-gradient(ellipse 80% 50% at 50% 100%, rgba(245, 208, 96, 0.06) 0%, transparent 50%),
-    linear-gradient(180deg, #062318 0%, var(--mg-deep) 35%, #051a10 100%);
+  background: #061a17;
+  background-image: linear-gradient(to bottom, #0b2a24, #04110f);
   box-shadow: none;
   outline: none;
 }

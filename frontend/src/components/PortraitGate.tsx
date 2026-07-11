@@ -34,7 +34,7 @@ export function PortraitGate({ children }: Props) {
               Please rotate your device
             </h2>
             <p className="portrait-gate__text">
-              Royal Match Poker is designed for portrait mode. Turn your phone upright to continue playing.
+              Royal Poker Match is designed for portrait mode. Turn your phone upright to continue playing.
             </p>
           </div>
         </div>

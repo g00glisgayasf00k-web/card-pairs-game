@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Royal Match Poker</string>
-    <string name="title_activity_main">Royal Match Poker</string>
+    <string name="app_name">Royal Poker Match</string>
+    <string name="title_activity_main">Royal Poker Match</string>
     <string name="package_name">com.royalmatch.poker</string>
     <string name="custom_url_scheme">com.royalmatch.poker</string>
 </resources>

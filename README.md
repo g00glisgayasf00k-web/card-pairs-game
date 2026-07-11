@@ -1,4 +1,4 @@
-# Royal Match Poker
+# Royal Poker Match
 
 A mobile-friendly web matching game: swipe **adjacent** playing cards to form poker hands. Cleared cards are replaced with new random cards. Score runs from **pair** (lowest) to **royal flush** (highest).
 

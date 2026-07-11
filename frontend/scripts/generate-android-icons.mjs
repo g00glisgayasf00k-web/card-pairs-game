@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { Resvg } from "@resvg/resvg-js";
@@ -9,6 +9,7 @@ const root = join(__dirname, "..");
 const resourcesDir = join(root, "resources");
 const assetsDir = join(resourcesDir, "assets");
 const resDir = join(root, "android", "app", "src", "main", "res");
+const BRAND_BG = "#0D2B22";
 
 const LAUNCHER_SIZES = {
   "mipmap-ldpi": 36,
@@ -52,12 +53,25 @@ async function renderSvg(svgPath, size) {
   return resvg.render().asPng();
 }
 
+async function loadIconPng(preferredPath, fallbackSvg, size) {
+  if (existsSync(preferredPath)) {
+    return sharp(preferredPath)
+      .resize(size, size, { fit: "contain", background: BRAND_BG })
+      .png()
+      .toBuffer();
+  }
+  return renderSvg(fallbackSvg, size);
+}
+
 async function writePng(buffer, outPath) {
   await sharp(buffer).png({ compressionLevel: 9 }).toFile(outPath);
 }
 
 async function writeResizedPng(buffer, outPath, size) {
-  await sharp(buffer).resize(size, size, { fit: "contain", background: "#0d4a2e" }).png().toFile(outPath);
+  await sharp(buffer)
+    .resize(size, size, { fit: "contain", background: BRAND_BG })
+    .png()
+    .toFile(outPath);
 }
 
 async function writeSplashPng(buffer, outPath, width, landscape) {
@@ -70,9 +84,23 @@ async function writeSplashPng(buffer, outPath, width, landscape) {
 
 mkdirSync(assetsDir, { recursive: true });
 
-const iconPng = await renderSvg(join(resourcesDir, "icon.svg"), 1024);
-const foregroundPng = await renderSvg(join(resourcesDir, "icon-foreground.svg"), 1024);
-const splashPng = await renderSvg(join(resourcesDir, "icon.svg"), 2732);
+const iconPng = await loadIconPng(
+  join(resourcesDir, "icon.png"),
+  join(resourcesDir, "icon.svg"),
+  1024
+);
+const foregroundPng = existsSync(join(resourcesDir, "icon-foreground.png"))
+  ? await sharp(join(resourcesDir, "icon-foreground.png")).png().toBuffer()
+  : await loadIconPng(
+      join(resourcesDir, "icon-foreground.png"),
+      join(resourcesDir, "icon-foreground.svg"),
+      1024
+    );
+const splashPng = await loadIconPng(
+  join(resourcesDir, "icon.png"),
+  join(resourcesDir, "icon.svg"),
+  2732
+);
 
 await writePng(iconPng, join(assetsDir, "icon-only.png"));
 await writePng(foregroundPng, join(assetsDir, "icon-foreground.png"));
@@ -118,4 +146,4 @@ mkdirSync(anydpiDir, { recursive: true });
 writeFileSync(join(anydpiDir, "ic_launcher.xml"), adaptiveIconXml);
 writeFileSync(join(anydpiDir, "ic_launcher_round.xml"), adaptiveIconXml);
 
-console.log("Installed Ace of Spades launcher + splash assets into android/app/src/main/res/");
+console.log("Installed Royal Poker Match launcher + splash assets into android/app/src/main/res/");

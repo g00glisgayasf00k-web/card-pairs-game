@@ -89,7 +89,7 @@ function VideoAdOverlay({
               <span className="royal-shop-ad__play" aria-hidden>
                 ▶
               </span>
-              <p className="royal-shop-ad__title">Royal Match Poker</p>
+              <p className="royal-shop-ad__title">Royal Poker Match</p>
               <p className="royal-shop-ad__tagline">Play your hand — match pairs, beat the table.</p>
             </>
           )}

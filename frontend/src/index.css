@@ -10,10 +10,10 @@
   --card-bg: #fffef8;
   --shadow: rgba(0, 0, 0, 0.45);
   /* Four-color deck */
-  --suit-hearts: #c41e3a;
-  --suit-diamonds: #1d4ed8;
-  --suit-clubs: #15803d;
-  --suit-spades: #1e293b;
+  --suit-hearts: #e63946;
+  --suit-diamonds: #2962ff;
+  --suit-clubs: #2ecc71;
+  --suit-spades: #1b1b1b;
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
   color: var(--cream);
   min-height: 100dvh;

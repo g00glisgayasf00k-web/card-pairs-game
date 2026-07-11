@@ -357,7 +357,7 @@ export function AdminApp() {
 
   const copyTempPassword = async () => {
     if (!issuedTempPassword || !userDetail) return;
-    const text = `Royal Match Poker login\nUsername: ${userDetail.username}\nTemporary password: ${issuedTempPassword}`;
+    const text = `Royal Poker Match login\nUsername: ${userDetail.username}\nTemporary password: ${issuedTempPassword}`;
     try {
       await navigator.clipboard.writeText(text);
     } catch {
@@ -372,7 +372,7 @@ export function AdminApp() {
           <div className="admin-login-brand">
             <span className="admin-login-brand__icon">♠</span>
             <div>
-              <h1>Royal Match</h1>
+              <h1>Royal Poker Match</h1>
               <p>Admin console</p>
             </div>
           </div>
@@ -416,7 +416,7 @@ export function AdminApp() {
         <div className="admin-sidebar__brand">
           <span>♠</span>
           <div>
-            <strong>Royal Match</strong>
+            <strong>Royal Poker Match</strong>
             <span>Admin</span>
           </div>
         </div>

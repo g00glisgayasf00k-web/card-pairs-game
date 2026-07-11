@@ -2,7 +2,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
   appId: "com.royalmatch.poker",
-  appName: "Royal Match Poker",
+  appName: "Royal Poker Match",
   webDir: "dist",
   server: {
     androidScheme: "https",
@@ -14,13 +14,13 @@ const config: CapacitorConfig = {
     SplashScreen: {
       launchShowDuration: 1200,
       launchAutoHide: true,
-      backgroundColor: "#0d4a2e",
+      backgroundColor: "#0D2B22",
       androidScaleType: "CENTER_CROP",
       showSpinner: false,
     },
     StatusBar: {
       style: "DARK",
-      backgroundColor: "#0d4a2e",
+      backgroundColor: "#0D2B22",
     },
   },
 };

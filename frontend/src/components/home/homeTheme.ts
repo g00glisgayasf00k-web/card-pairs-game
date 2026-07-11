@@ -2,12 +2,12 @@
 
 export const HOME_COLORS = {
   bgBase: "#061A17",
-  bgTop: "#0E2F28",
+  bgTop: "#0D2B22",
   bgBottom: "#04110F",
 
   gold: "#FFD700",
   goldHighlight: "#FFF3B0",
-  goldDeep: "#C9A23A",
+  goldDeep: "#C99A2E",
 
   purple: "#6C2BD9",
   purpleDark: "#3B0E91",
@@ -23,6 +23,11 @@ export const HOME_COLORS = {
 
   textPrimary: "#FFFFFF",
   textSecondary: "#A8B5B2",
+
+  suitSpade: "#1B1B1B",
+  suitHeart: "#E63946",
+  suitClub: "#2ECC71",
+  suitDiamond: "#2962FF",
 } as const;
 
 export type HomeGlow = "purple" | "blue" | "green";

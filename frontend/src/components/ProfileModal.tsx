@@ -49,7 +49,7 @@ export function ProfileModal({ username, onClose, onAccountChange, onSignOut }: 
           </span>
           <div>
             <p className="profile-modal__name">{username ?? "Guest player"}</p>
-            <p className="profile-modal__sub">Royal Match Poker</p>
+            <p className="profile-modal__sub">Royal Poker Match</p>
           </div>
         </div>
 

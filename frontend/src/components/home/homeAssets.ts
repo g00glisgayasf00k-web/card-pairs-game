@@ -37,8 +37,10 @@ export const HOME_ASSETS = {
     menu: "/assets/header/icon_menu.svg",
     profile: "/assets/header/icon_profile.svg",
     gems: "/assets/header/icon_gems.svg",
-    crown: "/assets/header/logo_crown.svg",
+    crown: "/assets/header/logo_crown.png",
     logo: "/assets/header/logo-royal-poker-match.png",
+    logoStacked: "/assets/brand/logo-stacked.png",
+    logoFull: "/assets/brand/logo-full-on-green.png",
   },
   nav: {
     play: "/assets/nav/nav_play.svg",

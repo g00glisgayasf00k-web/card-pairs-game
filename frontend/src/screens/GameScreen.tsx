@@ -10,7 +10,7 @@ import {
   type FullHandResult,
   type HandLabel,
 } from "../lib/pokerHands";
-import { campaignLeaderboardPoints, campaignLeaderboardPointsFromProgress, computeLevelStars, formatChallenge, getLevelConfig, levelPointsMet, levelRequirementsMet, movesRemaining, MAX_LEVEL, outOfMoves, type HandCounts } from "../lib/levels";
+import { campaignLeaderboardPoints, campaignLeaderboardPointsFromProgress, computeLevelStars, challengeKey, challengeProgress, formatChallenge, formatChallengeLabel, applyHandToChallengeCounts, getLevelConfig, levelPointsMet, levelRequirementsMet, movesRemaining, MAX_LEVEL, outOfMoves, type HandCounts } from "../lib/levels";
 import {
   canAffordMovesPack,
   HINT_COST,
@@ -205,7 +205,7 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
   const movesEfficientFor2 = levelHands <= twoStarMoveTarget;
   const movesEfficientFor3 = levelHands <= starMoveTarget;
   const challengesComplete = cfg.challenges.every(
-    (c) => (levelHandCounts[c.hand] ?? 0) >= c.minCount
+    (c) => challengeProgress(levelHandCounts, c) >= c.minCount
   );
 
   const tutorialActive = isLevel1TutorialActive(level, tutorialStep);
@@ -214,7 +214,7 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
   const tutorialFreePlay = level === 1 && tutorialStep >= TUTORIAL_FREE_STEP;
   const showChallengeUi = level > 1 || tutorialFreePlay;
   const challengesDone = cfg.challenges.filter(
-    (c) => (levelHandCounts[c.hand] ?? 0) >= c.minCount
+    (c) => challengeProgress(levelHandCounts, c) >= c.minCount
   ).length;
   const challengesTotal = cfg.challenges.length;
 
@@ -284,16 +284,20 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
   }, []);
 
   const revealHintNow = useCallback((): boolean => {
-    const priorityHands = cfg.challenges
-      .filter((c) => (levelHandCounts[c.hand] ?? 0) < c.minCount)
-      .map((c) => c.hand);
+    const unmet = cfg.challenges.filter(
+      (c) => challengeProgress(levelHandCounts, c) < c.minCount
+    );
+    const priorityHands = unmet.map((c) => c.hand);
     const result = boardRef.current?.revealHint(priorityHands);
     if (!result) {
       handleBoardFeedback("No helpful hand found — try shuffle", true);
       return false;
     }
-    const label = HAND_DISPLAY[result.hand] ?? result.hand.replace(/_/g, " ");
-    handleBoardFeedback(`Start here for a ${label}`, true);
+    const target = unmet.find((c) => c.hand === result.hand);
+    const label = target
+      ? formatChallengeLabel(target)
+      : HAND_DISPLAY[result.hand] ?? result.hand.replace(/_/g, " ");
+    handleBoardFeedback(`Start here for ${label}`, true);
     return true;
   }, [cfg.challenges, levelHandCounts, handleBoardFeedback]);
 
@@ -459,10 +463,11 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
       const pts = result.totalPoints;
       const nextHands = levelHandsRef.current + 1;
       const nextScore = levelScoreRef.current + pts;
-      const nextHandCounts: HandCounts = {
-        ...levelHandCountsRef.current,
-        [result.hand]: (levelHandCountsRef.current[result.hand] ?? 0) + 1,
-      };
+      const nextHandCounts = applyHandToChallengeCounts(
+        levelHandCountsRef.current,
+        cfg.challenges,
+        result
+      );
       levelHandsRef.current = nextHands;
       levelScoreRef.current = nextScore;
       levelHandCountsRef.current = nextHandCounts;
@@ -722,18 +727,18 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
         {showChallengeUi && cfg.challenges.length > 0 && (
           <div className="game-goalbar" aria-label="Level goals">
             <div className="game-goalbar__goals">
-              {cfg.challenges.map((c) => {
-                const have = levelHandCounts[c.hand] ?? 0;
-                const done = have >= c.minCount;
-                return (
-                  <span
-                    key={`${c.hand}-${c.minCount}`}
-                    className={`tutorial-goal-chip${done ? " tutorial-goal-chip--done" : ""}`}
-                  >
-                    {done ? "✓" : "○"} {HAND_DISPLAY[c.hand]} ({Math.min(have, c.minCount)}/{c.minCount})
-                  </span>
-                );
-              })}
+                {cfg.challenges.map((c) => {
+                  const have = challengeProgress(levelHandCounts, c);
+                  const done = have >= c.minCount;
+                  return (
+                    <span
+                      key={challengeKey(c)}
+                      className={`tutorial-goal-chip${done ? " tutorial-goal-chip--done" : ""}`}
+                    >
+                      {done ? "✓" : "○"} {formatChallengeLabel(c)} ({Math.min(have, c.minCount)}/{c.minCount})
+                    </span>
+                  );
+                })}
             </div>
           </div>
         )}
@@ -879,10 +884,12 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
                 <span>{completedStats?.hands ?? 0} hands cleared</span>
               </div>
               {completedCfg.challenges.map((c) => {
-                const have = completedStats?.handCounts[c.hand] ?? 0;
+                const have = completedStats
+                  ? challengeProgress(completedStats.handCounts, c)
+                  : 0;
                 const done = have >= c.minCount;
                 return (
-                  <div className="perk" key={`${c.hand}-${c.minCount}`}>
+                  <div className="perk" key={challengeKey(c)}>
                     <span className="perk-icon">{done ? "✓" : "○"}</span>
                     <span>{formatChallenge(c)}</span>
                   </div>
@@ -1179,11 +1186,11 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
                 <h3 className="specials-subtitle">Milestone hands</h3>
                 <ul className="challenge-list challenge-list--modal">
                   {cfg.challenges.map((c) => {
-                    const have = levelHandCounts[c.hand] ?? 0;
+                    const have = challengeProgress(levelHandCounts, c);
                     const done = have >= c.minCount;
                     return (
                       <li
-                        key={`${c.hand}-${c.minCount}`}
+                        key={challengeKey(c)}
                         className={`challenge-item challenge-item--modal${done ? " challenge-item--done" : ""}`}
                       >
                         <span className="challenge-item__mark">{done ? "✓" : "○"}</span>

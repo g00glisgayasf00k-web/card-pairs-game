@@ -61,6 +61,17 @@ function parseHandCounts(raw: unknown): HandCounts {
   if (!raw || typeof raw !== "object") return {};
   const out: HandCounts = {};
   for (const [key, val] of Object.entries(raw)) {
+    if (typeof key === "string" && key.length > 0 && typeof val === "number" && val > 0) {
+      out[key] = Math.floor(val);
+    }
+  }
+  return out;
+}
+
+function parseLifetimeHandCounts(raw: unknown): HandCounts {
+  if (!raw || typeof raw !== "object") return {};
+  const out: HandCounts = {};
+  for (const [key, val] of Object.entries(raw)) {
     if (isHandLabel(key) && typeof val === "number" && val > 0) {
       out[key] = Math.floor(val);
     }
@@ -175,7 +186,7 @@ function parseProgress(raw: string | null): SavedProgress | null {
       levelScore: Math.floor(data.levelScore),
       levelHands: Math.floor(data.levelHands),
       levelHandCounts: parseHandCounts(data.levelHandCounts),
-      lifetimeHandCounts: parseHandCounts(data.lifetimeHandCounts),
+      lifetimeHandCounts: parseLifetimeHandCounts(data.lifetimeHandCounts),
       handsCleared: Math.floor(data.handsCleared),
       bestHand: data.bestHand,
       credits,

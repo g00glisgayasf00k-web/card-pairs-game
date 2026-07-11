@@ -1,4 +1,16 @@
-import { HAND_DISPLAY, HAND_SCORES, type HandLabel } from "./pokerHands";
+import {
+  HAND_DISPLAY,
+  HAND_SCORES,
+  RANKS,
+  RANK_VALUES,
+  ranksForStraightHigh,
+  STRAIGHT_HIGH_RANKS,
+  SUITS,
+  type FullHandResult,
+  type HandLabel,
+  type Rank,
+  type Suit,
+} from "./pokerHands";
 import {
   blockersForLevel,
   fixedObstaclesForLevel,
@@ -9,6 +21,16 @@ import {
 export interface HandChallenge {
   hand: HandLabel;
   minCount: number;
+  /**
+   * Specific ranks when required (level 100+):
+   * pair / trips / quads → one rank
+   * two_pair → two ranks
+   * full_house → [trips, pair]
+   * straight / straight_flush → five ranks in order
+   */
+  ranks?: Rank[];
+  /** Specific suit for flush / straight flush. */
+  suit?: Suit;
 }
 
 export interface LevelConfig {
@@ -33,9 +55,12 @@ export interface LevelConfig {
   fixedObstacles: FixedObstacle[];
 }
 
-export type HandCounts = Partial<Record<HandLabel, number>>;
+/** Level progress keys may be hand labels or specific challenge keys (e.g. pair:A). */
+export type HandCounts = Partial<Record<string, number>>;
 
 export const MAX_LEVEL = 500;
+/** From this level, milestone hands require exact ranks / suits. */
+export const SPECIFIC_CHALLENGE_FROM_LEVEL = 100;
 
 /** Typical points earned per hand/swipe (used for move budgets). */
 export const AVG_PTS_PER_MOVE = 360;
@@ -101,6 +126,61 @@ function sortChallengesByHand(challenges: HandChallenge[]): HandChallenge[] {
   );
 }
 
+function seededRng(level: number, salt = 0): () => number {
+  let state = (level * 9301 + salt * 49297 + 233280) | 0;
+  return () => {
+    state = (state * 1103515245 + 12345) | 0;
+    return (state >>> 0) / 0x1_0000_0000;
+  };
+}
+
+function pickRank(rng: () => number, exclude: Rank[] = []): Rank {
+  const pool = RANKS.filter((r) => !exclude.includes(r));
+  return pool[Math.floor(rng() * pool.length)]!;
+}
+
+function pickSuit(rng: () => number): Suit {
+  return SUITS[Math.floor(rng() * SUITS.length)]!;
+}
+
+/** Attach seeded rank/suit targets so each level 100+ run has unique goals. */
+function specifyChallenge(c: HandChallenge, rng: () => number): HandChallenge {
+  if (c.hand === "royal_flush") return { ...c };
+
+  if (c.hand === "pair" || c.hand === "three_of_a_kind" || c.hand === "four_of_a_kind") {
+    return { ...c, ranks: [pickRank(rng)] };
+  }
+  if (c.hand === "two_pair") {
+    const a = pickRank(rng);
+    const b = pickRank(rng, [a]);
+    const ranks = [a, b].sort((x, y) => RANK_VALUES[y] - RANK_VALUES[x]);
+    return { ...c, ranks };
+  }
+  if (c.hand === "full_house") {
+    const trips = pickRank(rng);
+    const pair = pickRank(rng, [trips]);
+    return { ...c, ranks: [trips, pair] };
+  }
+  if (c.hand === "straight" || c.hand === "straight_flush") {
+    const high = STRAIGHT_HIGH_RANKS[Math.floor(rng() * STRAIGHT_HIGH_RANKS.length)]!;
+    const ranks = ranksForStraightHigh(high);
+    if (c.hand === "straight_flush") {
+      return { ...c, ranks, suit: pickSuit(rng) };
+    }
+    return { ...c, ranks };
+  }
+  if (c.hand === "flush") {
+    return { ...c, suit: pickSuit(rng) };
+  }
+  return { ...c };
+}
+
+function specifyChallenges(challenges: HandChallenge[], level: number): HandChallenge[] {
+  if (level < SPECIFIC_CHALLENGE_FROM_LEVEL) return challenges;
+  const rng = seededRng(level, 41);
+  return challenges.map((c) => specifyChallenge(c, rng));
+}
+
 /** Light milestone hands — points target is the main goal; scales up in later worlds. */
 function challengesForLevel(level: number): HandChallenge[] {
   const world = worldForLevel(level);
@@ -108,41 +188,43 @@ function challengesForLevel(level: number): HandChallenge[] {
   const introHand = WORLD_INTRO_HAND[Math.min(world - 1, WORLD_INTRO_HAND.length - 1)] ?? "royal_flush";
   const bump = world > 10 ? Math.floor((world - 10) / 4) : 0;
 
+  let base: HandChallenge[];
+
   if (step === 1) {
-    return [{ hand: "pair", minCount: 2 + Math.min(bump, 2) }];
-  }
-
-  if (world === 1) {
+    base = [{ hand: "pair", minCount: 2 + Math.min(bump, 2) }];
+  } else if (world === 1) {
     if (step <= 5) {
-      return [{ hand: "pair", minCount: (step <= 3 ? 2 : 3) + Math.min(bump, 1) }];
+      base = [{ hand: "pair", minCount: (step <= 3 ? 2 : 3) + Math.min(bump, 1) }];
+    } else if (step <= 7) {
+      base = [{ hand: "two_pair", minCount: 1 + Math.min(bump, 1) }];
+    } else {
+      base = sortChallengesByHand([
+        { hand: "pair", minCount: 2 + Math.min(bump, 1) },
+        { hand: "two_pair", minCount: 1 + Math.min(bump, 1) },
+      ]);
     }
-    if (step <= 7) {
-      return [{ hand: "two_pair", minCount: 1 + Math.min(bump, 1) }];
+  } else {
+    const prevHand =
+      HAND_LADDER.indexOf(introHand) > 0
+        ? HAND_LADDER[HAND_LADDER.indexOf(introHand) - 1]!
+        : "pair";
+
+    if (step <= 5) {
+      base = [{ hand: introHand, minCount: 1 + Math.min(bump, 2) }];
+    } else if (step <= 8) {
+      base = sortChallengesByHand([
+        { hand: "pair", minCount: 2 + Math.min(bump, 1) },
+        { hand: introHand, minCount: 1 + Math.min(bump, 1) },
+      ]);
+    } else {
+      base = sortChallengesByHand([
+        { hand: prevHand, minCount: 1 + Math.min(bump, 1) },
+        { hand: introHand, minCount: 2 + Math.min(bump, 2) },
+      ]);
     }
-    return sortChallengesByHand([
-      { hand: "pair", minCount: 2 + Math.min(bump, 1) },
-      { hand: "two_pair", minCount: 1 + Math.min(bump, 1) },
-    ]);
   }
 
-  const prevHand =
-    HAND_LADDER.indexOf(introHand) > 0
-      ? HAND_LADDER[HAND_LADDER.indexOf(introHand) - 1]!
-      : "pair";
-
-  if (step <= 5) {
-    return [{ hand: introHand, minCount: 1 + Math.min(bump, 2) }];
-  }
-  if (step <= 8) {
-    return sortChallengesByHand([
-      { hand: "pair", minCount: 2 + Math.min(bump, 1) },
-      { hand: introHand, minCount: 1 + Math.min(bump, 1) },
-    ]);
-  }
-  return sortChallengesByHand([
-    { hand: prevHand, minCount: 1 + Math.min(bump, 1) },
-    { hand: introHand, minCount: 2 + Math.min(bump, 2) },
-  ]);
+  return specifyChallenges(base, level);
 }
 
 function worldForLevel(level: number): number {
@@ -278,12 +360,126 @@ export function estimateRemainingSwipes(
 }
 
 export function challengesMet(handCounts: HandCounts, challenges: HandChallenge[]): boolean {
-  return challenges.every((c) => (handCounts[c.hand] ?? 0) >= c.minCount);
+  return challenges.every((c) => (handCounts[challengeKey(c)] ?? 0) >= c.minCount);
+}
+
+export function isChallengeSpecific(c: HandChallenge): boolean {
+  return (c.ranks != null && c.ranks.length > 0) || c.suit != null;
+}
+
+/** Stable progress key — hand label for generic goals, detailed key for specific ones. */
+export function challengeKey(c: HandChallenge): string {
+  if (!isChallengeSpecific(c)) return c.hand;
+  const parts = [c.hand];
+  if (c.ranks?.length) parts.push(c.ranks.join("-"));
+  if (c.suit) parts.push(c.suit);
+  return parts.join(":");
+}
+
+const SUIT_SYMBOL: Record<Suit, string> = {
+  hearts: "♥",
+  diamonds: "♦",
+  clubs: "♣",
+  spades: "♠",
+};
+
+function compactRank(rank: Rank): string {
+  return rank === "10" ? "T" : rank;
+}
+
+function formatRankCluster(rank: Rank, count: number): string {
+  return compactRank(rank).repeat(count);
+}
+
+export function formatChallengeLabel(c: HandChallenge): string {
+  if (!isChallengeSpecific(c)) return HAND_DISPLAY[c.hand];
+
+  if (c.hand === "pair" && c.ranks?.[0]) {
+    return `Pair of ${c.ranks[0]}'s`;
+  }
+  if (c.hand === "three_of_a_kind" && c.ranks?.[0]) {
+    return formatRankCluster(c.ranks[0], 3);
+  }
+  if (c.hand === "four_of_a_kind" && c.ranks?.[0]) {
+    return formatRankCluster(c.ranks[0], 4);
+  }
+  if (c.hand === "two_pair" && c.ranks && c.ranks.length >= 2) {
+    return `${formatRankCluster(c.ranks[0]!, 2)}+${formatRankCluster(c.ranks[1]!, 2)}`;
+  }
+  if (c.hand === "full_house" && c.ranks && c.ranks.length >= 2) {
+    return `${formatRankCluster(c.ranks[0]!, 3)}${formatRankCluster(c.ranks[1]!, 2)}`;
+  }
+  if ((c.hand === "straight" || c.hand === "straight_flush") && c.ranks?.length === 5) {
+    const seq = c.ranks.map(compactRank).join("");
+    if (c.hand === "straight_flush" && c.suit) {
+      return `${SUIT_SYMBOL[c.suit]} ${seq}`;
+    }
+    return seq;
+  }
+  if (c.hand === "flush" && c.suit) {
+    return `${SUIT_SYMBOL[c.suit]} Flush`;
+  }
+  return HAND_DISPLAY[c.hand];
 }
 
 export function formatChallenge(c: HandChallenge): string {
-  const name = HAND_DISPLAY[c.hand];
+  const name = formatChallengeLabel(c);
   return c.minCount === 1 ? `1× ${name}` : `${c.minCount}× ${name}`;
+}
+
+export function handMatchesChallenge(result: FullHandResult, c: HandChallenge): boolean {
+  if (result.hand !== c.hand) return false;
+  if (!isChallengeSpecific(c)) return true;
+
+  if (c.hand === "pair" || c.hand === "three_of_a_kind" || c.hand === "four_of_a_kind") {
+    return result.keyRanks[0] === c.ranks?.[0];
+  }
+  if (c.hand === "two_pair") {
+    if (!c.ranks || c.ranks.length < 2 || result.keyRanks.length < 2) return false;
+    const need = new Set(c.ranks.slice(0, 2));
+    return result.keyRanks.slice(0, 2).every((r) => need.has(r)) && need.size === 2;
+  }
+  if (c.hand === "full_house") {
+    return result.keyRanks[0] === c.ranks?.[0] && result.keyRanks[1] === c.ranks?.[1];
+  }
+  if (c.hand === "straight") {
+    if (!c.ranks || c.ranks.length !== 5 || result.keyRanks.length !== 5) return false;
+    return c.ranks.every((r, i) => result.keyRanks[i] === r);
+  }
+  if (c.hand === "straight_flush") {
+    if (!c.ranks || c.ranks.length !== 5 || result.keyRanks.length !== 5) return false;
+    if (c.suit && result.flushSuit !== c.suit) return false;
+    return c.ranks.every((r, i) => result.keyRanks[i] === r);
+  }
+  if (c.hand === "flush") {
+    return c.suit != null && result.flushSuit === c.suit;
+  }
+  return true;
+}
+
+/** Apply a scored hand to level challenge progress (and generic hand tally). */
+export function applyHandToChallengeCounts(
+  counts: HandCounts,
+  challenges: HandChallenge[],
+  result: FullHandResult
+): HandCounts {
+  const next: HandCounts = {
+    ...counts,
+    [result.hand]: (counts[result.hand] ?? 0) + 1,
+  };
+
+  for (const c of challenges) {
+    if (!handMatchesChallenge(result, c)) continue;
+    const key = challengeKey(c);
+    if (key === result.hand) continue; // already counted above for generic goals
+    next[key] = (next[key] ?? 0) + 1;
+  }
+
+  return next;
+}
+
+export function challengeProgress(counts: HandCounts, c: HandChallenge): number {
+  return counts[challengeKey(c)] ?? 0;
 }
 
 function targetPointsForLevel(level: number): number {

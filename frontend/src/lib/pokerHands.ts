@@ -55,14 +55,34 @@ export const HAND_SCORE_LIST: { hand: HandLabel; points: number }[] = (
   .map((hand) => ({ hand, points: HAND_SCORES[hand] }))
   .sort((a, b) => a.points - b.points);
 
+export const RANKS: Rank[] = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
+export const SUITS: Suit[] = ["hearts", "diamonds", "clubs", "spades"];
+
 export const RANK_VALUES: Record<Rank, number> = {
   "2": 2, "3": 3, "4": 4, "5": 5, "6": 6, "7": 7,
   "8": 8, "9": 9, "10": 10, J: 11, Q: 12, K: 13, A: 14,
 };
 
+const VALUE_TO_RANK: Record<number, Rank> = {
+  2: "2", 3: "3", 4: "4", 5: "5", 6: "6", 7: "7",
+  8: "8", 9: "9", 10: "10", 11: "J", 12: "Q", 13: "K", 14: "A",
+};
+
+/** Straight high cards (5 = wheel A-2-3-4-5, A = broadway 10-J-Q-K-A). */
+export const STRAIGHT_HIGH_RANKS: Rank[] = ["5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
+
+/** Five ranks for a straight ending at `high` (wheel when high is 5). */
+export function ranksForStraightHigh(high: Rank): Rank[] {
+  if (high === "5") return ["A", "2", "3", "4", "5"];
+  const hv = RANK_VALUES[high];
+  return [hv - 4, hv - 3, hv - 2, hv - 1, hv].map((v) => VALUE_TO_RANK[v]!);
+}
+
+export function rankFromValue(value: number): Rank | undefined {
+  return VALUE_TO_RANK[value];
+}
+
 const ROYAL = new Set([10, 11, 12, 13, 14]);
-const RANKS: Rank[] = ["2","3","4","5","6","7","8","9","10","J","Q","K","A"];
-const SUITS: Suit[] = ["hearts", "diamonds", "clubs", "spades"];
 
 const ALL_CARDS: { rank: Rank; suit: Suit }[] = RANKS.flatMap((rank) =>
   SUITS.map((suit) => ({ rank, suit }))
@@ -231,9 +251,66 @@ function isRoyal(cards: { rank: Rank; suit: Suit }[]): boolean {
   return vals.size === 5 && [...vals].every((v) => ROYAL.has(v)) && isStraight(cards);
 }
 
+export interface HandAnalysis {
+  hand: HandLabel;
+  points: number;
+  /**
+   * Defining ranks for the hand:
+   * pair / trips / quads → [rank]
+   * two_pair → [highPair, lowPair]
+   * full_house → [trips, pair]
+   * straight / straight_flush / royal → five ranks low→high (wheel: A,2,3,4,5)
+   */
+  keyRanks: Rank[];
+  flushSuit?: Suit;
+}
+
+function keyRanksForHand(
+  hand: HandLabel,
+  cards: { rank: Rank; suit: Suit }[]
+): { keyRanks: Rank[]; flushSuit?: Suit } {
+  const byRank = new Map<Rank, number>();
+  for (const c of cards) {
+    byRank.set(c.rank, (byRank.get(c.rank) ?? 0) + 1);
+  }
+  const ranked = [...byRank.entries()].sort((a, b) => {
+    if (b[1] !== a[1]) return b[1] - a[1];
+    return RANK_VALUES[b[0]] - RANK_VALUES[a[0]];
+  });
+
+  if (hand === "pair" || hand === "three_of_a_kind" || hand === "four_of_a_kind") {
+    return { keyRanks: [ranked[0]![0]] };
+  }
+  if (hand === "two_pair") {
+    const pairs = ranked.filter(([, n]) => n === 2).map(([r]) => r);
+    pairs.sort((a, b) => RANK_VALUES[b] - RANK_VALUES[a]);
+    return { keyRanks: pairs.slice(0, 2) };
+  }
+  if (hand === "full_house") {
+    const trips = ranked.find(([, n]) => n === 3)?.[0];
+    const pair = ranked.find(([, n]) => n === 2)?.[0];
+    return { keyRanks: trips && pair ? [trips, pair] : [] };
+  }
+  if (hand === "straight" || hand === "straight_flush" || hand === "royal_flush") {
+    const vals = [...new Set(cards.map((c) => RANK_VALUES[c.rank]))].sort((a, b) => a - b);
+    let ordered: Rank[];
+    if (vals.join() === "2,3,4,5,14") {
+      ordered = ["A", "2", "3", "4", "5"];
+    } else {
+      ordered = vals.map((v) => VALUE_TO_RANK[v]!);
+    }
+    const flushSuit = hand === "straight" ? undefined : cards[0]?.suit;
+    return { keyRanks: ordered, flushSuit };
+  }
+  if (hand === "flush") {
+    return { keyRanks: [], flushSuit: cards[0]?.suit };
+  }
+  return { keyRanks: [] };
+}
+
 export function evaluateHand(
   cards: { rank: Rank; suit: Suit }[]
-): { hand: HandLabel; points: number } | null {
+): HandAnalysis | null {
   if (cards.length !== POKER_HAND_SIZE) return null;
 
   const counts = rankCounts(cards);
@@ -253,14 +330,13 @@ export function evaluateHand(
   else if (freq[0] === 2 && freq[1] === 1 && freq[2] === 1 && freq[3] === 1) hand = "pair";
   else return null;
 
-  return { hand, points: HAND_SCORES[hand] };
+  const detail = keyRanksForHand(hand, cards);
+  return { hand, points: HAND_SCORES[hand], keyRanks: detail.keyRanks, flushSuit: detail.flushSuit };
 }
 
 // ── Wild (joker) substitution ─────────────────────────────────────────────────
 
-function evaluateHandWithWilds(
-  cards: Card[]
-): { hand: HandLabel; points: number } | null {
+function evaluateHandWithWilds(cards: Card[]): HandAnalysis | null {
   const wilds = cards.filter((c) => c.special === "joker");
   const normals = cards.filter((c) => c.special !== "joker");
   const wc = wilds.length;
@@ -270,11 +346,16 @@ function evaluateHandWithWilds(
   if (n !== POKER_HAND_SIZE) return null;
 
   if (normals.length === 0) {
-    return { hand: "royal_flush", points: HAND_SCORES.royal_flush };
+    return {
+      hand: "royal_flush",
+      points: HAND_SCORES.royal_flush,
+      keyRanks: ["10", "J", "Q", "K", "A"],
+      flushSuit: "spades",
+    };
   }
 
   if (wc === 1) {
-    let best: { hand: HandLabel; points: number } | null = null;
+    let best: HandAnalysis | null = null;
     for (const sub of ALL_CARDS) {
       const filled = cards.map((c) =>
         c.special === "joker"
@@ -290,7 +371,7 @@ function evaluateHandWithWilds(
   }
 
   if (wc === 2) {
-    let best: { hand: HandLabel; points: number } | null = null;
+    let best: HandAnalysis | null = null;
     for (const s1 of ALL_CARDS) {
       for (const s2 of ALL_CARDS) {
         let j = 0;
@@ -311,7 +392,12 @@ function evaluateHandWithWilds(
     return best;
   }
 
-  return { hand: "royal_flush", points: HAND_SCORES.royal_flush };
+  return {
+    hand: "royal_flush",
+    points: HAND_SCORES.royal_flush,
+    keyRanks: ["10", "J", "Q", "K", "A"],
+    flushSuit: "spades",
+  };
 }
 
 // ── Full result with special effects ─────────────────────────────────────────
@@ -320,14 +406,23 @@ export interface FullHandResult {
   hand: HandLabel;
   basePoints: number;
   totalPoints: number;
-  hasJoker: boolean; // joker (wild) was used in this hand
+  hasJoker: boolean;
+  keyRanks: Rank[];
+  flushSuit?: Suit;
 }
 
 export function evaluateHandFull(cards: Card[]): FullHandResult | null {
   const hasJoker = cards.some((c) => c.special === "joker");
   const base = hasJoker ? evaluateHandWithWilds(cards) : evaluateHand(cards);
   if (!base) return null;
-  return { hand: base.hand, basePoints: base.points, totalPoints: base.points, hasJoker };
+  return {
+    hand: base.hand,
+    basePoints: base.points,
+    totalPoints: base.points,
+    hasJoker,
+    keyRanks: base.keyRanks,
+    flushSuit: base.flushSuit,
+  };
 }
 
 // ── Path helpers ─────────────────────────────────────────────────────────────

@@ -2,6 +2,8 @@ import { useState } from "react";
 import { AuthPanel } from "../components/AuthPanel";
 import { Leaderboard } from "../components/Leaderboard";
 import { ProfileModal } from "../components/ProfileModal";
+import { ChallengeFriendModal } from "../components/ChallengeFriendModal";
+import { CompeteModal } from "../components/CompeteModal";
 import { clearProgress, loadProgress } from "../lib/progress";
 import { MAX_LEVEL } from "../lib/levels";
 
@@ -14,6 +16,7 @@ interface Props {
 }
 
 type HomeMenu = "leaderboard" | "rules" | "account" | null;
+type PlaySheet = "challenge" | "compete" | null;
 
 export function OnboardingScreen({
   username,
@@ -23,6 +26,7 @@ export function OnboardingScreen({
   onPlay,
 }: Props) {
   const [menu, setMenu] = useState<HomeMenu>(null);
+  const [playSheet, setPlaySheet] = useState<PlaySheet>(null);
   const saved = loadProgress();
 
   const startFresh = () => {
@@ -35,6 +39,8 @@ export function OnboardingScreen({
   const handleAccountChange = () => {
     onSessionChange?.();
   };
+
+  const cleared = (saved?.completedLevels ?? []).length;
 
   return (
     <div className="home-screen home-screen--royal">
@@ -81,10 +87,10 @@ export function OnboardingScreen({
           </div>
         </header>
 
-        <header className="home-hero">
+        <header className={`home-hero${loggedIn ? " home-hero--compact" : ""}`}>
           <div className="home-hero__shine" aria-hidden />
 
-          <div className="royal-logo">
+          <div className={`royal-logo${loggedIn ? " royal-logo--compact" : ""}`}>
             <div className="royal-logo__crown" aria-hidden>
               👑
             </div>
@@ -100,33 +106,69 @@ export function OnboardingScreen({
             </div>
           </div>
 
-          <div className="home-hero__portrait" aria-hidden>
-            🦊
-          </div>
+          {!loggedIn && (
+            <>
+              <div className="home-hero__portrait" aria-hidden>
+                🦊
+              </div>
+              <div className="royal-plaque">
+                <span>Build hands</span>
+                <span>Beat levels</span>
+                <span>Become royal</span>
+              </div>
+              <div className="home-motto-chips" aria-hidden>
+                <span>🪙</span>
+                <span>🃏</span>
+                <span>👑</span>
+              </div>
+            </>
+          )}
 
-          <div className="royal-plaque">
-            <span>Build hands</span>
-            <span>Beat levels</span>
-            <span>Become royal</span>
-          </div>
-
-          <div className="home-motto-chips" aria-hidden>
-            <span>🪙</span>
-            <span>🃏</span>
-            <span>👑</span>
-          </div>
+          {loggedIn && (
+            <p className="home-hero__ask">How do you want to play?</p>
+          )}
         </header>
 
         {loggedIn ? (
           <>
-            <button type="button" className="btn-royal-cta" onClick={onPlay}>
-              <span className="btn-royal-cta__main">Enter the table</span>
-              <span className="btn-royal-cta__sub">
-                {saved
-                  ? `${(saved.completedLevels ?? []).length} / ${MAX_LEVEL} levels cleared`
-                  : "Choose your level"}
-              </span>
-            </button>
+            <div className="play-modes" role="group" aria-label="Play modes">
+              <button type="button" className="play-mode-card play-mode-card--solo" onClick={onPlay}>
+                <span className="play-mode-card__tag">Solo</span>
+                <span className="play-mode-card__title">Enter table</span>
+                <span className="play-mode-card__desc">
+                  Campaign levels, stars &amp; energy
+                </span>
+                <span className="play-mode-card__meta">
+                  {saved ? `${cleared} / ${MAX_LEVEL} cleared` : "Choose your level"}
+                </span>
+              </button>
+
+              <button
+                type="button"
+                className="play-mode-card play-mode-card--challenge"
+                onClick={() => setPlaySheet("challenge")}
+              >
+                <span className="play-mode-card__tag">Async</span>
+                <span className="play-mode-card__title">Challenge a friend</span>
+                <span className="play-mode-card__desc">
+                  Same seed — best stars / fewest moves
+                </span>
+                <span className="play-mode-card__meta">Optional gem wager</span>
+              </button>
+
+              <button
+                type="button"
+                className="play-mode-card play-mode-card--compete"
+                onClick={() => setPlaySheet("compete")}
+              >
+                <span className="play-mode-card__tag">Ranked</span>
+                <span className="play-mode-card__title">Compete</span>
+                <span className="play-mode-card__desc">
+                  Daily board or quick match ladder
+                </span>
+                <span className="play-mode-card__meta">No friends required</span>
+              </button>
+            </div>
 
             {saved && (
               <button type="button" className="home-start-over" onClick={startFresh}>
@@ -191,6 +233,14 @@ export function OnboardingScreen({
             closeMenu();
           }}
         />
+      )}
+
+      {playSheet === "challenge" && (
+        <ChallengeFriendModal onClose={() => setPlaySheet(null)} onPlaySolo={onPlay} />
+      )}
+
+      {playSheet === "compete" && (
+        <CompeteModal onClose={() => setPlaySheet(null)} onPlaySolo={onPlay} />
       )}
     </div>
   );

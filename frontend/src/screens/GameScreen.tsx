@@ -295,6 +295,7 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
   const dismissBoardFeedback = useCallback(() => {
     if (boardFeedbackTimer.current) window.clearTimeout(boardFeedbackTimer.current);
     setBoardFeedback(null);
+    boardRef.current?.clearHint();
   }, []);
 
   const revealHintNow = useCallback((): boolean => {

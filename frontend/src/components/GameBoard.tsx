@@ -482,9 +482,9 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
         setBlasting(new Set());
         setArrowSweep(null);
         setBombBurst(null);
+        setHintCell(null);
 
         if (isHand) {
-          setHintCell(null);
           onHand(isHand);
         } else onActivation(pts);
 
@@ -828,6 +828,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
 
         setPopping(new Set());
         setPopOrder(new Map());
+        setHintCell(null);
         showFeedback(toast);
 
         onHand(result);
@@ -929,6 +930,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
               >
                 {cell && (
                   <div
+                    key={`${r}-${c}-${cell.rank}-${cell.suit}-${cell.special ?? ""}`}
                     data-row={r}
                     data-col={c}
                     className={[

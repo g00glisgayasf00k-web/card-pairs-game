@@ -48,7 +48,9 @@ function StarRating({ stars }: { stars: number }) {
           key={i}
           className={`chip-star${i <= stars ? " chip-star--lit" : ""}`}
           aria-hidden
-        />
+        >
+          ★
+        </span>
       ))}
     </div>
   );

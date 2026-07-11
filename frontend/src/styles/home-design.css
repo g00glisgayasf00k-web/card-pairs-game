@@ -316,16 +316,17 @@
 }
 
 .home-brand {
-  max-width: min(46%, 7.25rem);
+  max-width: min(62%, 13.75rem);
   overflow: visible;
-  flex-shrink: 0;
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .home-brand__logo {
   display: block;
   width: 100%;
   height: auto;
-  max-height: 4.5rem;
+  max-height: 3.85rem;
   object-fit: contain;
   object-position: left center;
 }

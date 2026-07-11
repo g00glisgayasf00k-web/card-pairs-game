@@ -11,7 +11,7 @@ import {
   worldTheme,
   type LevelNodeState,
 } from "../lib/levelMap";
-import { buildWorldMapPoints, mapViewBoxHeight } from "../lib/mapLayout";
+import { buildWorldMapPoints, mapPathPolyline, mapViewBoxHeight } from "../lib/mapLayout";
 import {
   countCompleted,
   countStarsInWorld,
@@ -48,9 +48,7 @@ function StarRating({ stars }: { stars: number }) {
           key={i}
           className={`chip-star${i <= stars ? " chip-star--lit" : ""}`}
           aria-hidden
-        >
-          ★
-        </span>
+        />
       ))}
     </div>
   );
@@ -94,12 +92,12 @@ function PokerChip({
         onClick={() => onSelect(globalLevel)}
         aria-label={locked ? `${label} locked` : `Play level ${label}`}
       >
-        {!locked ? (
-          <span className="poker-chip__label">{stage}</span>
-        ) : (
-          <span className="poker-chip__label poker-chip__label--lock" aria-hidden>
-            ·
+        {locked ? (
+          <span className="poker-chip__lock" aria-hidden>
+            🔒
           </span>
+        ) : (
+          <span className="poker-chip__label">{stage}</span>
         )}
       </button>
       {!locked && <StarRating stars={stars} />}
@@ -187,6 +185,7 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
 
   const mapPoints = buildWorldMapPoints();
   const mapHeight = mapViewBoxHeight();
+  const pathPoints = mapPathPolyline();
 
   const feltStyle = {
     "--world-main": theme.main,
@@ -253,41 +252,63 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
 
       <div className="felt-board-scroll">
         <div
-          className="felt-board felt-board--chips-only"
+          className="felt-board felt-board--table"
           style={{
             aspectRatio: `100 / ${mapHeight}`,
           }}
         >
-          <div className="felt-nodes">
-            {stagesInWorld(selectedWorld).map((stage, index) => {
-              const globalLevel = toGlobalLevel(selectedWorld, stage);
-              const state = getLevelNodeState(globalLevel);
-              const isCurrent = globalLevel === currentLevel;
-              const isMilestone = stage === STAGES_PER_WORLD;
-              const pt = mapPoints[index]!;
+          <div className="felt-board__rail" aria-hidden>
+            <span className="felt-pocket felt-pocket--tl" />
+            <span className="felt-pocket felt-pocket--tr" />
+            <span className="felt-pocket felt-pocket--ml" />
+            <span className="felt-pocket felt-pocket--mr" />
+            <span className="felt-pocket felt-pocket--bl" />
+            <span className="felt-pocket felt-pocket--br" />
+          </div>
+          <div className="felt-board__felt">
+            <svg
+              className="felt-path"
+              viewBox={`0 0 100 ${mapHeight}`}
+              preserveAspectRatio="none"
+              aria-hidden
+            >
+              <polyline
+                className="felt-path__line"
+                points={pathPoints}
+                fill="none"
+              />
+            </svg>
+            <div className="felt-nodes">
+              {stagesInWorld(selectedWorld).map((stage, index) => {
+                const globalLevel = toGlobalLevel(selectedWorld, stage);
+                const state = getLevelNodeState(globalLevel);
+                const isCurrent = globalLevel === currentLevel;
+                const isMilestone = stage === STAGES_PER_WORLD;
+                const pt = mapPoints[index]!;
 
-              return (
-                <div
-                  key={globalLevel}
-                  ref={isCurrent ? currentRef : undefined}
-                  className="felt-node-slot"
-                  style={{
-                    left: `${pt.x}%`,
-                    top: `${(pt.y / mapHeight) * 100}%`,
-                  }}
-                >
-                  <PokerChip
-                    globalLevel={globalLevel}
-                    stage={stage}
-                    isMilestone={isMilestone}
-                    state={state}
-                    isCurrent={isCurrent}
-                    stars={getLevelStars(globalLevel)}
-                    onSelect={handleSelect}
-                  />
-                </div>
-              );
-            })}
+                return (
+                  <div
+                    key={globalLevel}
+                    ref={isCurrent ? currentRef : undefined}
+                    className="felt-node-slot"
+                    style={{
+                      left: `${pt.x}%`,
+                      top: `${(pt.y / mapHeight) * 100}%`,
+                    }}
+                  >
+                    <PokerChip
+                      globalLevel={globalLevel}
+                      stage={stage}
+                      isMilestone={isMilestone}
+                      state={state}
+                      isCurrent={isCurrent}
+                      stars={getLevelStars(globalLevel)}
+                      onSelect={handleSelect}
+                    />
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 
@@ -300,11 +321,6 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
       </div>
 
       <footer className="felt-footer">
-        <div className="felt-stars-preview" aria-hidden>
-          <span className="felt-stars-preview__star">☆</span>
-          <span className="felt-stars-preview__star felt-stars-preview__star--lit">★</span>
-          <span className="felt-stars-preview__star felt-stars-preview__star--lit">★</span>
-        </div>
         <button
           type="button"
           className="felt-play-btn"

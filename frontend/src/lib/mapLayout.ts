@@ -7,7 +7,7 @@ export interface MapPoint {
   y: number;
 }
 
-/** Horizontal anchor (% of map width) — tuned lanes for clean chip spacing. */
+/** Horizontal anchor (% of map width). */
 export function xForSide(side: MapSide): number {
   if (side === "left") return 28;
   if (side === "center") return 50;
@@ -33,26 +33,26 @@ export function sideForStageIndex(index: number): MapSide {
 }
 
 /**
- * Clean serpentine path — even vertical rhythm so stars never collide.
+ * Poker-table zigzag — matches the reference path (1 top-center → alternate → 10 bottom).
  */
 export function buildWorldMapPoints(stageCount: number = STAGES_PER_WORLD): MapPoint[] {
   const template: MapPoint[] = [
-    { x: 50, y: 9 },
-    { x: 74, y: 20 },
-    { x: 28, y: 31 },
-    { x: 74, y: 42 },
-    { x: 28, y: 53 },
-    { x: 74, y: 64 },
-    { x: 28, y: 75 },
-    { x: 74, y: 86 },
-    { x: 28, y: 97 },
-    { x: 50, y: 108 },
+    { x: 50, y: 10 },
+    { x: 72, y: 20 },
+    { x: 28, y: 30 },
+    { x: 72, y: 40 },
+    { x: 28, y: 50 },
+    { x: 72, y: 60 },
+    { x: 28, y: 70 },
+    { x: 72, y: 80 },
+    { x: 28, y: 90 },
+    { x: 50, y: 100 },
   ];
 
   if (stageCount === template.length) return template;
 
-  const topY = 9;
-  const stepY = 11;
+  const topY = 10;
+  const stepY = 10;
   return Array.from({ length: stageCount }, (_, i) => ({
     x: xForSide(sideForStageIndex(i)),
     y: topY + i * stepY,
@@ -62,5 +62,14 @@ export function buildWorldMapPoints(stageCount: number = STAGES_PER_WORLD): MapP
 export function mapViewBoxHeight(stageCount: number = STAGES_PER_WORLD): number {
   const points = buildWorldMapPoints(stageCount);
   const maxY = points.reduce((m, p) => Math.max(m, p.y), 0);
-  return Math.ceil((maxY || 100) + 14);
+  return Math.ceil((maxY || 100) + 12);
+}
+
+/** SVG polyline points for the dotted path (viewBox 0 0 100 height). */
+export function mapPathPolyline(
+  stageCount: number = STAGES_PER_WORLD
+): string {
+  return buildWorldMapPoints(stageCount)
+    .map((p) => `${p.x},${p.y}`)
+    .join(" ");
 }

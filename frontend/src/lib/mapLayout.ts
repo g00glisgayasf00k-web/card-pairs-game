@@ -33,27 +33,27 @@ export function sideForStageIndex(index: number): MapSide {
 }
 
 /**
- * Node centres for a world map (viewBox 0–100). Explicit lane positions avoid
- * overlaps and keep chips + star rows readable at mobile sizes.
+ * Node centres for a world map (viewBox 0–100). Vertical gaps keep chip + star
+ * rows from overlapping (especially stages 4 → 5 on the right rail).
  */
 export function buildWorldMapPoints(stageCount: number = STAGES_PER_WORLD): MapPoint[] {
   const template: MapPoint[] = [
-    { x: 22, y: 10 },
-    { x: 42, y: 18 },
-    { x: 62, y: 26 },
-    { x: 78, y: 36 },
-    { x: 68, y: 48 },
-    { x: 46, y: 56 },
-    { x: 26, y: 66 },
-    { x: 40, y: 76 },
-    { x: 60, y: 86 },
-    { x: 78, y: 96 },
+    { x: 22, y: 8 },
+    { x: 44, y: 18 },
+    { x: 66, y: 28 },
+    { x: 82, y: 40 },
+    { x: 52, y: 56 },
+    { x: 28, y: 68 },
+    { x: 46, y: 80 },
+    { x: 68, y: 92 },
+    { x: 48, y: 104 },
+    { x: 72, y: 116 },
   ];
 
   if (stageCount === template.length) return template;
 
-  const topY = 10;
-  const stepY = 9.5;
+  const topY = 8;
+  const stepY = 12;
   return Array.from({ length: stageCount }, (_, i) => ({
     x: xForSide(sideForStageIndex(i)),
     y: topY + i * stepY,
@@ -63,5 +63,5 @@ export function buildWorldMapPoints(stageCount: number = STAGES_PER_WORLD): MapP
 export function mapViewBoxHeight(stageCount: number = STAGES_PER_WORLD): number {
   const points = buildWorldMapPoints(stageCount);
   const maxY = points.reduce((m, p) => Math.max(m, p.y), 0);
-  return Math.ceil((maxY || 100) + 16);
+  return Math.ceil((maxY || 100) + 18);
 }

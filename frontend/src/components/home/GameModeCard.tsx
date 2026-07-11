@@ -90,14 +90,11 @@ export function GameModeCard({
       <span className="home-mode-card__icon" aria-hidden>
         {icon ?? (
           <img
+            className="home-mode-card__badge-img"
             src={assets.icon}
             alt=""
-            width={36}
-            height={36}
-            style={{
-              backgroundImage: `url(${HOME_ASSETS.ui.circleBg})`,
-              backgroundSize: "contain",
-            }}
+            width={56}
+            height={56}
           />
         )}
       </span>

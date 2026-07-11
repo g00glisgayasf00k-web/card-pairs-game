@@ -315,6 +315,21 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
 }
 
+.home-brand {
+  max-width: min(58%, 11.5rem);
+}
+
+.home-brand__logo {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 4.25rem;
+  object-fit: contain;
+  object-position: left center;
+  /* Drop the solid black plate against the dark home bg */
+  mix-blend-mode: screen;
+}
+
 /* ── Challenge / Compete modals ───────────────────────────────────────────── */
 
 .play-mode-modal.home-menu-modal {

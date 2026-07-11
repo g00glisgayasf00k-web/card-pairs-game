@@ -11,17 +11,15 @@ interface Props {
 export function HomeHeader({ gems, loggedIn, username, onShop, onProfile }: Props) {
   return (
     <header className="flex items-center justify-between gap-3 px-1">
-      <div className="flex min-w-0 flex-col items-start" aria-label="Royal Poker Match">
-        <img src={HOME_ASSETS.header.crown} alt="" width={48} height={32} />
-        <span className="text-[11px] font-bold tracking-[0.18em] text-home-gold uppercase">
-          Royal
-        </span>
-        <span className="bg-gradient-to-b from-home-gold-highlight to-home-gold-deep bg-clip-text text-[17px] font-extrabold leading-tight tracking-wide text-transparent uppercase">
-          Poker Match
-        </span>
+      <div className="home-brand flex min-w-0 flex-1 items-center" aria-label="Royal Poker Match">
+        <img
+          className="home-brand__logo"
+          src={HOME_ASSETS.header.logo}
+          alt="Royal Poker Match"
+        />
       </div>
 
-      <div className="flex items-center gap-2">
+      <div className="flex shrink-0 items-center gap-2">
         {loggedIn && (
           <button
             type="button"

@@ -38,6 +38,7 @@ export const HOME_ASSETS = {
     profile: "/assets/header/icon_profile.svg",
     gems: "/assets/header/icon_gems.svg",
     crown: "/assets/header/logo_crown.svg",
+    logo: "/assets/header/logo-royal-poker-match.png",
   },
   nav: {
     play: "/assets/nav/nav_play.svg",

@@ -5,14 +5,8 @@ import { ProfileModal } from "../components/ProfileModal";
 import { ChallengeFriendModal } from "../components/ChallengeFriendModal";
 import { CompeteModal } from "../components/CompeteModal";
 import { GemShopModal } from "../components/GemShopModal";
-import {
-  GameModeCard,
-  HomeBottomNav,
-  HomeHeader,
-  HomeHeroBanner,
-  HomeLevelBar,
-  type HomeNavTab,
-} from "../components/home";
+import { HomeMockupPage } from "../components/home/HomeMockupPage";
+import { HomeHeroBanner } from "../components/home/HomeHeroBanner";
 import { clearProgress, loadProgress } from "../lib/progress";
 import { MAX_LEVEL } from "../lib/levels";
 import type { ChallengeDto } from "../lib/api";
@@ -58,94 +52,34 @@ export function OnboardingScreen({
   const cleared = (saved?.completedLevels ?? []).length;
   const currentLevel = saved?.level ?? 1;
   const gems = saved?.credits ?? 0;
-  const progressPct = Math.min(100, Math.round((cleared / MAX_LEVEL) * 100));
-
-  const openTab = (tab: HomeNavTab) => {
-    if (tab === "play") {
-      setMenu(null);
-      return;
-    }
-    if (tab === "scores") setMenu("leaderboard");
-    else if (tab === "rules") setMenu("rules");
-    else if (tab === "shop") setMenu("shop");
-    else setMenu("account");
-  };
-
-  const activeTab: HomeNavTab =
-    menu === "leaderboard"
-      ? "scores"
-      : menu === "rules"
-        ? "rules"
-        : menu === "shop"
-          ? "shop"
-          : menu === "account"
-            ? "settings"
-            : "play";
 
   return (
     <div className="bg-home-page flex min-h-dvh justify-center text-home-text">
-      <div className="relative flex w-full max-w-[420px] flex-col gap-4 px-4 pt-3 pb-[max(5.5rem,calc(4.25rem+env(safe-area-inset-bottom)))]">
-        <HomeHeader
+      {loggedIn ? (
+        <HomeMockupPage
           gems={gems}
-          loggedIn={loggedIn}
-          username={username}
+          cleared={cleared}
+          maxLevels={MAX_LEVEL}
+          level={currentLevel}
           onMenu={() => setMenu(menu === "account" ? null : "account")}
           onShop={() => setMenu("shop")}
           onProfile={() => setMenu(menu === "account" ? null : "account")}
+          onSolo={onPlay}
+          onChallenge={() => setPlaySheet("challenge")}
+          onCompete={() => setPlaySheet("compete")}
+          onLevelBar={startFresh}
+          onScores={() => setMenu("leaderboard")}
+          onRules={() => setMenu("rules")}
+          onSettings={() => setMenu("account")}
         />
-
-        {loggedIn ? (
-          <>
-            <HomeHeroBanner />
-
-            <div className="flex flex-col gap-3" role="group" aria-label="Play modes">
-              <GameModeCard
-                glow="purple"
-                label="Solo"
-                title="Enter table"
-                subtitle="Campaign levels, stars & energy"
-                icon="🏆"
-                progress={{
-                  label: `${cleared} / ${MAX_LEVEL} cleared`,
-                  percent: progressPct,
-                }}
-                onClick={onPlay}
-              />
-              <GameModeCard
-                glow="blue"
-                label="Async"
-                title="Challenge a friend"
-                subtitle="Same seed — best stars / fewest moves"
-                icon="⚔️"
-                onClick={() => setPlaySheet("challenge")}
-              />
-              <GameModeCard
-                glow="green"
-                label="Ranked"
-                title="Compete"
-                subtitle="Daily board or quick match ladder"
-                icon="👑"
-                onClick={() => setPlaySheet("compete")}
-              />
-            </div>
-
-            <HomeLevelBar
-              levelLabel={String(currentLevel)}
-              progressPercent={Math.min(100, (currentLevel % 20) * 5)}
-              onClick={startFresh}
-            />
-
-            <HomeBottomNav active={activeTab} onSelect={openTab} />
-          </>
-        ) : (
-          <>
-            <HomeHeroBanner />
-            <div className="rounded-home-card border border-home-gold/30 bg-home-bg p-4">
-              <AuthPanel variant="home" onSuccess={() => handleAccountChange()} />
-            </div>
-          </>
-        )}
-      </div>
+      ) : (
+        <div className="relative flex w-full max-w-[420px] flex-col gap-4 px-4 pt-3 pb-8">
+          <HomeHeroBanner />
+          <div className="rounded-home-card border border-home-gold/30 bg-home-bg p-4">
+            <AuthPanel variant="home" onSuccess={() => handleAccountChange()} />
+          </div>
+        </div>
+      )}
 
       {menu === "leaderboard" && (
         <div className="modal-overlay scores-overlay home-menu-overlay" onClick={closeMenu} role="presentation">

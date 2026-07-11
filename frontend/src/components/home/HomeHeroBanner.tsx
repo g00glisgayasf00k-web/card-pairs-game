@@ -8,7 +8,7 @@ const ROYAL_FLUSH: { rank: string; tilt: number }[] = [
 
 export function HomeHeroBanner() {
   return (
-    <section className="home-hero-banner" aria-label="Make poker hands to clear the board">
+    <section className="home-hero-banner" aria-label="Choose your game mode">
       <div className="home-hero-banner__art" aria-hidden>
         <div className="home-hero-flush">
           {ROYAL_FLUSH.map((card, i) => (
@@ -30,9 +30,9 @@ export function HomeHeroBanner() {
         </div>
       </div>
       <h1 className="home-hero-banner__ask">
-        <span className="home-hero-banner__ask-line">Swipe five.</span>
+        <span className="home-hero-banner__ask-line">Choose your</span>
         <span className="home-hero-banner__ask-line home-hero-banner__ask-line--gold">
-          Make the hand.
+          Game mode
         </span>
       </h1>
     </section>

@@ -91,6 +91,7 @@ export interface LeaderboardHandRow {
 export interface LeaderboardsPayload {
   top_scores: LeaderboardScoreRow[];
   highest_level: LeaderboardLevelRow[];
+  most_stars?: LeaderboardLevelRow[];
   hand_leaders: Record<string, LeaderboardHandRow[]>;
 }
 

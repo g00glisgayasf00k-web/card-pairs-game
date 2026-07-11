@@ -109,6 +109,12 @@ def build_leaderboards(limit: int = 10) -> dict:
 
     highest_level = sorted(level_rows, key=lambda row: row["level"], reverse=True)[:limit]
 
+    most_stars = sorted(
+        [row for row in level_rows if row["stars_total"] > 0],
+        key=lambda row: (row["stars_total"], row["level"], row["completed"]),
+        reverse=True,
+    )[:limit]
+
     hand_leaders: dict[str, list[dict]] = {}
     for hand in HAND_LABELS:
         leaders = sorted(
@@ -119,5 +125,6 @@ def build_leaderboards(limit: int = 10) -> dict:
     return {
         "top_scores": top_scores,
         "highest_level": highest_level,
+        "most_stars": most_stars,
         "hand_leaders": hand_leaders,
     }

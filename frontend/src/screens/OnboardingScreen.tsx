@@ -4,6 +4,7 @@ import { ProfileModal } from "../components/ProfileModal";
 import { ChallengeFriendModal } from "../components/ChallengeFriendModal";
 import { CompeteModal } from "../components/CompeteModal";
 import { GemShopModal } from "../components/GemShopModal";
+import { Leaderboard } from "../components/Leaderboard";
 import {
   GameModeCard,
   HomeBottomNav,
@@ -152,13 +153,8 @@ export function OnboardingScreen({
             role="dialog"
             aria-labelledby="home-leaderboard-title"
           >
-            <h2 id="home-leaderboard-title">Scores</h2>
-            <p className="play-mode-modal__lead" style={{ textAlign: "center", margin: "1.5rem 0" }}>
-              Coming soon
-            </p>
-            <p className="play-mode-modal__hint" style={{ textAlign: "center" }}>
-              Global leaderboards are on the way. Keep clearing levels for now.
-            </p>
+            <h2 id="home-leaderboard-title">Leaderboard</h2>
+            <Leaderboard />
             <button type="button" className="btn scores-close" onClick={closeMenu}>
               Close
             </button>

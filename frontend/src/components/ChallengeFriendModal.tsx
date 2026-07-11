@@ -49,31 +49,76 @@ function opponentName(c: ChallengeDto): string {
   return (c.you_are === "challenger" ? c.opponent?.username : c.challenger?.username) ?? "?";
 }
 
+function resultWhen(c: ChallengeDto): Date {
+  const mine = myAttempt(c)?.submitted_at;
+  const theirs = theirAttempt(c)?.submitted_at;
+  const stamps = [mine, theirs, c.created_at].filter(Boolean) as string[];
+  let best = 0;
+  for (const s of stamps) {
+    const t = new Date(s).getTime();
+    if (!Number.isNaN(t) && t > best) best = t;
+  }
+  return new Date(best || Date.now());
+}
+
+function formatResultWhen(d: Date): string {
+  try {
+    return d.toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      year: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  } catch {
+    return d.toISOString();
+  }
+}
+
 function ResultCard({ c }: { c: ChallengeDto }) {
+  const [open, setOpen] = useState(false);
   const mine = myAttempt(c);
   const theirs = theirAttempt(c);
   const other = opponentName(c);
   const outcome = challengeOutcome(c);
+  const when = formatResultWhen(resultWhen(c));
 
   return (
-    <li className="challenge-results-card challenge-results-card--list">
-      <div className="challenge-results-card__head">
-        <strong>vs {other}</strong>
-        {outcome ? (
-          <span className="challenge-results-card__outcome">{outcome}</span>
-        ) : (
-          <span className="challenge-inbox-item__meta">Waiting</span>
-        )}
-      </div>
-      <p>
-        You {mine?.stars ?? 0}★ / {mine?.moves ?? 0}m / {(mine?.score ?? 0).toLocaleString()}
-      </p>
-      {theirs ? (
-        <p>
-          {other} {theirs.stars}★ / {theirs.moves}m / {theirs.score.toLocaleString()}
-        </p>
-      ) : (
-        <p className="play-mode-modal__hint">Waiting for {other}…</p>
+    <li className={`challenge-results-card challenge-results-card--list${open ? " challenge-results-card--open" : ""}`}>
+      <button
+        type="button"
+        className="challenge-results-card__toggle"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span className="challenge-results-card__summary">
+          <strong>vs {other}</strong>
+          <span className="challenge-results-card__when">{when}</span>
+        </span>
+        <span className="challenge-results-card__side">
+          {outcome ? (
+            <span className="challenge-results-card__outcome">{outcome}</span>
+          ) : (
+            <span className="challenge-inbox-item__meta">Waiting</span>
+          )}
+          <span className="challenge-results-card__chevron" aria-hidden>
+            {open ? "▴" : "▾"}
+          </span>
+        </span>
+      </button>
+      {open && (
+        <div className="challenge-results-card__body">
+          <p>
+            You {mine?.stars ?? 0}★ / {mine?.moves ?? 0}m / {(mine?.score ?? 0).toLocaleString()}
+          </p>
+          {theirs ? (
+            <p>
+              {other} {theirs.stars}★ / {theirs.moves}m / {theirs.score.toLocaleString()}
+            </p>
+          ) : (
+            <p className="play-mode-modal__hint">Waiting for {other}…</p>
+          )}
+        </div>
       )}
     </li>
   );

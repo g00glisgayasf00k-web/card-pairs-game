@@ -68,6 +68,7 @@ function StarRating({ stars }: { stars: number }) {
 
 interface LevelChipProps {
   globalLevel: number;
+  stage: number;
   isMilestone: boolean;
   state: LevelNodeState;
   isCurrent: boolean;
@@ -77,6 +78,7 @@ interface LevelChipProps {
 
 function PokerChip({
   globalLevel,
+  stage,
   isMilestone,
   state,
   isCurrent,
@@ -111,7 +113,8 @@ function PokerChip({
           aria-hidden
           draggable={false}
         />
-        {!locked && <span className="poker-chip__label">{label}</span>}
+        <span className="poker-chip__face-disc" aria-hidden />
+        {!locked && <span className="poker-chip__label">{stage}</span>}
       </button>
       {!locked && <StarRating stars={stars} />}
     </div>
@@ -290,6 +293,7 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
                 >
                   <PokerChip
                     globalLevel={globalLevel}
+                    stage={stage}
                     isMilestone={isMilestone}
                     state={state}
                     isCurrent={isCurrent}

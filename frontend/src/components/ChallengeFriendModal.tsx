@@ -117,15 +117,17 @@ export function ChallengeFriendModal({
   return (
     <div className="modal-overlay scores-overlay home-menu-overlay" onClick={onClose} role="presentation">
       <div
-        className="modal scores-modal home-menu-modal home-menu-modal--wide play-mode-modal"
+        className="modal scores-modal home-menu-modal home-menu-modal--wide play-mode-modal play-mode-modal--challenge"
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-labelledby="challenge-title"
       >
-        <h2 id="challenge-title">Challenge your friends</h2>
-        <p className="play-mode-modal__lead">
-          Same seeded board. Best stars win — fewest moves, then score.
-        </p>
+        <header className="play-mode-modal__header">
+          <h2 id="challenge-title">Challenge your friends</h2>
+          <p className="play-mode-modal__lead">
+            Same seeded board. Best stars win — fewest moves, then score.
+          </p>
+        </header>
 
         <div className="play-mode-tabs" role="tablist">
           {(["play", "friends", "inbox"] as Tab[]).map((t) => {
@@ -151,214 +153,226 @@ export function ChallengeFriendModal({
           })}
         </div>
 
-        {error && <p className="play-mode-modal__error">{error}</p>}
-        {info && <p className="play-mode-modal__note">{info}</p>}
+        <div className="play-mode-modal__body">
+          {error && <p className="play-mode-modal__error">{error}</p>}
+          {info && <p className="play-mode-modal__note">{info}</p>}
 
-        {tab === "friends" && (
-          <div className="play-mode-panel">
-            <div className="challenge-add-friend">
-              <input
-                type="text"
-                value={addName}
-                onChange={(e) => setAddName(e.target.value)}
-                placeholder="Username"
-                aria-label="Friend username"
-                maxLength={64}
-              />
-              <button type="button" className="btn-primary" disabled={busy} onClick={() => void sendFriendRequest()}>
-                Add
-              </button>
-            </div>
+          {tab === "friends" && (
+            <div className="play-mode-panel">
+              <div className="challenge-add-friend">
+                <input
+                  type="text"
+                  value={addName}
+                  onChange={(e) => setAddName(e.target.value)}
+                  placeholder="Username"
+                  aria-label="Friend username"
+                  maxLength={64}
+                />
+                <button type="button" className="btn-primary" disabled={busy} onClick={() => void sendFriendRequest()}>
+                  Add
+                </button>
+              </div>
 
-            {incoming.length > 0 && (
-              <>
-                <h3 className="play-mode-modal__section">Incoming</h3>
-                <ul className="challenge-friend-list">
-                  {incoming.map((f) => (
-                    <li key={f.id}>
-                      <div className="challenge-friend challenge-friend--row">
-                        <span className="challenge-friend__name">{f.user.username}</span>
-                        <button
-                          type="button"
-                          className="play-mode-wager play-mode-wager--on"
-                          disabled={busy}
-                          onClick={() => void acceptFriend(f.id).then(reload)}
-                        >
-                          Accept
-                        </button>
-                        <button
-                          type="button"
-                          className="play-mode-wager"
-                          disabled={busy}
-                          onClick={() => void declineFriend(f.id).then(reload)}
-                        >
-                          Decline
-                        </button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
-
-            <h3 className="play-mode-modal__section">Friends</h3>
-            {friends.length === 0 ? (
-              <p className="play-mode-modal__hint">No friends yet — add someone by username.</p>
-            ) : (
-              <ul className="challenge-friend-list">
-                {friends.map((f) => (
-                  <li key={f.id}>
-                    <div className="challenge-friend">
-                      <span className="challenge-friend__name">{f.user.username}</span>
-                      <span className="challenge-friend__status challenge-friend__status--online">friend</span>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            {outgoing.length > 0 && (
-              <>
-                <h3 className="play-mode-modal__section">Outgoing</h3>
-                <ul className="challenge-friend-list">
-                  {outgoing.map((f) => (
-                    <li key={f.id}>
-                      <div className="challenge-friend">
-                        <span className="challenge-friend__name">{f.user.username}</span>
-                        <span className="challenge-friend__status">pending</span>
-                        <button
-                          type="button"
-                          className="play-mode-wager"
-                          disabled={busy}
-                          onClick={() => void declineFriend(f.id).then(reload)}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
-          </div>
-        )}
-
-        {tab === "play" && (
-          <div className="play-mode-panel">
-            <h3 className="play-mode-modal__section">Opponent</h3>
-            {friends.length === 0 ? (
-              <p className="play-mode-modal__hint">Add a friend first (Friends tab).</p>
-            ) : (
-              <ul className="challenge-friend-list">
-                {friends.map((f) => (
-                  <li key={f.id}>
-                    <button
-                      type="button"
-                      className={`challenge-friend${friendId === f.user.id ? " challenge-friend--selected" : ""}`}
-                      onClick={() => setFriendId(f.user.id)}
-                    >
-                      <span className="challenge-friend__name">{f.user.username}</span>
-                      <span className="challenge-friend__level">Select</span>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-
-            <h3 className="play-mode-modal__section">Level</h3>
-            <p className="play-mode-modal__hint">
-              Board level is chosen automatically from both players&apos; campaign progress.
-            </p>
-
-            <button
-              type="button"
-              className="btn-primary"
-              disabled={busy || friendId == null}
-              onClick={() => void sendChallenge()}
-            >
-              Send &amp; play now
-            </button>
-          </div>
-        )}
-
-        {tab === "inbox" && (
-          <div className="play-mode-panel">
-            {pendingInbox.length === 0 ? (
-              <p className="play-mode-modal__hint">No challenges yet.</p>
-            ) : (
-              <ul className="challenge-inbox-list">
-                {pendingInbox.map((c) => {
-                  const other =
-                    c.you_are === "challenger" ? c.opponent?.username : c.challenger?.username;
-                  return (
-                    <li key={c.id} className="challenge-inbox-item">
-                      <div>
-                        <strong>
-                          vs {other ?? "?"} · {formatLevelId(c.level)}
-                        </strong>
-                        <span className="challenge-inbox-item__meta">
-                          {c.status}
-                          {c.challenger_result || c.opponent_result
-                            ? " · results in"
-                            : ""}
-                        </span>
-                      </div>
-                      <div className="challenge-inbox-item__actions">
-                        {c.status === "pending" && c.you_are === "opponent" && (
-                          <>
-                            <button
-                              type="button"
-                              className="play-mode-wager play-mode-wager--on"
-                              disabled={busy}
-                              onClick={() =>
-                                void acceptChallenge(c.id).then((r) => {
-                                  onPlayChallenge(r.challenge);
-                                })
-                              }
-                            >
-                              Accept &amp; play
-                            </button>
-                            <button
-                              type="button"
-                              className="play-mode-wager"
-                              disabled={busy}
-                              onClick={() => void declineChallenge(c.id).then(reload)}
-                            >
-                              Decline
-                            </button>
-                          </>
-                        )}
-                        {(c.status === "active" ||
-                          (c.status === "pending" && c.you_are === "challenger")) && (
+              {incoming.length > 0 && (
+                <section className="play-mode-section">
+                  <h3 className="play-mode-modal__section">Incoming</h3>
+                  <ul className="challenge-friend-list">
+                    {incoming.map((f) => (
+                      <li key={f.id}>
+                        <div className="challenge-friend challenge-friend--row">
+                          <span className="challenge-friend__name">{f.user.username}</span>
                           <button
                             type="button"
                             className="play-mode-wager play-mode-wager--on"
-                            onClick={() => onPlayChallenge(c)}
+                            disabled={busy}
+                            onClick={() => void acceptFriend(f.id).then(reload)}
                           >
-                            Play
+                            Accept
                           </button>
-                        )}
-                        {c.status === "completed" && (
                           <button
                             type="button"
                             className="play-mode-wager"
-                            onClick={() => onPlayChallenge(c)}
+                            disabled={busy}
+                            onClick={() => void declineFriend(f.id).then(reload)}
                           >
-                            View
+                            Decline
                           </button>
-                        )}
-                      </div>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-        )}
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
 
-        <button type="button" className="btn scores-close" onClick={onClose}>
-          Close
-        </button>
+              <section className="play-mode-section">
+                <h3 className="play-mode-modal__section">Friends</h3>
+                {friends.length === 0 ? (
+                  <p className="play-mode-modal__hint">No friends yet — add someone by username.</p>
+                ) : (
+                  <ul className="challenge-friend-list">
+                    {friends.map((f) => (
+                      <li key={f.id}>
+                        <div className="challenge-friend">
+                          <span className="challenge-friend__name">{f.user.username}</span>
+                          <span className="challenge-friend__status challenge-friend__status--online">friend</span>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+
+              {outgoing.length > 0 && (
+                <section className="play-mode-section">
+                  <h3 className="play-mode-modal__section">Outgoing</h3>
+                  <ul className="challenge-friend-list">
+                    {outgoing.map((f) => (
+                      <li key={f.id}>
+                        <div className="challenge-friend">
+                          <span className="challenge-friend__name">{f.user.username}</span>
+                          <span className="challenge-friend__status">pending</span>
+                          <button
+                            type="button"
+                            className="play-mode-wager"
+                            disabled={busy}
+                            onClick={() => void declineFriend(f.id).then(reload)}
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              )}
+            </div>
+          )}
+
+          {tab === "play" && (
+            <div className="play-mode-panel">
+              <section className="play-mode-section">
+                <h3 className="play-mode-modal__section">Opponent</h3>
+                {friends.length === 0 ? (
+                  <p className="play-mode-modal__hint">Add a friend first (Friends tab).</p>
+                ) : (
+                  <ul className="challenge-friend-list">
+                    {friends.map((f) => (
+                      <li key={f.id}>
+                        <button
+                          type="button"
+                          className={`challenge-friend${friendId === f.user.id ? " challenge-friend--selected" : ""}`}
+                          onClick={() => setFriendId(f.user.id)}
+                        >
+                          <span className="challenge-friend__name">{f.user.username}</span>
+                          <span className="challenge-friend__level">
+                            {friendId === f.user.id ? "Selected" : "Select"}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </section>
+
+              <section className="play-mode-section">
+                <h3 className="play-mode-modal__section">Level</h3>
+                <p className="play-mode-modal__hint">
+                  Board level is chosen automatically from both players&apos; campaign progress.
+                </p>
+              </section>
+
+              <button
+                type="button"
+                className="btn-primary"
+                disabled={busy || friendId == null}
+                onClick={() => void sendChallenge()}
+              >
+                Send &amp; play now
+              </button>
+            </div>
+          )}
+
+          {tab === "inbox" && (
+            <div className="play-mode-panel">
+              {pendingInbox.length === 0 ? (
+                <p className="play-mode-modal__hint">No challenges yet.</p>
+              ) : (
+                <ul className="challenge-inbox-list">
+                  {pendingInbox.map((c) => {
+                    const other =
+                      c.you_are === "challenger" ? c.opponent?.username : c.challenger?.username;
+                    return (
+                      <li key={c.id} className="challenge-inbox-item">
+                        <div>
+                          <strong>
+                            vs {other ?? "?"} · {formatLevelId(c.level)}
+                          </strong>
+                          <span className="challenge-inbox-item__meta">
+                            {c.status}
+                            {c.challenger_result || c.opponent_result
+                              ? " · results in"
+                              : ""}
+                          </span>
+                        </div>
+                        <div className="challenge-inbox-item__actions">
+                          {c.status === "pending" && c.you_are === "opponent" && (
+                            <>
+                              <button
+                                type="button"
+                                className="play-mode-wager play-mode-wager--on"
+                                disabled={busy}
+                                onClick={() =>
+                                  void acceptChallenge(c.id).then((r) => {
+                                    onPlayChallenge(r.challenge);
+                                  })
+                                }
+                              >
+                                Accept &amp; play
+                              </button>
+                              <button
+                                type="button"
+                                className="play-mode-wager"
+                                disabled={busy}
+                                onClick={() => void declineChallenge(c.id).then(reload)}
+                              >
+                                Decline
+                              </button>
+                            </>
+                          )}
+                          {(c.status === "active" ||
+                            (c.status === "pending" && c.you_are === "challenger")) && (
+                            <button
+                              type="button"
+                              className="play-mode-wager play-mode-wager--on"
+                              onClick={() => onPlayChallenge(c)}
+                            >
+                              Play
+                            </button>
+                          )}
+                          {c.status === "completed" && (
+                            <button
+                              type="button"
+                              className="play-mode-wager"
+                              onClick={() => onPlayChallenge(c)}
+                            >
+                              View
+                            </button>
+                          )}
+                        </div>
+                      </li>
+                    );
+                  })}
+                </ul>
+              )}
+            </div>
+          )}
+        </div>
+
+        <footer className="play-mode-modal__footer">
+          <button type="button" className="btn scores-close" onClick={onClose}>
+            Close
+          </button>
+        </footer>
       </div>
     </div>
   );

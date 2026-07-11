@@ -207,10 +207,12 @@
 }
 
 .app--theme-solo .felt-screen {
-  /* World theme vars on .felt-screen drive the background */
+  background:
+    radial-gradient(ellipse 120% 80% at 50% -20%, rgba(108, 43, 217, 0.16) 0%, transparent 55%),
+    linear-gradient(to bottom, #0e2f28, #04110f) !important;
   box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.08),
-    0 0 28px color-mix(in srgb, var(--world-main, #10b981) 24%, transparent);
+    0 0 28px rgba(108, 43, 217, 0.22);
 }
 
 .app--theme-solo .felt-hud__eyebrow {
@@ -218,11 +220,11 @@
 }
 
 .app--theme-solo .felt-icon-btn {
-  border-color: rgba(255, 255, 255, 0.12);
+  border-color: rgba(255, 255, 255, 0.08);
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.14) 0%, transparent 45%),
-    linear-gradient(180deg, var(--world-main, #10b981), var(--world-dark, #065f46));
-  box-shadow: 0 0 18px color-mix(in srgb, var(--world-main, #10b981) 32%, transparent);
+    linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, transparent 45%),
+    linear-gradient(180deg, #6c2bd9, #3b0e91);
+  box-shadow: 0 0 18px rgba(108, 43, 217, 0.28);
 }
 
 .app--theme-solo .game-back-btn {

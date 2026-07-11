@@ -9,9 +9,9 @@ export interface MapPoint {
 
 /** Horizontal anchor (% of map width) — tuned lanes for clean chip spacing. */
 export function xForSide(side: MapSide): number {
-  if (side === "left") return 30;
+  if (side === "left") return 28;
   if (side === "center") return 50;
-  return 70;
+  return 72;
 }
 
 const LANE_SEQUENCE: MapSide[] = [
@@ -33,27 +33,26 @@ export function sideForStageIndex(index: number): MapSide {
 }
 
 /**
- * Node centres for a world map (viewBox 0–100). Vertical gaps keep chip + star
- * rows from overlapping (especially stages 4 → 5 on the right rail).
+ * Clean serpentine path — even vertical rhythm so stars never collide.
  */
 export function buildWorldMapPoints(stageCount: number = STAGES_PER_WORLD): MapPoint[] {
   const template: MapPoint[] = [
-    { x: 22, y: 8 },
-    { x: 44, y: 18 },
-    { x: 66, y: 28 },
-    { x: 82, y: 40 },
-    { x: 52, y: 56 },
-    { x: 28, y: 68 },
-    { x: 46, y: 80 },
-    { x: 68, y: 92 },
-    { x: 48, y: 104 },
-    { x: 72, y: 116 },
+    { x: 50, y: 9 },
+    { x: 74, y: 20 },
+    { x: 28, y: 31 },
+    { x: 74, y: 42 },
+    { x: 28, y: 53 },
+    { x: 74, y: 64 },
+    { x: 28, y: 75 },
+    { x: 74, y: 86 },
+    { x: 28, y: 97 },
+    { x: 50, y: 108 },
   ];
 
   if (stageCount === template.length) return template;
 
-  const topY = 8;
-  const stepY = 12;
+  const topY = 9;
+  const stepY = 11;
   return Array.from({ length: stageCount }, (_, i) => ({
     x: xForSide(sideForStageIndex(i)),
     y: topY + i * stepY,
@@ -63,5 +62,5 @@ export function buildWorldMapPoints(stageCount: number = STAGES_PER_WORLD): MapP
 export function mapViewBoxHeight(stageCount: number = STAGES_PER_WORLD): number {
   const points = buildWorldMapPoints(stageCount);
   const maxY = points.reduce((m, p) => Math.max(m, p.y), 0);
-  return Math.ceil((maxY || 100) + 18);
+  return Math.ceil((maxY || 100) + 14);
 }

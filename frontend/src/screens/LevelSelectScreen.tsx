@@ -37,18 +37,8 @@ interface Props {
 }
 
 const MAP_ASSETS = {
-  chipUnlocked: "/assets/pixellab/chip-unlocked.png",
-  chipCompleted: "/assets/pixellab/chip-completed.png",
-  chipLocked: "/assets/pixellab/chip-locked.png",
-  feltPanel: "/assets/map-felt-panel.png",
   starChest: "/assets/pixellab/star-chest.png",
 } as const;
-
-function chipArtForState(state: LevelNodeState): string {
-  if (state === "locked") return MAP_ASSETS.chipLocked;
-  if (state === "completed") return MAP_ASSETS.chipCompleted;
-  return MAP_ASSETS.chipUnlocked;
-}
 
 function StarRating({ stars }: { stars: number }) {
   return (
@@ -90,12 +80,10 @@ function PokerChip({
 
   return (
     <div className={`map-node${isMilestone ? " map-node--milestone" : ""}`}>
-      {isCurrent && <span className="map-current-beacon" aria-hidden />}
       <button
         type="button"
         className={[
           "poker-chip",
-          "poker-chip--pixel",
           isMilestone ? "poker-chip--boss" : "",
           `poker-chip--${state}`,
           isCurrent ? "poker-chip--current" : "",
@@ -106,15 +94,13 @@ function PokerChip({
         onClick={() => onSelect(globalLevel)}
         aria-label={locked ? `${label} locked` : `Play level ${label}`}
       >
-        <img
-          className="poker-chip__art"
-          src={chipArtForState(state)}
-          alt=""
-          aria-hidden
-          draggable={false}
-        />
-        <span className="poker-chip__face-disc" aria-hidden />
-        {!locked && <span className="poker-chip__label">{stage}</span>}
+        {!locked ? (
+          <span className="poker-chip__label">{stage}</span>
+        ) : (
+          <span className="poker-chip__label poker-chip__label--lock" aria-hidden>
+            ·
+          </span>
+        )}
       </button>
       {!locked && <StarRating stars={stars} />}
     </div>
@@ -267,10 +253,9 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
 
       <div className="felt-board-scroll">
         <div
-          className="felt-board felt-board--chips-only felt-board--pixel"
+          className="felt-board felt-board--chips-only"
           style={{
             aspectRatio: `100 / ${mapHeight}`,
-            backgroundImage: `url(${MAP_ASSETS.feltPanel})`,
           }}
         >
           <div className="felt-nodes">

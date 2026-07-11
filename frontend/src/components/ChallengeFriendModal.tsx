@@ -185,7 +185,8 @@ export function ChallengeFriendModal({
         <header className="play-mode-modal__header">
           <h2 id="challenge-title">Challenge your friends</h2>
           <p className="play-mode-modal__lead">
-            Same seeded board. Best stars win — fewest moves, then score.
+            Challenge your friends. Same starting board, same hands, same point goal —
+            the winner finishes in the fewest moves.
           </p>
         </header>
 

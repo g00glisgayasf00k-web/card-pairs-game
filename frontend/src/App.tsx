@@ -103,6 +103,7 @@ export default function App() {
       id: challenge.id,
       level: challenge.level,
       boardSeed: challenge.board_seed,
+      mission: challenge.mission ?? null,
     });
     setScreen("game");
   };

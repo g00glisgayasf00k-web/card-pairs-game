@@ -9,7 +9,9 @@ from datetime import datetime, timedelta, timezone
 from flask import Blueprint, jsonify
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
+from app.challenge_mission import generate_challenge_mission
 from app.models import Challenge, MatchTicket, PlayerProgress, db
+
 
 matchmaking_bp = Blueprint("matchmaking", __name__)
 
@@ -117,12 +119,14 @@ def join_quick():
     if partner:
         level = max(1, min(MAX_LEVEL, min(unlocked, partner.unlocked_level)))
         seed = secrets.randbits(31)
+        mission = generate_challenge_mission(seed)
         # Older waiting player is challenger for stable ordering
         ch = Challenge(
             challenger_id=partner.user_id,
             opponent_id=me,
             level=level,
             board_seed=seed,
+            mission_json=json.dumps(mission),
             status="active",
             kind="quick",
             wager_gems=0,

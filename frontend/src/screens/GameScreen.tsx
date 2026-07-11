@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { submitScore } from "../lib/api";
 import {
@@ -10,7 +10,7 @@ import {
   type FullHandResult,
   type HandLabel,
 } from "../lib/pokerHands";
-import { campaignLeaderboardPoints, campaignLeaderboardPointsFromProgress, computeLevelStars, challengeKey, challengeProgress, formatChallenge, formatChallengeLabel, applyHandToChallengeCounts, getLevelConfig, levelPointsMet, levelRequirementsMet, movesRemaining, MAX_LEVEL, outOfMoves, type HandCounts } from "../lib/levels";
+import { campaignLeaderboardPoints, campaignLeaderboardPointsFromProgress, computeLevelStars, challengeKey, challengeProgress, formatChallenge, formatChallengeLabel, applyHandToChallengeCounts, buildChallengeMissionConfig, getLevelConfig, levelPointsMet, levelRequirementsMet, movesRemaining, MAX_LEVEL, outOfMoves, type HandCounts } from "../lib/levels";
 import {
   canAffordMovesPack,
   HINT_COST,
@@ -61,12 +61,13 @@ import { GameBoard, type GameBoardHandle } from "../components/GameBoard";
 import { ProfileModal } from "../components/ProfileModal";
 import { GemShopModal } from "../components/GemShopModal";
 import { OutOfEnergyModal } from "../components/OutOfEnergyModal";
-import { fetchChallenge, submitChallenge, type ChallengeDto } from "../lib/api";
+import { fetchChallenge, submitChallenge, type ChallengeDto, type ChallengeMissionDto } from "../lib/api";
 
 export interface ChallengeMatch {
   id: number;
   level: number;
   boardSeed: number;
+  mission?: ChallengeMissionDto | null;
 }
 
 interface Props {
@@ -212,7 +213,12 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
   bestHandRef.current = bestHand;
   levelRef.current = level;
 
-  const cfg = getLevelConfig(level);
+  const cfg = useMemo(() => {
+    if (challengeMatch?.mission) {
+      return buildChallengeMissionConfig(challengeMatch.mission, challengeMatch.level);
+    }
+    return getLevelConfig(level);
+  }, [challengeMatch, level]);
   const effectiveMoveLimit = cfg.moveLimit + bonusMoves;
   const pointsMet = levelScore >= cfg.targetPoints;
   const nextCfg = getLevelConfig(level + 1);
@@ -237,13 +243,17 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
   const tutorialConfig = tutorialActive ? getTutorialStepConfig(tutorialStep) : null;
   const level1SeedBoard = level === 1 ? getLevel1SeedBoard(tutorialStep) : undefined;
   const tutorialFreePlay = level === 1 && tutorialStep >= TUTORIAL_FREE_STEP;
-  const showChallengeUi = level > 1 || tutorialFreePlay;
+  const showChallengeUi = isChallenge || level > 1 || tutorialFreePlay;
   const challengesDone = cfg.challenges.filter(
     (c) => challengeProgress(levelHandCounts, c) >= c.minCount
   ).length;
   const challengesTotal = cfg.challenges.length;
 
-  const completedCfg = completedLevel ? getLevelConfig(completedLevel) : null;
+  const completedCfg = completedLevel
+    ? challengeMatch?.mission
+      ? buildChallengeMissionConfig(challengeMatch.mission, completedLevel)
+      : getLevelConfig(completedLevel)
+    : null;
 
   const persistRun = useCallback((next: RunState) => {
     const saved = loadProgress() ?? defaultProgress();
@@ -464,12 +474,13 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
 
   useEffect(() => {
     if (phase !== "playing") return;
-    const kind = pendingBlockerIntro(getLevelConfig(level).blockers, getLevelConfig(level).fixedObstacles);
+    if (isChallenge) return;
+    const kind = pendingBlockerIntro(cfg.blockers, cfg.fixedObstacles);
     if (kind) {
       markBlockerIntroSeen(kind);
       setBlockerIntro(kind);
     }
-  }, [level, phase]);
+  }, [level, phase, isChallenge, cfg.blockers, cfg.fixedObstacles]);
 
   const tryAdvanceLevel = useCallback(
     (score: number, handCounts: HandCounts, hands: number) => {
@@ -749,11 +760,11 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
           <div className="game-hud__row">
             <div
               className="level-badge hud-labeled-chip"
-              title={`Level ${level} of ${MAX_LEVEL} · ${cfg.label}`}
+              title={isChallenge ? cfg.label : `Level ${level} of ${MAX_LEVEL} · ${cfg.label}`}
             >
-              <span className="hud-labeled-chip__label">Level</span>
+              <span className="hud-labeled-chip__label">{isChallenge ? "Duel" : "Level"}</span>
               <span className="hud-labeled-chip__body">
-                <span className="level-badge__num">{formatLevelId(level)}</span>
+                <span className="level-badge__num">{isChallenge ? "VS" : formatLevelId(level)}</span>
               </span>
             </div>
 
@@ -940,7 +951,7 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
         <div className="modal-overlay levelup-overlay round-complete-overlay">
           <div className="modal levelup-modal round-complete-modal">
             <div className="levelup-badge round-complete-badge">CHALLENGE CLEAR!</div>
-            <h2>Level {formatLevelId(completedLevel)}</h2>
+            <h2>Shared board duel</h2>
             <p className="levelup-label">{completedCfg.label}</p>
             <div className="round-complete-stars" aria-label={`${completedStats?.stars ?? 0} of 3 stars`}>
               {[1, 2, 3].map((i) => (
@@ -1363,7 +1374,7 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
           >
             <h2 id="challenges-title">Mission goals</h2>
             <p className="scores-note">
-              Level {formatLevelId(level)} · {cfg.label}
+              {isChallenge ? cfg.label : `Level ${formatLevelId(level)} · ${cfg.label}`}
             </p>
 
             <div className="challenges-modal__points">

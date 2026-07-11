@@ -58,6 +58,13 @@ def ensure_schema():
                     )
             except OperationalError:
                 pass
+            ch_cols = {c["name"] for c in inspector.get_columns("challenges")}
+        if "mission_json" not in ch_cols:
+            try:
+                with engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE challenges ADD COLUMN mission_json TEXT"))
+            except OperationalError:
+                pass
 
 
 def ensure_admin_user():

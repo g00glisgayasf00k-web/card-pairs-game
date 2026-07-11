@@ -11,6 +11,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.models import Challenge, Friendship, PlayerProgress, User, db
 from app.services.push import send_to_user
+from app.challenge_mission import generate_challenge_mission
 
 challenges_bp = Blueprint("challenges", __name__)
 
@@ -86,6 +87,17 @@ def _compare_attempts(
     return None
 
 
+def _mission_payload(ch: Challenge) -> dict | None:
+    raw = getattr(ch, "mission_json", None)
+    if not raw:
+        return None
+    try:
+        data = json.loads(raw)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return None
+    return data if isinstance(data, dict) else None
+
+
 def _serialize(ch: Challenge, me: int) -> dict:
     _expire_if_needed(ch)
     return {
@@ -96,6 +108,7 @@ def _serialize(ch: Challenge, me: int) -> dict:
         "kind": getattr(ch, "kind", None) or "friend",
         "wager_gems": ch.wager_gems,
         "expires_at": ch.expires_at.isoformat(),
+        "mission": _mission_payload(ch),
         "challenger": _user_public(ch.challenger),
         "opponent": _user_public(ch.opponent),
         "you_are": "challenger" if ch.challenger_id == me else "opponent",
@@ -173,10 +186,12 @@ def create_challenge():
     if not opponent:
         return jsonify({"error": "Player not found"}), 404
 
+    # Display/progress band only — the duel uses a random board + mission, not campaign goals
     level = min(_highest_unlocked(me), _highest_unlocked(friend_id))
     level = max(1, min(MAX_LEVEL, level))
 
     seed = secrets.randbits(31)
+    mission = generate_challenge_mission(seed)
     ch = Challenge(
         challenger_id=me,
         opponent_id=friend_id,
@@ -185,6 +200,7 @@ def create_challenge():
         status="pending",
         kind="friend",
         wager_gems=0,
+        mission_json=json.dumps(mission),
         expires_at=_utc_now() + timedelta(hours=CHALLENGE_TTL_HOURS),
     )
     db.session.add(ch)
@@ -194,7 +210,7 @@ def create_challenge():
     _notify(
         friend_id,
         "New challenge",
-        f"{me_name} challenged you — level {level}",
+        f"{me_name} challenged you to a shared-board duel",
         {"type": "challenge", "challenge_id": str(ch.id)},
     )
     return jsonify({"challenge": _serialize(ch, me)}), 201

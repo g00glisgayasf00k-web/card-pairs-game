@@ -224,7 +224,7 @@ export function ChallengeFriendModal({
     setInfo(null);
     try {
       const { challenge } = await createChallenge(friendId);
-      setInfo("Challenge sent — same board for both of you");
+      setInfo("Challenge sent — same board & goals for both of you");
       await reload();
       setTab("inbox");
       onPlayChallenge(challenge);
@@ -246,7 +246,7 @@ export function ChallengeFriendModal({
         <header className="play-mode-modal__header">
           <h2 id="challenge-title">Challenge your friends</h2>
           <p className="play-mode-modal__lead">
-            Challenge your friends. Same starting board, same hands, same point goal —
+            Challenge your friends. Same random board, same hand goals, same point target —
             the winner finishes in the fewest moves. Each challenge costs 1 ⚡ energy.
           </p>
         </header>

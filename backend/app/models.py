@@ -107,6 +107,8 @@ class Challenge(db.Model):
     kind = db.Column(db.String(16), nullable=False, default="friend")
     wager_gems = db.Column(db.Integer, nullable=False, default=0)
     expires_at = db.Column(db.DateTime, nullable=False)
+    # JSON mission: goals, target_points, move budgets (friend/quick duels).
+    mission_json = db.Column(db.Text, nullable=True)
 
     challenger_stars = db.Column(db.Integer, nullable=True)
     challenger_moves = db.Column(db.Integer, nullable=True)

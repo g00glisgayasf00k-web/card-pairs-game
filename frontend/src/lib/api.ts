@@ -315,6 +315,20 @@ export interface ChallengeAttempt {
   submitted_at: string | null;
 }
 
+export interface ChallengeMissionDto {
+  goals: Array<{
+    hand: string;
+    minCount: number;
+    ranks?: string[];
+    suit?: string;
+  }>;
+  target_points: number;
+  star_move_limits: { one: number; two: number; three: number };
+  move_limit: number;
+  challenge_points?: number;
+  challenge_hands?: number;
+}
+
 export interface ChallengeDto {
   id: number;
   level: number;
@@ -323,6 +337,8 @@ export interface ChallengeDto {
   kind?: "friend" | "quick" | string;
   wager_gems: number;
   expires_at: string;
+  /** Random duel goals + move budget; omit on legacy challenges. */
+  mission?: ChallengeMissionDto | null;
   challenger: FriendUser | null;
   opponent: FriendUser | null;
   you_are: "challenger" | "opponent";

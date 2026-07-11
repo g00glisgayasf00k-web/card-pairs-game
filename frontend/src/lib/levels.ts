@@ -525,6 +525,83 @@ export function getLevelConfig(level: number): LevelConfig {
   return LEVEL_CONFIGS[n - 1]!;
 }
 
+const CHALLENGE_HANDS = new Set<HandLabel>([
+  "pair",
+  "two_pair",
+  "three_of_a_kind",
+  "straight",
+  "flush",
+  "four_of_a_kind",
+  "straight_flush",
+  "royal_flush",
+]);
+
+export interface ChallengeMissionPayload {
+  goals: Array<{
+    hand: string;
+    minCount: number;
+    ranks?: string[];
+    suit?: string;
+  }>;
+  target_points: number;
+  star_move_limits: { one: number; two: number; three: number };
+  move_limit: number;
+  challenge_points?: number;
+  challenge_hands?: number;
+}
+
+/** Shared-board duel config from API mission (no campaign blockers). */
+export function buildChallengeMissionConfig(
+  mission: ChallengeMissionPayload,
+  displayLevel = 1
+): LevelConfig {
+  const challenges: HandChallenge[] = [];
+  for (const g of mission.goals ?? []) {
+    if (!CHALLENGE_HANDS.has(g.hand as HandLabel)) continue;
+    const goal: HandChallenge = {
+      hand: g.hand as HandLabel,
+      minCount: Math.max(1, Math.floor(Number(g.minCount) || 1)),
+    };
+    if (Array.isArray(g.ranks) && g.ranks.length > 0) {
+      goal.ranks = g.ranks.filter((r): r is Rank =>
+        (RANKS as readonly string[]).includes(r)
+      );
+      if (goal.ranks.length === 0) delete goal.ranks;
+    }
+    if (g.suit && (SUITS as readonly string[]).includes(g.suit)) {
+      goal.suit = g.suit as Suit;
+    }
+    challenges.push(goal);
+  }
+
+  const challengePoints =
+    mission.challenge_points ??
+    challenges.reduce((sum, c) => sum + HAND_SCORES[c.hand] * c.minCount, 0);
+  const challengeHands =
+    mission.challenge_hands ?? challenges.reduce((sum, c) => sum + c.minCount, 0);
+  const starMoveLimits = {
+    one: Math.max(1, mission.star_move_limits?.one ?? mission.move_limit ?? 16),
+    two: Math.max(1, mission.star_move_limits?.two ?? 12),
+    three: Math.max(1, mission.star_move_limits?.three ?? 8),
+  };
+  const targetPoints = Math.max(100, Math.floor(Number(mission.target_points) || 600));
+
+  return {
+    level: Math.max(1, displayLevel),
+    tier: "Challenge",
+    label: "Shared board duel",
+    targetPoints,
+    challenges,
+    challengePoints,
+    challengeHands,
+    starMoveLimits,
+    estimatedMoves: starMoveLimits.three,
+    moveLimit: Math.max(starMoveLimits.one, mission.move_limit ?? starMoveLimits.one),
+    blockers: null,
+    fixedObstacles: [],
+  };
+}
+
 export function levelPointsMet(levelScore: number, cfg: LevelConfig): boolean {
   return levelScore >= cfg.targetPoints;
 }

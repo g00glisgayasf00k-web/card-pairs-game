@@ -266,6 +266,20 @@ def submit_challenge(challenge_id: int):
     _expire_if_needed(ch)
     if ch.status == "expired":
         db.session.commit()
+        already = (
+            (ch.challenger_id == me and ch.challenger_submitted_at)
+            or (ch.opponent_id == me and ch.opponent_submitted_at)
+        )
+        if already:
+            return (
+                jsonify(
+                    {
+                        "error": "Challenge expired",
+                        "challenge": _serialize(ch, me),
+                    }
+                ),
+                409,
+            )
         return jsonify({"error": "Challenge expired"}), 409
     if ch.status == "pending":
         # Challenger may play before opponent accepts — auto-activate
@@ -287,14 +301,31 @@ def submit_challenge(challenge_id: int):
     now = _utc_now()
     if ch.challenger_id == me:
         if ch.challenger_submitted_at:
-            return jsonify({"error": "Already submitted"}), 409
+            # Idempotent: return locked-in result so the client can show it
+            return (
+                jsonify(
+                    {
+                        "error": "Already submitted",
+                        "challenge": _serialize(ch, me),
+                    }
+                ),
+                409,
+            )
         ch.challenger_stars = stars
         ch.challenger_moves = moves
         ch.challenger_score = score
         ch.challenger_submitted_at = now
     else:
         if ch.opponent_submitted_at:
-            return jsonify({"error": "Already submitted"}), 409
+            return (
+                jsonify(
+                    {
+                        "error": "Already submitted",
+                        "challenge": _serialize(ch, me),
+                    }
+                ),
+                409,
+            )
         ch.opponent_stars = stars
         ch.opponent_moves = moves
         ch.opponent_score = score

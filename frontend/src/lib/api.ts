@@ -363,10 +363,21 @@ export async function submitChallenge(
   id: number,
   payload: { stars: number; moves: number; score: number }
 ) {
-  return request<{ challenge: ChallengeDto }>(`/api/challenges/${id}/submit`, {
+  const res = await fetch(`${API_BASE}/api/challenges/${id}/submit`, {
     method: "POST",
+    headers: headers(),
     body: JSON.stringify(payload),
   });
+  const data = (await res.json().catch(() => ({}))) as {
+    error?: string;
+    challenge?: ChallengeDto;
+  };
+  // Already submitted / expired still include the locked-in challenge for the results UI
+  if (data.challenge && (res.ok || res.status === 409)) {
+    return { challenge: data.challenge };
+  }
+  if (!res.ok) throw new Error(data.error ?? res.statusText);
+  throw new Error("Challenge response missing");
 }
 
 export type MatchmakingStatus = "idle" | "waiting" | "matched";

@@ -22,6 +22,24 @@ interface Props {
 
 type Tab = "play" | "friends" | "inbox";
 
+function myAttempt(c: ChallengeDto) {
+  return c.you_are === "challenger" ? c.challenger_result : c.opponent_result;
+}
+
+function theirAttempt(c: ChallengeDto) {
+  return c.you_are === "challenger" ? c.opponent_result : c.challenger_result;
+}
+
+function challengeOutcome(c: ChallengeDto): string | null {
+  if (c.status !== "completed") return null;
+  const mine = myAttempt(c);
+  const theirs = theirAttempt(c);
+  if (!mine || !theirs) return null;
+  const myId = c.you_are === "challenger" ? c.challenger?.id : c.opponent?.id;
+  if (c.winner_user_id == null) return "Tie";
+  return c.winner_user_id === myId ? "You win" : "You lose";
+}
+
 export function ChallengeFriendModal({
   onClose,
   onPlayChallenge,
@@ -38,6 +56,7 @@ export function ChallengeFriendModal({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [viewing, setViewing] = useState<ChallengeDto | null>(null);
 
   const reload = useCallback(async () => {
     setError(null);
@@ -301,18 +320,25 @@ export function ChallengeFriendModal({
                   {pendingInbox.map((c) => {
                     const other =
                       c.you_are === "challenger" ? c.opponent?.username : c.challenger?.username;
+                    const mine = myAttempt(c);
+                    const theirs = theirAttempt(c);
+                    const outcome = challengeOutcome(c);
+                    const canPlay =
+                      !mine &&
+                      (c.status === "active" ||
+                        (c.status === "pending" && c.you_are === "challenger"));
+                    const canView = Boolean(mine);
+                    let meta = c.status;
+                    if (mine && !theirs) meta = "your score in · waiting";
+                    else if (outcome) meta = outcome;
+                    else if (mine && theirs) meta = "both scores in";
                     return (
                       <li key={c.id} className="challenge-inbox-item">
                         <div>
                           <strong>
                             vs {other ?? "?"} · {formatLevelId(c.level)}
                           </strong>
-                          <span className="challenge-inbox-item__meta">
-                            {c.status}
-                            {c.challenger_result || c.opponent_result
-                              ? " · results in"
-                              : ""}
-                          </span>
+                          <span className="challenge-inbox-item__meta">{meta}</span>
                         </div>
                         <div className="challenge-inbox-item__actions">
                           {c.status === "pending" && c.you_are === "opponent" && (
@@ -339,8 +365,7 @@ export function ChallengeFriendModal({
                               </button>
                             </>
                           )}
-                          {(c.status === "active" ||
-                            (c.status === "pending" && c.you_are === "challenger")) && (
+                          {canPlay && (
                             <button
                               type="button"
                               className="play-mode-wager play-mode-wager--on"
@@ -349,13 +374,13 @@ export function ChallengeFriendModal({
                               Play
                             </button>
                           )}
-                          {c.status === "completed" && (
+                          {canView && (
                             <button
                               type="button"
                               className="play-mode-wager"
-                              onClick={() => onPlayChallenge(c)}
+                              onClick={() => setViewing(c)}
                             >
-                              View
+                              Results
                             </button>
                           )}
                         </div>
@@ -363,6 +388,48 @@ export function ChallengeFriendModal({
                     );
                   })}
                 </ul>
+              )}
+              {viewing && (
+                <div className="challenge-results-card" role="status">
+                  <strong>
+                    vs{" "}
+                    {viewing.you_are === "challenger"
+                      ? viewing.opponent?.username
+                      : viewing.challenger?.username}{" "}
+                    · {formatLevelId(viewing.level)}
+                  </strong>
+                  {(() => {
+                    const mine = myAttempt(viewing);
+                    const theirs = theirAttempt(viewing);
+                    const otherName =
+                      viewing.you_are === "challenger"
+                        ? viewing.opponent?.username
+                        : viewing.challenger?.username;
+                    const outcome = challengeOutcome(viewing);
+                    return (
+                      <>
+                        {outcome && <p className="challenge-results-card__outcome">{outcome}</p>}
+                        <p>
+                          You {mine?.stars ?? 0}★ / {mine?.moves ?? 0}m /{" "}
+                          {(mine?.score ?? 0).toLocaleString()}
+                        </p>
+                        {theirs ? (
+                          <p>
+                            {otherName ?? "Opp"} {theirs.stars}★ / {theirs.moves}m /{" "}
+                            {theirs.score.toLocaleString()}
+                          </p>
+                        ) : (
+                          <p className="play-mode-modal__hint">
+                            Waiting for {otherName ?? "opponent"}…
+                          </p>
+                        )}
+                      </>
+                    );
+                  })()}
+                  <button type="button" className="btn ghost" onClick={() => setViewing(null)}>
+                    Close results
+                  </button>
+                </div>
               )}
             </div>
           )}

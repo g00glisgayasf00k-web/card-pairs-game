@@ -460,7 +460,10 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
           .catch(() =>
             fetchChallenge(challengeMatch.id)
               .then((r) => setChallengeResult(r.challenge))
-              .catch(() => undefined)
+              .catch(() => {
+                // Still leave the round-complete screen usable with local stats
+                setChallengeResult(null);
+              })
           );
         return true;
       }
@@ -940,10 +943,20 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
                     : challengeResult.challenger?.username;
                 if (!theirs) {
                   return (
-                    <div className="perk">
-                      <span className="perk-icon">⏳</span>
-                      <span>Waiting for {opponentName ?? "opponent"}…</span>
-                    </div>
+                    <>
+                      <div className="perk">
+                        <span className="perk-icon">📤</span>
+                        <span>
+                          Your result locked in · {mine?.stars ?? completedStats?.stars ?? 0}★ /{" "}
+                          {mine?.moves ?? completedStats?.hands ?? 0}m /{" "}
+                          {(mine?.score ?? completedStats?.score ?? 0).toLocaleString()} pts
+                        </span>
+                      </div>
+                      <div className="perk">
+                        <span className="perk-icon">⏳</span>
+                        <span>Waiting for {opponentName ?? "opponent"}…</span>
+                      </div>
+                    </>
                   );
                 }
                 const outcome =

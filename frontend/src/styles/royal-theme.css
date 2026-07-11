@@ -1269,6 +1269,30 @@ button.royal-resource:active {
   gap: 0.35rem;
 }
 
+.challenge-results-card {
+  margin-top: 0.85rem;
+  padding: 0.85rem 0.9rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 215, 0, 0.28);
+  background: rgba(0, 0, 0, 0.35);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.challenge-results-card__outcome {
+  margin: 0.15rem 0 0;
+  font-size: 1rem;
+  font-weight: 800;
+  color: #ffd700;
+}
+
+.challenge-results-card p {
+  margin: 0;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.88);
+}
+
 .play-mode-modal__actions {
   display: flex;
   flex-direction: column;

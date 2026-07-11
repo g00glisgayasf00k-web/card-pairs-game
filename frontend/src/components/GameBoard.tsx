@@ -545,26 +545,57 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
       [board, blockers, commitClear]
     );
 
-    // ── ↔↕ Arrow tap — clear row or column ────────────────────────────────────
+    // ── ↔↕ Arrow tap — clear row/column; hitting another arrow fires it too ───
     const activateArrow = useCallback(
       async (r: number, c: number, axis: "row" | "col") => {
         setBusy(true);
         const cleared = new Set<string>();
         const order = new Map<string, number>();
+        const activated = new Set<string>();
+        const queue: { r: number; c: number; axis: "row" | "col"; wave: number }[] = [
+          { r, c, axis, wave: 0 },
+        ];
+        let chainCount = 0;
 
-        if (axis === "row") {
-          for (let cc = 0; cc < COLS; cc++) {
-            if (!board[r]?.[cc]) continue;
-            const k = `${r},${cc}`;
-            cleared.add(k);
-            order.set(k, Math.abs(cc - c));
-          }
-        } else {
-          for (let rr = 0; rr < ROWS; rr++) {
-            if (!board[rr]?.[c]) continue;
-            const k = `${rr},${c}`;
-            cleared.add(k);
-            order.set(k, Math.abs(rr - r));
+        while (queue.length > 0) {
+          const cur = queue.shift()!;
+          const originKey = `${cur.r},${cur.c}`;
+          if (activated.has(originKey)) continue;
+          activated.add(originKey);
+          if (cur.wave > 0) chainCount += 1;
+
+          if (cur.axis === "row") {
+            for (let cc = 0; cc < COLS; cc++) {
+              const cell = board[cur.r]?.[cc];
+              if (!cell) continue;
+              const k = `${cur.r},${cc}`;
+              if (!cleared.has(k)) {
+                cleared.add(k);
+                order.set(k, cur.wave * (COLS + ROWS) + Math.abs(cc - cur.c));
+              }
+              if (k === originKey) continue;
+              if (cell.special === "arrow_h" && !activated.has(k)) {
+                queue.push({ r: cur.r, c: cc, axis: "row", wave: cur.wave + 1 });
+              } else if (cell.special === "arrow_v" && !activated.has(k)) {
+                queue.push({ r: cur.r, c: cc, axis: "col", wave: cur.wave + 1 });
+              }
+            }
+          } else {
+            for (let rr = 0; rr < ROWS; rr++) {
+              const cell = board[rr]?.[cur.c];
+              if (!cell) continue;
+              const k = `${rr},${cur.c}`;
+              if (!cleared.has(k)) {
+                cleared.add(k);
+                order.set(k, cur.wave * (COLS + ROWS) + Math.abs(rr - cur.r));
+              }
+              if (k === originKey) continue;
+              if (cell.special === "arrow_h" && !activated.has(k)) {
+                queue.push({ r: rr, c: cur.c, axis: "row", wave: cur.wave + 1 });
+              } else if (cell.special === "arrow_v" && !activated.has(k)) {
+                queue.push({ r: rr, c: cur.c, axis: "col", wave: cur.wave + 1 });
+              }
+            }
           }
         }
 
@@ -580,13 +611,14 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
 
         const label = axis === "row" ? "row" : "column";
         const icon = axis === "row" ? "↔" : "↕";
+        const chainNote = chainCount > 0 ? ` · ${chainCount} arrow chain!` : "";
         await commitClear(
           board,
           blockers,
           cleared,
           [],
           new Set([c]),
-          `${icon} Cleared the ${label}! ${count} cards +${pts}`,
+          `${icon} Cleared the ${label}! ${count} cards +${pts}${chainNote}`,
           pts,
           null,
           count,

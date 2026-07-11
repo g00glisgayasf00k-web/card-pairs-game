@@ -11,12 +11,18 @@ import {
   type ChallengeDto,
   type FriendshipItem,
 } from "../lib/api";
+import {
+  countUnseenCompletedResults,
+  markChallengeResultsSeen,
+} from "../lib/challengeResultSeen";
 
 interface Props {
   onClose: () => void;
   onPlayChallenge: (challenge: ChallengeDto) => void;
   friendRequestCount?: number;
   challengeCount?: number;
+  /** Called after Results are marked seen so home badges can clear. */
+  onNotificationsChange?: () => void;
 }
 
 type Tab = "play" | "friends" | "inbox" | "results";
@@ -78,6 +84,7 @@ export function ChallengeFriendModal({
   onPlayChallenge,
   friendRequestCount = 0,
   challengeCount = 0,
+  onNotificationsChange,
 }: Props) {
   const [tab, setTab] = useState<Tab>("play");
   const [friends, setFriends] = useState<FriendshipItem[]>([]);
@@ -89,6 +96,7 @@ export function ChallengeFriendModal({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [seenTick, setSeenTick] = useState(0);
 
   const reload = useCallback(async () => {
     setError(null);
@@ -130,11 +138,19 @@ export function ChallengeFriendModal({
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   const friendsBadge = Math.max(friendRequestCount, incoming.length);
-  const inboxBadge = Math.max(
-    challengeCount,
-    pendingInbox.length
-  );
-  const resultsBadge = resultsList.filter((c) => c.status === "completed").length;
+  const inboxBadge = Math.max(challengeCount, pendingInbox.length);
+  void seenTick;
+  const resultsBadge = countUnseenCompletedResults(challenges);
+  const resultIdsKey = resultsList.map((c) => c.id).sort((a, b) => a - b).join(",");
+
+  useEffect(() => {
+    if (tab !== "results" || !resultIdsKey) return;
+    const ids = resultIdsKey.split(",").map((n) => Number(n));
+    const before = countUnseenCompletedResults(challenges);
+    markChallengeResultsSeen(ids);
+    setSeenTick((t) => t + 1);
+    if (before > 0) onNotificationsChange?.();
+  }, [tab, resultIdsKey, challenges, onNotificationsChange]);
 
   const sendFriendRequest = async () => {
     if (!addName.trim()) return;

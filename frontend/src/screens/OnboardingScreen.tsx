@@ -216,6 +216,7 @@ export function OnboardingScreen({
           }}
           friendRequestCount={summary.friend_requests}
           challengeCount={summary.challenges}
+          onNotificationsChange={() => void refreshNotifs()}
           onPlayChallenge={(c) => {
             setPlaySheet(null);
             void refreshNotifs();

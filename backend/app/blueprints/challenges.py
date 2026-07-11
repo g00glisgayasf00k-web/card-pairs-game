@@ -10,6 +10,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.models import Challenge, Friendship, PlayerProgress, User, db
+from app.services.push import send_to_user
 
 challenges_bp = Blueprint("challenges", __name__)
 
@@ -19,6 +20,13 @@ CHALLENGE_TTL_HOURS = 24
 
 def _utc_now():
     return datetime.now(timezone.utc)
+
+
+def _notify(user_id: int, title: str, body: str, data: dict[str, str]) -> None:
+    try:
+        send_to_user(user_id, title=title, body=body, data=data)
+    except Exception:
+        pass
 
 
 def _user_public(u: User | None) -> dict | None:
@@ -181,6 +189,14 @@ def create_challenge():
     )
     db.session.add(ch)
     db.session.commit()
+    me_user = User.query.get(me)
+    me_name = me_user.username if me_user else "A friend"
+    _notify(
+        friend_id,
+        "New challenge",
+        f"{me_name} challenged you — level {level}",
+        {"type": "challenge", "challenge_id": str(ch.id)},
+    )
     return jsonify({"challenge": _serialize(ch, me)}), 201
 
 
@@ -211,6 +227,14 @@ def accept_challenge(challenge_id: int):
     ch.status = "active"
     ch.updated_at = _utc_now()
     db.session.commit()
+    me_user = User.query.get(me)
+    me_name = me_user.username if me_user else "Your friend"
+    _notify(
+        ch.challenger_id,
+        "Challenge accepted",
+        f"{me_name} accepted your challenge",
+        {"type": "challenge", "challenge_id": str(ch.id)},
+    )
     return jsonify({"challenge": _serialize(ch, me)})
 
 
@@ -291,4 +315,23 @@ def submit_challenge(challenge_id: int):
 
     ch.updated_at = now
     db.session.commit()
+
+    other_id = ch.opponent_id if me == ch.challenger_id else ch.challenger_id
+    me_user = User.query.get(me)
+    me_name = me_user.username if me_user else "Your friend"
+    if ch.status == "completed":
+        _notify(
+            other_id,
+            "Challenge finished",
+            f"{me_name} finished — check who won",
+            {"type": "challenge_complete", "challenge_id": str(ch.id)},
+        )
+    else:
+        _notify(
+            other_id,
+            "Your turn",
+            f"{me_name} submitted their challenge score",
+            {"type": "challenge", "challenge_id": str(ch.id)},
+        )
+
     return jsonify({"challenge": _serialize(ch, me)})

@@ -387,3 +387,27 @@ export async function leaveQuickMatch() {
   return request<{ ok: boolean }>("/api/matchmaking/quick", { method: "DELETE" });
 }
 
+export interface NotificationSummary {
+  friend_requests: number;
+  challenges: number;
+  total: number;
+}
+
+export async function fetchNotificationSummary() {
+  return request<NotificationSummary>("/api/notifications/summary");
+}
+
+export async function registerDeviceToken(token: string, platform: string) {
+  return request<{ ok: boolean }>("/api/notifications/devices", {
+    method: "POST",
+    body: JSON.stringify({ token, platform }),
+  });
+}
+
+export async function unregisterDeviceToken(token: string) {
+  return request<{ ok: boolean }>("/api/notifications/devices", {
+    method: "DELETE",
+    body: JSON.stringify({ token }),
+  });
+}
+

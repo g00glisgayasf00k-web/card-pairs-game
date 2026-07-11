@@ -14,6 +14,7 @@ interface Props {
   subtitle: string;
   icon?: ReactNode;
   meta?: string;
+  badge?: number;
   progress?: ProgressProps;
   onClick: () => void;
 }
@@ -33,10 +34,12 @@ export function GameModeCard({
   subtitle,
   icon,
   meta,
+  badge,
   progress,
   onClick,
 }: Props) {
   const assets = CARD_ASSETS[glow];
+  const badgeLabel = badge && badge > 0 ? (badge > 99 ? "99+" : String(badge)) : null;
 
   return (
     <button
@@ -49,6 +52,11 @@ export function GameModeCard({
         backgroundPosition: "center",
       }}
     >
+      {badgeLabel && (
+        <span className="home-mode-card__badge" aria-label={`${badge} notifications`}>
+          {badgeLabel}
+        </span>
+      )}
       <span
         className="home-mode-card__glow"
         aria-hidden

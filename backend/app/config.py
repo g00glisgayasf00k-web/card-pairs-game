@@ -35,3 +35,7 @@ class Config:
     SQUARE_LOCATION_ID = os.environ.get("SQUARE_LOCATION_ID", "")
     SQUARE_ENVIRONMENT = os.environ.get("SQUARE_ENVIRONMENT", "sandbox")
     SQUARE_WEBHOOK_SIGNATURE_KEY = os.environ.get("SQUARE_WEBHOOK_SIGNATURE_KEY", "")
+
+    # Firebase Cloud Messaging (optional — badges work without this)
+    FCM_PROJECT_ID = os.environ.get("FCM_PROJECT_ID", "")
+    FCM_SERVICE_ACCOUNT_JSON = os.environ.get("FCM_SERVICE_ACCOUNT_JSON", "")

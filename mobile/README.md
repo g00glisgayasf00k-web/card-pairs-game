@@ -107,6 +107,19 @@ Then **Run ▶** on a device or emulator.
 - **Ads** (AdSense / Nitro) behave differently in WebView — test treasury video rewards on a real device.
 - After changing the React app, always run `npm run cap:sync` before rebuilding the APK.
 
+## Push notifications (FCM)
+
+In-app badges work without Firebase. Device push needs:
+
+1. Create a Firebase project linked to app id `com.royalmatch.poker`.
+2. Download `google-services.json` into `frontend/android/app/` (Gradle already applies the plugin when this file exists).
+3. On the Render backend, set:
+   - `FCM_PROJECT_ID` — Firebase project id
+   - `FCM_SERVICE_ACCOUNT_JSON` — full service-account JSON (one line) with Firebase Cloud Messaging permission
+4. Rebuild the APK after adding `google-services.json`, then grant notification permission on the device.
+
+Push fires for friend requests, challenge invites, accepts, and finished matches. Tapping a notification opens **Challenge your friends**.
+
 ## npm scripts (from `frontend/`)
 
 | Script | Purpose |

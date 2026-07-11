@@ -8,6 +8,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.models import Friendship, User, db
+from app.services.push import send_to_user
 
 friends_bp = Blueprint("friends", __name__)
 
@@ -29,6 +30,13 @@ def _find_friendship(a: int, b: int) -> Friendship | None:
 
 def _user_public(u: User) -> dict:
     return {"id": u.id, "username": u.username}
+
+
+def _notify_friend(user_id: int, title: str, body: str, kind: str) -> None:
+    try:
+        send_to_user(user_id, title=title, body=body, data={"type": kind})
+    except Exception:
+        pass
 
 
 @friends_bp.get("")
@@ -82,6 +90,9 @@ def request_friend():
     if other.id == me:
         return jsonify({"error": "Cannot friend yourself"}), 400
 
+    me_user = User.query.get(me)
+    me_name = me_user.username if me_user else "Someone"
+
     existing = _find_friendship(me, other.id)
     if existing:
         if existing.status == "accepted":
@@ -92,11 +103,23 @@ def request_friend():
         existing.status = "accepted"
         existing.updated_at = _utc_now()
         db.session.commit()
+        _notify_friend(
+            other.id,
+            "Friend request accepted",
+            f"{me_name} is now your friend",
+            "friend_accepted",
+        )
         return jsonify({"friendship": {"id": existing.id, "status": "accepted", "user": _user_public(other)}})
 
     row = Friendship(user_id=me, friend_id=other.id, status="pending")
     db.session.add(row)
     db.session.commit()
+    _notify_friend(
+        other.id,
+        "Friend request",
+        f"{me_name} wants to be friends",
+        "friend_request",
+    )
     return jsonify(
         {
             "friendship": {
@@ -119,6 +142,15 @@ def accept_friend(friendship_id: int):
     row.updated_at = _utc_now()
     db.session.commit()
     other = User.query.get(row.user_id)
+    me_user = User.query.get(me)
+    me_name = me_user.username if me_user else "Someone"
+    if other:
+        _notify_friend(
+            other.id,
+            "Friend request accepted",
+            f"{me_name} accepted your friend request",
+            "friend_accepted",
+        )
     return jsonify(
         {
             "friendship": {

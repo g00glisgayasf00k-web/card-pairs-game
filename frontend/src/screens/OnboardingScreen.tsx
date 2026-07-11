@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AuthPanel } from "../components/AuthPanel";
 import { ProfileModal } from "../components/ProfileModal";
 import { ChallengeFriendModal } from "../components/ChallengeFriendModal";
@@ -15,6 +15,7 @@ import {
 import { clearProgress, loadProgress } from "../lib/progress";
 import { MAX_LEVEL } from "../lib/levels";
 import type { ChallengeDto } from "../lib/api";
+import { useNotificationSummary } from "../lib/useNotificationSummary";
 
 interface Props {
   username: string | null;
@@ -23,6 +24,8 @@ interface Props {
   onSessionChange?: () => void;
   onPlay: () => void;
   onPlayChallenge: (challenge: ChallengeDto) => void;
+  openChallengeSheet?: boolean;
+  onChallengeSheetOpened?: () => void;
 }
 
 type HomeMenu = "leaderboard" | "rules" | "account" | "shop" | null;
@@ -35,12 +38,21 @@ export function OnboardingScreen({
   onSessionChange,
   onPlay,
   onPlayChallenge,
+  openChallengeSheet,
+  onChallengeSheetOpened,
 }: Props) {
   const [menu, setMenu] = useState<HomeMenu>(null);
   const [playSheet, setPlaySheet] = useState<PlaySheet>(null);
   const [walletTick, setWalletTick] = useState(0);
+  const { summary, refresh: refreshNotifs } = useNotificationSummary(loggedIn);
   const saved = loadProgress();
   void walletTick;
+
+  useEffect(() => {
+    if (!openChallengeSheet) return;
+    setPlaySheet("challenge");
+    onChallengeSheetOpened?.();
+  }, [openChallengeSheet, onChallengeSheetOpened]);
 
   const startFresh = () => {
     clearProgress();
@@ -114,6 +126,7 @@ export function OnboardingScreen({
                 title="Challenge your friends"
                 subtitle="Same seed — best stars / fewest moves"
                 meta="Optional gem wager"
+                badge={summary.total}
                 onClick={() => setPlaySheet("challenge")}
               />
               <GameModeCard
@@ -214,9 +227,15 @@ export function OnboardingScreen({
 
       {playSheet === "challenge" && (
         <ChallengeFriendModal
-          onClose={() => setPlaySheet(null)}
+          onClose={() => {
+            setPlaySheet(null);
+            void refreshNotifs();
+          }}
+          friendRequestCount={summary.friend_requests}
+          challengeCount={summary.challenges}
           onPlayChallenge={(c) => {
             setPlaySheet(null);
+            void refreshNotifs();
             onPlayChallenge(c);
           }}
         />

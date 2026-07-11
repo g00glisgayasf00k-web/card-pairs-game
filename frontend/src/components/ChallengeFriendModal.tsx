@@ -16,11 +16,18 @@ import { formatLevelId } from "../lib/levelMap";
 interface Props {
   onClose: () => void;
   onPlayChallenge: (challenge: ChallengeDto) => void;
+  friendRequestCount?: number;
+  challengeCount?: number;
 }
 
 type Tab = "play" | "friends" | "inbox";
 
-export function ChallengeFriendModal({ onClose, onPlayChallenge }: Props) {
+export function ChallengeFriendModal({
+  onClose,
+  onPlayChallenge,
+  friendRequestCount = 0,
+  challengeCount = 0,
+}: Props) {
   const [tab, setTab] = useState<Tab>("play");
   const [friends, setFriends] = useState<FriendshipItem[]>([]);
   const [incoming, setIncoming] = useState<FriendshipItem[]>([]);
@@ -56,6 +63,17 @@ export function ChallengeFriendModal({ onClose, onPlayChallenge }: Props) {
       c.status === "active" ||
       (c.status === "completed" &&
         Date.now() - new Date(c.created_at).getTime() < 7 * 24 * 60 * 60 * 1000)
+  );
+
+  const friendsBadge = Math.max(friendRequestCount, incoming.length);
+  const inboxBadge = Math.max(
+    challengeCount,
+    challenges.filter((c) => {
+      if (c.status === "pending" && c.you_are === "opponent") return true;
+      if (c.status !== "active") return false;
+      if (c.you_are === "challenger") return !c.challenger_result;
+      return !c.opponent_result;
+    }).length
   );
 
   const sendFriendRequest = async () => {
@@ -110,18 +128,27 @@ export function ChallengeFriendModal({ onClose, onPlayChallenge }: Props) {
         </p>
 
         <div className="play-mode-tabs" role="tablist">
-          {(["play", "friends", "inbox"] as Tab[]).map((t) => (
-            <button
-              key={t}
-              type="button"
-              role="tab"
-              aria-selected={tab === t}
-              className={`play-mode-tab${tab === t ? " play-mode-tab--on" : ""}`}
-              onClick={() => setTab(t)}
-            >
-              {t === "play" ? "New" : t === "friends" ? "Friends" : `Inbox (${pendingInbox.length})`}
-            </button>
-          ))}
+          {(["play", "friends", "inbox"] as Tab[]).map((t) => {
+            const badge =
+              t === "friends" ? friendsBadge : t === "inbox" ? inboxBadge : 0;
+            return (
+              <button
+                key={t}
+                type="button"
+                role="tab"
+                aria-selected={tab === t}
+                className={`play-mode-tab${tab === t ? " play-mode-tab--on" : ""}`}
+                onClick={() => setTab(t)}
+              >
+                {t === "play" ? "New" : t === "friends" ? "Friends" : "Inbox"}
+                {badge > 0 && (
+                  <span className="play-mode-tab__badge" aria-hidden>
+                    {badge > 99 ? "99+" : badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </div>
 
         {error && <p className="play-mode-modal__error">{error}</p>}

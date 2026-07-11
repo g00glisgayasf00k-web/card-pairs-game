@@ -6,6 +6,11 @@ import { ResetPasswordScreen } from "./screens/ResetPasswordScreen";
 import { clearSession, getUsername, isLoggedIn } from "./lib/session";
 import { clearProgress } from "./lib/progress";
 import { initProgressSync, pullRemoteProgress, stopProgressSync } from "./lib/progressSync";
+import {
+  onNotificationOpen,
+  stopPushNotifications,
+  syncPushTokenAfterLogin,
+} from "./lib/nativePush";
 import type { ChallengeDto } from "./lib/api";
 import type { ChallengeMatch } from "./screens/GameScreen";
 
@@ -31,15 +36,34 @@ export default function App() {
   const [loggedIn, setLoggedIn] = useState(() => isLoggedIn());
   const [username, setUsername] = useState<string | null>(() => getUsername());
   const [resetToken, setResetToken] = useState<string | null>(() => readResetTokenFromUrl());
+  const [openChallengeSheet, setOpenChallengeSheet] = useState(false);
 
   useEffect(() => {
     if (!loggedIn) {
       stopProgressSync();
+      void stopPushNotifications();
       return;
     }
     initProgressSync();
+    void syncPushTokenAfterLogin();
     return () => stopProgressSync();
   }, [loggedIn]);
+
+  useEffect(() => {
+    onNotificationOpen((data) => {
+      const type = data.type ?? "";
+      if (
+        type === "friend_request" ||
+        type === "friend_accepted" ||
+        type === "challenge" ||
+        type === "challenge_complete"
+      ) {
+        setScreen("onboard");
+        setOpenChallengeSheet(true);
+      }
+    });
+    return () => onNotificationOpen(null);
+  }, []);
 
   useEffect(() => {
     if (!loggedIn || screen === "onboard") return;
@@ -48,6 +72,7 @@ export default function App() {
 
   const handleSignOut = () => {
     stopProgressSync();
+    void stopPushNotifications();
     clearProgress();
     clearSession();
     setUsername(null);
@@ -56,6 +81,7 @@ export default function App() {
     setPlayLevel(undefined);
     setChallengeMatch(null);
     setPlayTheme("solo");
+    setOpenChallengeSheet(false);
   };
 
   const startLevel = (globalLevel: number) => {
@@ -142,6 +168,8 @@ export default function App() {
         }}
         onPlay={goToLevels}
         onPlayChallenge={startChallenge}
+        openChallengeSheet={openChallengeSheet}
+        onChallengeSheetOpened={() => setOpenChallengeSheet(false)}
       />
     </div>
   );

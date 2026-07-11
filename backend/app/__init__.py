@@ -25,6 +25,7 @@ def create_app(config_class=Config):
     from app.blueprints.friends import friends_bp
     from app.blueprints.challenges import challenges_bp
     from app.blueprints.matchmaking import matchmaking_bp
+    from app.blueprints.notifications import notifications_bp
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(game_bp, url_prefix="/api/game")
@@ -35,6 +36,7 @@ def create_app(config_class=Config):
     app.register_blueprint(friends_bp, url_prefix="/api/friends")
     app.register_blueprint(challenges_bp, url_prefix="/api/challenges")
     app.register_blueprint(matchmaking_bp, url_prefix="/api/matchmaking")
+    app.register_blueprint(notifications_bp, url_prefix="/api/notifications")
 
     @app.route("/api/health")
     def health():

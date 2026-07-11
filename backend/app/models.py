@@ -134,6 +134,28 @@ class Challenge(db.Model):
     winner = db.relationship("User", foreign_keys=[winner_user_id])
 
 
+class DeviceToken(db.Model):
+    """FCM / APNs device tokens for push notifications."""
+
+    __tablename__ = "device_tokens"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    token = db.Column(db.String(512), unique=True, nullable=False, index=True)
+    platform = db.Column(db.String(16), nullable=False, default="android")
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    updated_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    user = db.relationship("User", backref=db.backref("device_tokens", lazy="dynamic"))
+
+
 class MatchTicket(db.Model):
     __tablename__ = "match_tickets"
 

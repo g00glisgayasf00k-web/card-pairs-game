@@ -1452,6 +1452,7 @@ button.royal-resource:active {
 }
 
 .play-mode-tab {
+  position: relative;
   flex: 1;
   padding: 0.45rem 0.5rem;
   border-radius: 999px;
@@ -1469,6 +1470,24 @@ button.royal-resource:active {
   border-color: rgba(125, 255, 186, 0.55);
   background: rgba(20, 90, 56, 0.65);
   color: #d1fae5;
+}
+
+.play-mode-tab__badge {
+  position: absolute;
+  top: -0.35rem;
+  right: 0.15rem;
+  min-width: 1.1rem;
+  height: 1.1rem;
+  padding: 0 0.28rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: #e11d48;
+  color: #fff;
+  font-size: 0.62rem;
+  font-weight: 800;
+  line-height: 1;
 }
 
 .play-mode-panel {

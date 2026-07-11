@@ -9,20 +9,21 @@ export function HomeLevelBar({ levelLabel, progressPercent, onClick }: Props) {
     <button
       type="button"
       onClick={onClick}
-      className="flex w-full items-center gap-3 rounded-home-card border border-home-text/10 bg-home-bg px-4 py-3 text-left"
+      className="home-mode-card w-full"
+      style={{
+        background: "linear-gradient(135deg, #0E2F28, #04110F)",
+        boxShadow:
+          "inset 0 2px 6px rgba(255,255,255,0.15), inset 0 -4px 10px rgba(0,0,0,0.4)",
+      }}
     >
-      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
-        <strong className="text-sm font-extrabold tracking-wide text-home-text uppercase">
-          Level {levelLabel}
-        </strong>
-        <span className="block h-1.5 w-full overflow-hidden rounded-full bg-home-grad-bottom">
-          <span
-            className="block h-full rounded-full bg-home-gold"
-            style={{ width: `${Math.max(0, Math.min(100, progressPercent))}%` }}
-          />
+      <div className="home-mode-card__body flex min-w-0 flex-1 flex-col gap-1.5">
+        <strong className="home-mode-card__title text-sm">Level {levelLabel}</strong>
+        <span className="home-mode-card__subtitle">Start over from level 1</span>
+        <span className="home-mode-card__progress" aria-hidden>
+          <span style={{ width: `${Math.max(0, Math.min(100, progressPercent))}%` }} />
         </span>
       </div>
-      <span className="text-2xl" aria-hidden>
+      <span className="home-mode-card__icon text-2xl" aria-hidden>
         🧰
       </span>
     </button>

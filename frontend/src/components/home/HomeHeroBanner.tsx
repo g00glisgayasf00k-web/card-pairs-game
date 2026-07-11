@@ -18,14 +18,21 @@ function HeroCardsArt() {
   );
 }
 
+/** Hero with glass highlight matching premium card language */
 export function HomeHeroBanner() {
   return (
     <section
-      className="bg-home-hero flex items-center gap-3 rounded-home-card border border-home-gold/30 px-4 py-4"
+      className="home-mode-card home-hero-premium relative flex items-center gap-3 overflow-hidden"
       aria-label="How do you want to play?"
+      style={{
+        background: "linear-gradient(135deg, #0E2F28, #04110F)",
+        boxShadow:
+          "0 0 40px rgba(201, 162, 58, 0.25), inset 0 2px 6px rgba(255,255,255,0.15), inset 0 -4px 10px rgba(0,0,0,0.4)",
+        border: "1px solid rgba(255,255,255,0.08)",
+      }}
     >
       <HeroCardsArt />
-      <h1 className="min-w-0 flex-1 text-[22px] font-extrabold leading-tight tracking-wide uppercase">
+      <h1 className="home-mode-card__body min-w-0 flex-1 text-[22px] font-extrabold leading-tight tracking-wide uppercase">
         <span className="block text-home-text">How do you</span>
         <span className="block text-home-gold">Want to play?</span>
       </h1>

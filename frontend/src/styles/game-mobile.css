@@ -49,7 +49,7 @@
   --theme-glow-soft: rgba(108, 43, 217, 0.25);
   background:
     radial-gradient(ellipse 120% 80% at 50% -20%, var(--theme-glow-soft) 0%, transparent 55%),
-    linear-gradient(to bottom, #0b2a24, #04110f) !important;
+    linear-gradient(to bottom, #0e2f28, #04110f) !important;
 }
 
 .app--theme-challenge {
@@ -61,7 +61,7 @@
   --theme-glow-soft: rgba(13, 71, 161, 0.25);
   background:
     radial-gradient(ellipse 120% 80% at 50% -20%, var(--theme-glow-soft) 0%, transparent 55%),
-    linear-gradient(to bottom, #0b2a24, #04110f) !important;
+    linear-gradient(to bottom, #0e2f28, #04110f) !important;
 }
 
 .app--theme-compete {
@@ -73,15 +73,14 @@
   --theme-glow-soft: rgba(27, 94, 32, 0.25);
   background:
     radial-gradient(ellipse 120% 80% at 50% -20%, var(--theme-glow-soft) 0%, transparent 55%),
-    linear-gradient(to bottom, #0b2a24, #04110f) !important;
+    linear-gradient(to bottom, #0e2f28, #04110f) !important;
 }
 
 .app--theme-solo .mobile-shell--framed,
 .app--theme-solo .mobile-shell--home {
   box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.5),
-    0 0 30px rgba(108, 43, 217, 0.5);
-  background: linear-gradient(to bottom, #0b2a24, #04110f);
+    0 0 0 1px rgba(255, 255, 255, 0.08),`n    0 0 30px rgba(108, 43, 217, 0.5);
+  background: linear-gradient(to bottom, #0e2f28, #04110f);
 }
 
 .app--theme-challenge .mobile-shell--framed,
@@ -89,7 +88,7 @@
   box-shadow:
     0 0 0 1px rgba(0, 0, 0, 0.5),
     0 0 30px rgba(13, 71, 161, 0.5);
-  background: linear-gradient(to bottom, #0b2a24, #04110f);
+  background: linear-gradient(to bottom, #0e2f28, #04110f);
 }
 
 .app--theme-compete .mobile-shell--framed,
@@ -97,7 +96,7 @@
   box-shadow:
     0 0 0 1px rgba(0, 0, 0, 0.5),
     0 0 30px rgba(27, 94, 32, 0.5);
-  background: linear-gradient(to bottom, #0b2a24, #04110f);
+  background: linear-gradient(to bottom, #0e2f28, #04110f);
 }
 
 .app--theme-solo .game-hud,
@@ -2647,7 +2646,7 @@
   margin: 0;
   border-radius: 0;
   background: #061a17;
-  background-image: linear-gradient(to bottom, #0b2a24, #04110f);
+  background-image: linear-gradient(to bottom, #0e2f28, #04110f);
   box-shadow: none;
   outline: none;
 }

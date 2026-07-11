@@ -68,6 +68,8 @@ export interface ChallengeMatch {
   level: number;
   boardSeed: number;
   mission?: ChallengeMissionDto | null;
+  /** Challenger pays 1 energy; opponent plays free. */
+  youAre: "challenger" | "opponent";
 }
 
 interface Props {
@@ -154,6 +156,8 @@ function initRunState(startLevel?: number): RunState {
 export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSignOut }: Props) {
   const savedSnapshot = useRef(loadProgress());
   const isChallenge = Boolean(challengeMatch);
+  /** Opponent joins free; only the player who started the challenge spends energy. */
+  const challengeEnergyFree = isChallenge && challengeMatch?.youAre === "opponent";
   const isReplaySession = useRef(
     !challengeMatch &&
       startLevel !== undefined &&
@@ -387,7 +391,7 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
 
   const retryLevel = useCallback(() => {
     advancingRef.current = false;
-    if (!trySpendEnergyForRetry(level)) {
+    if (!challengeEnergyFree && !trySpendEnergyForRetry(level)) {
       energyBlockedActionRef.current = "retry";
       setShowOutOfEnergy(true);
       return;
@@ -411,7 +415,7 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
     levelHandCountsRef.current = {};
     setPhase("playing");
     setBoardKey((k) => k + 1);
-  }, [level, tutorialStep, refreshWallet]);
+  }, [level, tutorialStep, refreshWallet, challengeEnergyFree]);
 
   const resumeAfterEnergy = useCallback(() => {
     setShowOutOfEnergy(false);
@@ -656,13 +660,14 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
   useEffect(() => {
     if (startLevel === undefined) return;
     refreshWallet();
+    if (challengeEnergyFree) return;
     if (!levelAttemptCostsEnergy(startLevel)) return;
     if (!beginLevelAttempt(startLevel)) {
       energyBlockedActionRef.current = "start";
       setEnergyBlocked(true);
       setShowOutOfEnergy(true);
     }
-  }, [startLevel, refreshWallet]);
+  }, [startLevel, refreshWallet, challengeEnergyFree]);
 
   const handleWalletChange = useCallback(() => {
     refreshWallet();
@@ -837,11 +842,19 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
               className="action-btn action-btn--restart"
               onClick={() => setConfirmSpend("restart")}
               disabled={boardLocked || tutorialActive}
-              title={tutorialActive ? "Finish the lesson first" : "Restart this level — costs 1 energy"}
+              title={
+                tutorialActive
+                  ? "Finish the lesson first"
+                  : challengeEnergyFree
+                    ? "Restart this duel — free"
+                    : "Restart this level — costs 1 energy"
+              }
             >
               <span className="action-btn__icon">↺</span>
               <span className="action-btn__label">Restart</span>
-              <span className="action-btn__cost action-btn__cost--energy">⚡1</span>
+              <span className="action-btn__cost action-btn__cost--energy">
+                {challengeEnergyFree ? "Free" : "⚡1"}
+              </span>
             </button>
             <button
               type="button"
@@ -1255,13 +1268,15 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
       {confirmSpend &&
         gamePortal(
           (() => {
-            const isEnergy = confirmSpend === "restart";
+            const isEnergy = confirmSpend === "restart" && !challengeEnergyFree;
             const cost =
               confirmSpend === "hint"
                 ? HINT_COST
                 : confirmSpend === "shuffle"
                   ? SHUFFLE_COST
-                  : 1;
+                  : challengeEnergyFree
+                    ? 0
+                    : 1;
             const icon =
               confirmSpend === "hint" ? "💡" : confirmSpend === "shuffle" ? "🔀" : "↺";
             const title =
@@ -1275,17 +1290,22 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
                 ? "Reveal a card to start a goal hand."
                 : confirmSpend === "shuffle"
                   ? "Reshuffle every card on the board."
-                  : "Start this level over with a fresh board.";
+                  : challengeEnergyFree
+                    ? "Start this duel over with a fresh board — free for you."
+                    : "Start this level over with a fresh board.";
             const currencyIcon = isEnergy ? "⚡" : "💎";
             const currencyName = isEnergy ? "energy" : "gem";
             const balance = isEnergy ? energy : credits;
             const balanceUnit = isEnergy ? "energy" : "gems";
-            const canAfford = balance >= cost;
-            const confirmLabel = canAfford
-              ? `Use ${currencyIcon} ${cost}`
-              : isEnergy
-                ? "Get energy"
-                : "Get gems";
+            const canAfford = confirmSpend === "restart" && challengeEnergyFree ? true : balance >= cost;
+            const confirmLabel =
+              confirmSpend === "restart" && challengeEnergyFree
+                ? "Restart"
+                : canAfford
+                  ? `Use ${currencyIcon} ${cost}`
+                  : isEnergy
+                    ? "Get energy"
+                    : "Get gems";
             return (
               <div
                 className="modal-overlay scores-overlay"
@@ -1303,16 +1323,23 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
                   </div>
                   <h2 id="spend-confirm-title">{title}</h2>
                   <p className="scores-note spend-confirm__note">
-                    {desc}{" "}
-                    This costs{" "}
-                    <strong>
-                      {currencyIcon} {cost} {currencyName}
-                    </strong>
-                    .
+                    {desc}
+                    {confirmSpend === "restart" && challengeEnergyFree ? null : (
+                      <>
+                        {" "}
+                        This costs{" "}
+                        <strong>
+                          {currencyIcon} {cost} {currencyName}
+                        </strong>
+                        .
+                      </>
+                    )}
                   </p>
-                  <p className="spend-confirm__balance">
-                    You have {currencyIcon} {balance} {balanceUnit}
-                  </p>
+                  {!(confirmSpend === "restart" && challengeEnergyFree) && (
+                    <p className="spend-confirm__balance">
+                      You have {currencyIcon} {balance} {balanceUnit}
+                    </p>
+                  )}
                   <div className="spend-confirm__actions">
                     <button
                       type="button"

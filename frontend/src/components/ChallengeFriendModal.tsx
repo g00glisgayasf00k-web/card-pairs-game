@@ -247,7 +247,8 @@ export function ChallengeFriendModal({
           <h2 id="challenge-title">Challenge your friends</h2>
           <p className="play-mode-modal__lead">
             Challenge your friends. Same random board, same hand goals, same point target —
-            the winner finishes in the fewest moves. Each challenge costs 1 ⚡ energy.
+            the winner finishes in the fewest moves. Starting a challenge costs you 1 ⚡ —
+            your friend plays free.
           </p>
         </header>
 
@@ -411,7 +412,7 @@ export function ChallengeFriendModal({
                   if tied, fewest moves, then highest score.
                 </p>
                 <p className="play-mode-modal__hint play-mode-modal__hint--energy">
-                  Costs 1 ⚡ energy to play — same as a solo level.
+                  You pay 1 ⚡ to start — your opponent joins free.
                 </p>
               </section>
 
@@ -455,7 +456,7 @@ export function ChallengeFriendModal({
                                   })
                                 }
                               >
-                                Accept &amp; play · ⚡1
+                                Accept &amp; play
                               </button>
                               <button
                                 type="button"
@@ -474,7 +475,7 @@ export function ChallengeFriendModal({
                               className="play-mode-wager play-mode-wager--on"
                               onClick={() => onPlayChallenge(c)}
                             >
-                              Play · ⚡1
+                              Play{c.you_are === "challenger" ? " · ⚡1" : ""}
                             </button>
                           )}
                         </div>

@@ -104,6 +104,7 @@ export default function App() {
       level: challenge.level,
       boardSeed: challenge.board_seed,
       mission: challenge.mission ?? null,
+      youAre: challenge.you_are,
     });
     setScreen("game");
   };

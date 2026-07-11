@@ -4,6 +4,16 @@ import { isLoggedIn } from "./session";
 
 const TOKEN_KEY = "rpm_push_token";
 
+/**
+ * Remote FCM push needs android/app/google-services.json (and matching backend
+ * FCM credentials). Calling PushNotifications.register() without Firebase
+ * crashes the Android process — so stay off until explicitly enabled.
+ */
+function isRemotePushEnabled(): boolean {
+  const flag = import.meta.env.VITE_ENABLE_PUSH;
+  return flag === "true" || flag === "1";
+}
+
 type OpenHandler = (data: Record<string, string>) => void;
 
 let openHandler: OpenHandler | null = null;
@@ -32,6 +42,7 @@ function readStoredToken(): string | null {
 export async function initPushNotifications(): Promise<void> {
   if (!Capacitor.isNativePlatform() || started) return;
   if (!isLoggedIn()) return;
+  if (!isRemotePushEnabled()) return;
 
   started = true;
 
@@ -46,8 +57,6 @@ export async function initPushNotifications(): Promise<void> {
       started = false;
       return;
     }
-
-    await PushNotifications.register();
 
     await PushNotifications.addListener("registration", (ev) => {
       const token = ev.value;
@@ -66,6 +75,9 @@ export async function initPushNotifications(): Promise<void> {
       const data = (ev.notification.data ?? {}) as Record<string, string>;
       openHandler?.(data);
     });
+
+    // register() after listeners; never call without google-services.json / VITE_ENABLE_PUSH
+    await PushNotifications.register();
   } catch {
     started = false;
   }
@@ -91,6 +103,7 @@ export async function stopPushNotifications(): Promise<void> {
 /** Re-register token after login (init may have run before auth). */
 export async function syncPushTokenAfterLogin(): Promise<void> {
   if (!Capacitor.isNativePlatform() || !isLoggedIn()) return;
+  if (!isRemotePushEnabled()) return;
   const token = readStoredToken();
   if (token) {
     try {

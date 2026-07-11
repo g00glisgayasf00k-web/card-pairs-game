@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { AuthPanel } from "../components/AuthPanel";
-import { Leaderboard } from "../components/Leaderboard";
 import { ProfileModal } from "../components/ProfileModal";
 import { ChallengeFriendModal } from "../components/ChallengeFriendModal";
 import { CompeteModal } from "../components/CompeteModal";
@@ -89,7 +88,6 @@ export function OnboardingScreen({
           gems={gems}
           loggedIn={loggedIn}
           username={username}
-          onMenu={() => setMenu(menu === "account" ? null : "account")}
           onShop={() => setMenu("shop")}
           onProfile={() => setMenu(menu === "account" ? null : "account")}
         />
@@ -104,7 +102,6 @@ export function OnboardingScreen({
                 label="Solo"
                 title="Enter table"
                 subtitle="Campaign levels, stars & energy"
-                icon="🏆"
                 progress={{
                   label: `★ ${cleared} / ${MAX_LEVEL} cleared`,
                   percent: progressPct,
@@ -113,11 +110,10 @@ export function OnboardingScreen({
               />
               <GameModeCard
                 glow="blue"
-                label="Async"
-                title="Challenge a friend"
+                label="Friends"
+                title="Challenge your friends"
                 subtitle="Same seed — best stars / fewest moves"
-                meta="💎 Optional gem wager"
-                icon="⚔️"
+                meta="Optional gem wager"
                 onClick={() => setPlaySheet("challenge")}
               />
               <GameModeCard
@@ -125,8 +121,7 @@ export function OnboardingScreen({
                 label="Ranked"
                 title="Compete"
                 subtitle="Daily board or quick match ladder"
-                meta="🛡 No friends required"
-                icon="👑"
+                meta="No friends required"
                 onClick={() => setPlaySheet("compete")}
               />
             </div>
@@ -157,8 +152,13 @@ export function OnboardingScreen({
             role="dialog"
             aria-labelledby="home-leaderboard-title"
           >
-            <h2 id="home-leaderboard-title">Top scores</h2>
-            <Leaderboard />
+            <h2 id="home-leaderboard-title">Scores</h2>
+            <p className="play-mode-modal__lead" style={{ textAlign: "center", margin: "1.5rem 0" }}>
+              Coming soon
+            </p>
+            <p className="play-mode-modal__hint" style={{ textAlign: "center" }}>
+              Global leaderboards are on the way. Keep clearing levels for now.
+            </p>
             <button type="button" className="btn scores-close" onClick={closeMenu}>
               Close
             </button>

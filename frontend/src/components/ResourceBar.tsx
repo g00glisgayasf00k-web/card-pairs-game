@@ -25,7 +25,9 @@ export function ResourceBar({
         className="royal-resource royal-resource--gems"
         onClick={onGemsClick}
       >
-        <span className="royal-resource__icon">💎</span>
+        <span className="royal-resource__icon" aria-hidden>
+          <img src="/assets/header/icon_gems.svg" alt="" width={14} height={14} />
+        </span>
         <span className="royal-resource__val">{gems.toLocaleString()}</span>
         {onGemsClick && <span className="royal-resource__plus">+</span>}
       </GemTag>

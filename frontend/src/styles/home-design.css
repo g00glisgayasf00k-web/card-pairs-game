@@ -129,9 +129,22 @@
 
 .home-mode-card__body,
 .home-mode-card__icon,
-.home-mode-card__chev {
+.home-mode-card__chev,
+.home-mode-card__glow {
   position: relative;
   z-index: 2;
+}
+
+.home-mode-card__glow {
+  position: absolute;
+  inset: -20%;
+  z-index: 0;
+  pointer-events: none;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  opacity: 0.55;
+  mix-blend-mode: screen;
 }
 
 .home-mode-card--purple {

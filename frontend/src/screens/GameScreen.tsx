@@ -673,7 +673,9 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
                     }}
                     title="Gems — tap to buy more"
                   >
-                    <span className="moves-banner__gems-icon" aria-hidden>💎</span>
+                    <span className="moves-banner__gems-icon" aria-hidden>
+                      <img src="/assets/header/icon_gems.svg" alt="" width={16} height={16} />
+                    </span>
                     <span className="moves-banner__gems-val">{credits}</span>
                   </button>
                 </div>
@@ -692,7 +694,7 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
               >
                 <span className="hud-labeled-chip__label">Profile</span>
                 <span className="hud-labeled-chip__body moves-banner__profile-icon" aria-hidden>
-                  👤
+                  <img src="/assets/header/icon_profile.svg" alt="" width={22} height={22} />
                 </span>
               </button>
             </div>
@@ -712,7 +714,7 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
             <div className="score-chip score-chip--compact score-chip--target hud-labeled-chip" title={`Target: ${levelScore.toLocaleString()} / ${cfg.targetPoints.toLocaleString()} points`}>
               <span className="hud-labeled-chip__label">Target</span>
               <span className="hud-labeled-chip__body">
-                <span className="score-chip__icon" aria-hidden>💰</span>
+                <span className="score-chip__icon" aria-hidden>$</span>
                 <span className="score-chip__value">{levelScore.toLocaleString()}</span>
                 <span className="score-chip__sep">/</span>
                 <span className="score-chip__target">{cfg.targetPoints.toLocaleString()}</span>

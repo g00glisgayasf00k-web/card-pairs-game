@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { HOME_ASSETS } from "./homeAssets";
 import type { HomeGlow } from "./homeTheme";
 
 interface ProgressProps {
@@ -11,7 +12,7 @@ interface Props {
   label: string;
   title: string;
   subtitle: string;
-  icon: ReactNode;
+  icon?: ReactNode;
   meta?: string;
   progress?: ProgressProps;
   onClick: () => void;
@@ -23,6 +24,8 @@ const CARD_CLASS: Record<HomeGlow, string> = {
   green: "home-mode-card--green",
 };
 
+const CARD_ASSETS = HOME_ASSETS.cards;
+
 export function GameModeCard({
   glow,
   label,
@@ -33,12 +36,24 @@ export function GameModeCard({
   progress,
   onClick,
 }: Props) {
+  const assets = CARD_ASSETS[glow];
+
   return (
     <button
       type="button"
       onClick={onClick}
       className={["home-mode-card", CARD_CLASS[glow]].join(" ")}
+      style={{
+        backgroundImage: `url(${assets.base})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+      }}
     >
+      <span
+        className="home-mode-card__glow"
+        aria-hidden
+        style={{ backgroundImage: `url(${assets.glow})` }}
+      />
       <div className="home-mode-card__body flex min-w-0 flex-1 flex-col">
         <span className="home-mode-card__tag">{label}</span>
         <span className="home-mode-card__title">{title}</span>
@@ -47,18 +62,39 @@ export function GameModeCard({
         {progress && (
           <>
             <span className="home-mode-card__meta">{progress.label}</span>
-            <span className="home-mode-card__progress" aria-hidden>
-              <span style={{ width: `${Math.max(0, Math.min(100, progress.percent))}%` }} />
+            <span
+              className="home-mode-card__progress"
+              aria-hidden
+              style={{ backgroundImage: `url(${HOME_ASSETS.ui.progressBg})`, backgroundSize: "100% 100%" }}
+            >
+              <span
+                style={{
+                  width: `${Math.max(0, Math.min(100, progress.percent))}%`,
+                  backgroundImage: `url(${HOME_ASSETS.ui.progressFill})`,
+                  backgroundSize: "cover",
+                }}
+              />
             </span>
           </>
         )}
       </div>
 
       <span className="home-mode-card__icon" aria-hidden>
-        {icon}
+        {icon ?? (
+          <img
+            src={assets.icon}
+            alt=""
+            width={36}
+            height={36}
+            style={{
+              backgroundImage: `url(${HOME_ASSETS.ui.circleBg})`,
+              backgroundSize: "contain",
+            }}
+          />
+        )}
       </span>
       <span className="home-mode-card__chev" aria-hidden>
-        ›
+        <img src={HOME_ASSETS.ui.chevron} alt="" width={18} height={18} />
       </span>
     </button>
   );

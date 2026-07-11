@@ -214,7 +214,7 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
           ←
         </button>
         <div className="felt-hud__center">
-          <p className="felt-hud__eyebrow">Levels</p>
+          <p className="felt-hud__eyebrow">Campaign</p>
           <ResourceBar
             gems={gems}
             energy={energy}
@@ -224,9 +224,6 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
             onEnergyClick={() => setShowGemShop(true)}
           />
         </div>
-        <button type="button" className="felt-icon-btn" aria-label="Menu" onClick={onBack}>
-          ≡
-        </button>
       </header>
 
       <nav className="felt-world-tabs" aria-label="World selection">
@@ -243,7 +240,7 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
               onClick={() => setSelectedWorld(world)}
               aria-label={`${worldTitle(world)}${!unlocked ? " locked" : ""}`}
             >
-              {unlocked ? displayWorld(world) : "🔒"}
+              {displayWorld(world)}
             </button>
           );
         })}

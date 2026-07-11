@@ -104,7 +104,7 @@ export function ChallengeFriendModal({ onClose, onPlayChallenge }: Props) {
         role="dialog"
         aria-labelledby="challenge-title"
       >
-        <h2 id="challenge-title">Challenge a friend</h2>
+        <h2 id="challenge-title">Challenge your friends</h2>
         <p className="play-mode-modal__lead">
           Same seeded board. Best stars win — fewest moves, then score.
         </p>

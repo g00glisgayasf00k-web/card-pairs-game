@@ -1,0 +1,14 @@
+---
+description: Auto-commit and push finished updates without asking
+alwaysApply: true
+---
+
+# Auto push updates
+
+When finishing a batch of work that leaves local changes ready to ship:
+
+1. Commit with a concise message that matches this repo’s style.
+2. Push to `origin` on the current branch.
+3. Do **not** ask “say push if you want this on GitHub” — just push.
+
+Still follow the normal git safety rules (no force-push to main/master, no amending others’ commits, no secrets). If push fails (auth/network), report the error once.

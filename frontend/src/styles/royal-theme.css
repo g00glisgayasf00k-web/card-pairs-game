@@ -1161,6 +1161,107 @@ button.royal-resource:active {
   color: rgba(255, 255, 255, 0.65);
 }
 
+.play-mode-modal__error {
+  margin: 0.5rem 0 0.65rem;
+  padding: 0.45rem 0.6rem;
+  border-radius: 10px;
+  border: 1px solid rgba(248, 113, 113, 0.45);
+  background: rgba(127, 29, 29, 0.35);
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: #fecaca;
+}
+
+.challenge-add-friend {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.4rem;
+  margin-bottom: 0.65rem;
+}
+
+.challenge-add-friend input {
+  min-width: 0;
+  padding: 0.55rem 0.65rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(0, 0, 0, 0.35);
+  color: inherit;
+  font: inherit;
+}
+
+.challenge-add-friend .btn-primary {
+  width: auto;
+  padding: 0.55rem 0.85rem;
+  box-shadow: 0 3px 0 #3b0764;
+}
+
+.challenge-friend--row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: default;
+}
+
+.challenge-level-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 0.45rem;
+  margin: 0.35rem 0 0.85rem;
+}
+
+.challenge-level-row label {
+  font-size: 0.78rem;
+  opacity: 0.8;
+}
+
+.challenge-level-row input {
+  width: 4.5rem;
+  padding: 0.4rem 0.5rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  background: rgba(0, 0, 0, 0.35);
+  color: inherit;
+  font: inherit;
+  text-align: center;
+}
+
+.challenge-inbox-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.challenge-inbox-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  padding: 0.6rem 0.7rem;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.challenge-inbox-item__meta {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.65;
+}
+
+.challenge-inbox-item__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
 .play-mode-modal__actions {
   display: flex;
   flex-direction: column;

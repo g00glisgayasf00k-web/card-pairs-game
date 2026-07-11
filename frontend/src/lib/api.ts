@@ -265,3 +265,105 @@ export async function resetAdminUserPassword(userId: number, password?: string) 
     }
   );
 }
+
+// ── Friends & challenges ─────────────────────────────────────────────────────
+
+export interface FriendUser {
+  id: number;
+  username: string;
+}
+
+export interface FriendshipItem {
+  id: number;
+  user: FriendUser;
+  status: string;
+  created_at: string;
+}
+
+export async function fetchFriends() {
+  return request<{
+    friends: FriendshipItem[];
+    incoming: FriendshipItem[];
+    outgoing: FriendshipItem[];
+  }>("/api/friends");
+}
+
+export async function requestFriend(username: string) {
+  return request<{ friendship: FriendshipItem }>("/api/friends/request", {
+    method: "POST",
+    body: JSON.stringify({ username }),
+  });
+}
+
+export async function acceptFriend(friendshipId: number) {
+  return request<{ friendship: FriendshipItem }>(`/api/friends/${friendshipId}/accept`, {
+    method: "POST",
+  });
+}
+
+export async function declineFriend(friendshipId: number) {
+  return request<{ ok: boolean }>(`/api/friends/${friendshipId}/decline`, {
+    method: "POST",
+  });
+}
+
+export interface ChallengeAttempt {
+  stars: number;
+  moves: number;
+  score: number;
+  submitted_at: string | null;
+}
+
+export interface ChallengeDto {
+  id: number;
+  level: number;
+  board_seed: number;
+  status: string;
+  wager_gems: number;
+  expires_at: string;
+  challenger: FriendUser | null;
+  opponent: FriendUser | null;
+  you_are: "challenger" | "opponent";
+  challenger_result: ChallengeAttempt | null;
+  opponent_result: ChallengeAttempt | null;
+  winner_user_id: number | null;
+  created_at: string;
+}
+
+export async function fetchChallenges() {
+  return request<{ challenges: ChallengeDto[] }>("/api/challenges");
+}
+
+export async function createChallenge(friendUserId: number, level: number) {
+  return request<{ challenge: ChallengeDto }>("/api/challenges", {
+    method: "POST",
+    body: JSON.stringify({ friend_user_id: friendUserId, level }),
+  });
+}
+
+export async function fetchChallenge(id: number) {
+  return request<{ challenge: ChallengeDto }>(`/api/challenges/${id}`);
+}
+
+export async function acceptChallenge(id: number) {
+  return request<{ challenge: ChallengeDto }>(`/api/challenges/${id}/accept`, {
+    method: "POST",
+  });
+}
+
+export async function declineChallenge(id: number) {
+  return request<{ challenge: ChallengeDto }>(`/api/challenges/${id}/decline`, {
+    method: "POST",
+  });
+}
+
+export async function submitChallenge(
+  id: number,
+  payload: { stars: number; moves: number; score: number }
+) {
+  return request<{ challenge: ChallengeDto }>(`/api/challenges/${id}/submit`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+

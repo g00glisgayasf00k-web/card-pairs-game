@@ -9,6 +9,7 @@ import {
 } from "react";
 import {
   createBoard,
+  createBoardFromSeed,
   formatEarnedSpecials,
   HAND_DISPLAY,
   isTappableSpecial,
@@ -35,6 +36,7 @@ import {
   type BlockerSpawnConfig,
   type FixedObstacle,
 } from "../lib/blockers";
+import { mulberry32, type Rng } from "../lib/seededRng";
 import { findHintPath, type HintPath } from "../lib/hintFinder";
 import { useSwipePath } from "../hooks/useSwipePath";
 import { PlayingCard } from "./PlayingCard";
@@ -122,6 +124,8 @@ interface Props {
   locked?: boolean;
   /** Fixed opening board (Beginner 1 tutorial / free-play layout) */
   seedBoard?: (Card | null)[][];
+  /** Shared challenge seed — opening board + refills + blockers. */
+  boardSeed?: number;
   /** Cells the player should swipe during a guided lesson */
   guidedPath?: { row: number; col: number }[];
   /** Required hand for the current guided lesson */
@@ -157,7 +161,8 @@ function applyGravity(
   blockers: BlockerGrid,
   clearedKeys: Set<string>,
   earned: SpecialType[],
-  spawnPath: { row: number; col: number }[]
+  spawnPath: { row: number; col: number }[],
+  cardRng?: Rng
 ): {
   newBoard: (Card | null)[][];
   newBlockers: BlockerGrid;
@@ -165,6 +170,7 @@ function applyGravity(
   newKeys: Set<string>;
 } {
   const damagedBlockers = applyBlockerDamage(blockers, clearedKeys, ROWS, COLS);
+  const nextCard = () => randomCard(cardRng);
 
   const newBoard: (Card | null)[][] = Array.from({ length: ROWS }, () =>
     Array<Card | null>(COLS).fill(null)
@@ -203,7 +209,7 @@ function applyGravity(
           const dropped = r - f.fromRow;
           if (dropped > 0) dropMap.set(`${r},${c}`, dropped);
         } else {
-          newBoard[r]![c] = randomCard();
+          newBoard[r]![c] = nextCard();
           newKeys.add(`${r},${c}`);
         }
       }
@@ -215,7 +221,7 @@ function applyGravity(
       if (!clearedKeys.has(key) && board[r]?.[c]) {
         newBoard[r]![c] = board[r]![c];
       } else if (!newBoard[r]![c]) {
-        newBoard[r]![c] = randomCard();
+        newBoard[r]![c] = nextCard();
       }
     }
   }
@@ -269,6 +275,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
       embedded,
       locked = false,
       seedBoard,
+      boardSeed,
       guidedPath,
       tutorialExpectedHand,
       tutorialWrongSwipeHint,
@@ -279,14 +286,20 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
     },
     ref
   ) {
-    const [board, setBoard] = useState<(Card | null)[][]>(() =>
-      seedBoard ? cloneSeedBoard(seedBoard) : createBoard(ROWS, COLS)
+    const refillRngRef = useRef<Rng | null>(
+      boardSeed != null ? mulberry32((boardSeed ^ 0x9e3779b9) >>> 0) : null
     );
-    const [blockers, setBlockers] = useState<BlockerGrid>(() =>
-      seedBoard
-        ? emptyBlockerGrid(ROWS, COLS)
-        : buildBlockerGrid(ROWS, COLS, blockerConfig ?? null, fixedObstacles)
-    );
+
+    const [board, setBoard] = useState<(Card | null)[][]>(() => {
+      if (seedBoard) return cloneSeedBoard(seedBoard);
+      if (boardSeed != null) return createBoardFromSeed(ROWS, COLS, boardSeed);
+      return createBoard(ROWS, COLS);
+    });
+    const [blockers, setBlockers] = useState<BlockerGrid>(() => {
+      if (seedBoard) return emptyBlockerGrid(ROWS, COLS);
+      const rng = boardSeed != null ? mulberry32((boardSeed ^ 0x85ebca6b) >>> 0) : Math.random;
+      return buildBlockerGrid(ROWS, COLS, blockerConfig ?? null, fixedObstacles, rng);
+    });
     const [message, setMessage] = useState<string | null>(null);
     const [toastHint, setToastHint] = useState(false);
     const toastTimer = useRef<number | null>(null);
@@ -326,9 +339,14 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
       if (seedBoard) {
         setBlockers(emptyBlockerGrid(ROWS, COLS));
       } else {
-        setBlockers(buildBlockerGrid(ROWS, COLS, blockerConfig ?? null, fixedObstacles));
+        const rng = boardSeed != null ? mulberry32((boardSeed ^ 0x85ebca6b) >>> 0) : Math.random;
+        setBlockers(buildBlockerGrid(ROWS, COLS, blockerConfig ?? null, fixedObstacles, rng));
       }
-    }, [seedBoard, blockerConfig, fixedObstacles]);
+      if (boardSeed != null && !seedBoard) {
+        refillRngRef.current = mulberry32((boardSeed ^ 0x9e3779b9) >>> 0);
+        setBoard(createBoardFromSeed(ROWS, COLS, boardSeed));
+      }
+    }, [seedBoard, blockerConfig, fixedObstacles, boardSeed]);
 
     useEffect(() => {
       if (!embedded) return;
@@ -452,7 +470,8 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
           currentBlockers,
           allCleared,
           earnedSpecials,
-          []
+          [],
+          refillRngRef.current ?? undefined
         );
         setBoard(gravity.newBoard);
         setBlockers(gravity.newBlockers);
@@ -821,7 +840,8 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
             blockersSnapshot,
             allCleared,
             earned,
-            validPath
+            validPath,
+            refillRngRef.current ?? undefined
           );
           setBoard(gravity.newBoard);
           setBlockers(gravity.newBlockers);

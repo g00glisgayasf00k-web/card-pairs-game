@@ -6,6 +6,9 @@
  *   joker    🃏  SWIPE — wild card, substitutes any rank/suit in a hand
  *   rainbow      DRAG onto a suit — clears every card of that suit (Royal Flush only)
  */
+import type { Rng } from "./seededRng";
+import { mulberry32, pickIndex } from "./seededRng";
+
 export type SpecialType = "arrow_h" | "arrow_v" | "bomb" | "joker" | "rainbow";
 
 export type Suit = "hearts" | "diamonds" | "clubs" | "spades";
@@ -90,17 +93,27 @@ const ALL_CARDS: { rank: Rank; suit: Suit }[] = RANKS.flatMap((rank) =>
 
 // ── Card generation ───────────────────────────────────────────────────────────
 
-export function randomCard(): Card {
+export function randomCard(rng?: Rng): Card {
+  const roll = rng ?? Math.random;
   return {
-    rank: RANKS[Math.floor(Math.random() * RANKS.length)]!,
-    suit: SUITS[Math.floor(Math.random() * SUITS.length)]!,
+    rank: RANKS[pickIndex(roll, RANKS.length)]!,
+    suit: SUITS[pickIndex(roll, SUITS.length)]!,
   };
 }
 
-export function createBoard(rows: number, cols: number): (Card | null)[][] {
+export function createBoard(rows: number, cols: number, rng?: Rng): (Card | null)[][] {
   return Array.from({ length: rows }, () =>
-    Array.from({ length: cols }, () => randomCard())
+    Array.from({ length: cols }, () => randomCard(rng))
   );
+}
+
+/** Shared challenge boards — same seed ⇒ same opening layout. */
+export function createBoardFromSeed(
+  rows: number,
+  cols: number,
+  seed: number
+): (Card | null)[][] {
+  return createBoard(rows, cols, mulberry32(seed >>> 0));
 }
 
 // ── Specials earned as hand rewards ──────────────────────────────────────────

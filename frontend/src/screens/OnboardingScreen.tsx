@@ -6,6 +6,7 @@ import { ChallengeFriendModal } from "../components/ChallengeFriendModal";
 import { CompeteModal } from "../components/CompeteModal";
 import { clearProgress, loadProgress } from "../lib/progress";
 import { MAX_LEVEL } from "../lib/levels";
+import type { ChallengeDto } from "../lib/api";
 
 interface Props {
   username: string | null;
@@ -13,6 +14,7 @@ interface Props {
   onSignOut: () => void;
   onSessionChange?: () => void;
   onPlay: () => void;
+  onPlayChallenge: (challenge: ChallengeDto) => void;
 }
 
 type HomeMenu = "leaderboard" | "rules" | "account" | null;
@@ -24,6 +26,7 @@ export function OnboardingScreen({
   onSignOut,
   onSessionChange,
   onPlay,
+  onPlayChallenge,
 }: Props) {
   const [menu, setMenu] = useState<HomeMenu>(null);
   const [playSheet, setPlaySheet] = useState<PlaySheet>(null);
@@ -236,7 +239,13 @@ export function OnboardingScreen({
       )}
 
       {playSheet === "challenge" && (
-        <ChallengeFriendModal onClose={() => setPlaySheet(null)} onPlaySolo={onPlay} />
+        <ChallengeFriendModal
+          onClose={() => setPlaySheet(null)}
+          onPlayChallenge={(c) => {
+            setPlaySheet(null);
+            onPlayChallenge(c);
+          }}
+        />
       )}
 
       {playSheet === "compete" && (

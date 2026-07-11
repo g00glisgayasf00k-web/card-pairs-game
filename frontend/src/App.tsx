@@ -6,6 +6,8 @@ import { ResetPasswordScreen } from "./screens/ResetPasswordScreen";
 import { clearSession, getUsername, isLoggedIn } from "./lib/session";
 import { clearProgress } from "./lib/progress";
 import { initProgressSync, pullRemoteProgress, stopProgressSync } from "./lib/progressSync";
+import type { ChallengeDto } from "./lib/api";
+import type { ChallengeMatch } from "./screens/GameScreen";
 
 type Screen = "onboard" | "levels" | "game";
 
@@ -23,6 +25,7 @@ function clearResetTokenFromUrl() {
 export default function App() {
   const [screen, setScreen] = useState<Screen>("onboard");
   const [playLevel, setPlayLevel] = useState<number | undefined>(undefined);
+  const [challengeMatch, setChallengeMatch] = useState<ChallengeMatch | null>(null);
   const [loggedIn, setLoggedIn] = useState(() => isLoggedIn());
   const [username, setUsername] = useState<string | null>(() => getUsername());
   const [resetToken, setResetToken] = useState<string | null>(() => readResetTokenFromUrl());
@@ -49,6 +52,7 @@ export default function App() {
     setLoggedIn(false);
     setScreen("onboard");
     setPlayLevel(undefined);
+    setChallengeMatch(null);
   };
 
   const startLevel = (globalLevel: number) => {
@@ -56,12 +60,28 @@ export default function App() {
       setScreen("onboard");
       return;
     }
+    setChallengeMatch(null);
     setPlayLevel(globalLevel);
+    setScreen("game");
+  };
+
+  const startChallenge = (challenge: ChallengeDto) => {
+    if (!isLoggedIn()) return;
+    if (challenge.status === "completed") {
+      // Still open game screen in view/result mode via GameScreen
+    }
+    setPlayLevel(undefined);
+    setChallengeMatch({
+      id: challenge.id,
+      level: challenge.level,
+      boardSeed: challenge.board_seed,
+    });
     setScreen("game");
   };
 
   const goToLevels = () => {
     if (!isLoggedIn()) return;
+    setChallengeMatch(null);
     setScreen("levels");
   };
 
@@ -83,10 +103,12 @@ export default function App() {
       <div className="app app--game">
         <GameScreen
           username={username}
-          startLevel={playLevel}
+          startLevel={challengeMatch?.level ?? playLevel}
+          challengeMatch={challengeMatch}
           onMenu={() => {
             setPlayLevel(undefined);
-            setScreen("levels");
+            setChallengeMatch(null);
+            setScreen(challengeMatch ? "onboard" : "levels");
           }}
           onSignOut={handleSignOut}
         />
@@ -116,6 +138,7 @@ export default function App() {
           setUsername(getUsername());
         }}
         onPlay={goToLevels}
+        onPlayChallenge={startChallenge}
       />
     </div>
   );

@@ -55,11 +55,20 @@ import { GameBoard, type GameBoardHandle } from "../components/GameBoard";
 import { ProfileModal } from "../components/ProfileModal";
 import { GemShopModal } from "../components/GemShopModal";
 import { OutOfEnergyModal } from "../components/OutOfEnergyModal";
+import { fetchChallenge, submitChallenge, type ChallengeDto } from "../lib/api";
+
+export interface ChallengeMatch {
+  id: number;
+  level: number;
+  boardSeed: number;
+}
 
 interface Props {
   username: string | null;
   /** Global level from map (e.g. 1-3 → 3). Omit to resume saved campaign. */
   startLevel?: number;
+  /** Async friend challenge — seeded board, no campaign unlock. */
+  challengeMatch?: ChallengeMatch | null;
   onMenu: () => void;
   onSignOut?: () => void;
 }
@@ -135,15 +144,19 @@ function initRunState(startLevel?: number): RunState {
   };
 }
 
-export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
+export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSignOut }: Props) {
   const savedSnapshot = useRef(loadProgress());
+  const isChallenge = Boolean(challengeMatch);
   const isReplaySession = useRef(
-    startLevel !== undefined &&
+    !challengeMatch &&
+      startLevel !== undefined &&
       ((savedSnapshot.current?.completedLevels.includes(startLevel) ?? false) ||
         startLevel < (savedSnapshot.current?.highestUnlocked ?? 1))
   );
 
-  const [run, setRun] = useState<RunState>(() => initRunState(startLevel));
+  const [run, setRun] = useState<RunState>(() =>
+    initRunState(challengeMatch?.level ?? startLevel)
+  );
   const { level, levelScore, levelHands, levelHandCounts, handsCleared, bestHand, credits, bonusMoves, tutorialStep } = run;
 
   const [phase, setPhase] = useState<Phase>("playing");
@@ -154,6 +167,7 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
     stars: number;
     handCounts: HandCounts;
   } | null>(null);
+  const [challengeResult, setChallengeResult] = useState<ChallengeDto | null>(null);
   const [showScores, setShowScores] = useState(false);
   const [showSpecials, setShowSpecials] = useState(false);
   const [showChallenges, setShowChallenges] = useState(false);
@@ -408,13 +422,14 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
 
   useEffect(() => {
     if (phase !== "round_complete") return;
+    if (isChallenge) return;
     if (isReplaySession.current) {
       const id = window.setTimeout(onMenu, ROUND_COMPLETE_MS);
       return () => window.clearTimeout(id);
     }
     const id = window.setTimeout(advanceLevel, ROUND_COMPLETE_MS);
     return () => window.clearTimeout(id);
-  }, [phase, advanceLevel, onMenu]);
+  }, [phase, advanceLevel, onMenu, isChallenge]);
 
   useEffect(() => {
     if (phase !== "playing") return;
@@ -428,18 +443,31 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
   const tryAdvanceLevel = useCallback(
     (score: number, handCounts: HandCounts, hands: number) => {
       if (phase !== "playing" || advancingRef.current) return false;
-      if (level === 1 && tutorialStep < TUTORIAL_FREE_STEP) return false;
+      if (level === 1 && tutorialStep < TUTORIAL_FREE_STEP && !isChallenge) return false;
       if (!levelRequirementsMet(score, handCounts, cfg)) return false;
 
       advancingRef.current = true;
       setBoardFeedback(null);
-      const stars = markLevelComplete(
-        level,
-        computeLevelStars(score, handCounts, hands, cfg)
-      );
+      const stars = computeLevelStars(score, handCounts, hands, cfg);
+
+      if (isChallenge && challengeMatch) {
+        setCompletedLevel(level);
+        setCompletedStats({ score, hands, stars, handCounts: { ...handCounts } });
+        setPhase("round_complete");
+        void submitChallenge(challengeMatch.id, { stars, moves: hands, score })
+          .then((r) => setChallengeResult(r.challenge))
+          .catch(() =>
+            fetchChallenge(challengeMatch.id)
+              .then((r) => setChallengeResult(r.challenge))
+              .catch(() => undefined)
+          );
+        return true;
+      }
+
+      const savedStars = markLevelComplete(level, stars);
       savedSnapshot.current = loadProgress();
       setCompletedLevel(level);
-      setCompletedStats({ score, hands, stars, handCounts: { ...handCounts } });
+      setCompletedStats({ score, hands, stars: savedStars, handCounts: { ...handCounts } });
 
       if (level >= MAX_LEVEL) {
         setPhase("campaign_complete");
@@ -448,7 +476,7 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
       }
       return true;
     },
-    [cfg, level, phase, tutorialStep]
+    [cfg, level, phase, tutorialStep, isChallenge, challengeMatch]
   );
 
   const handleTutorialStepComplete = useCallback(() => {
@@ -820,11 +848,14 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
               key={boardKey}
               embedded
               locked={boardLocked}
-              seedBoard={level1SeedBoard}
-              guidedPath={tutorialConfig?.guidedPath}
-              tutorialExpectedHand={tutorialConfig?.expectedHand}
-              tutorialWrongSwipeHint={tutorialConfig?.wrongSwipeHint}
-              onTutorialStepComplete={tutorialActive ? handleTutorialStepComplete : undefined}
+              seedBoard={isChallenge ? undefined : level1SeedBoard}
+              boardSeed={challengeMatch?.boardSeed}
+              guidedPath={isChallenge ? undefined : tutorialConfig?.guidedPath}
+              tutorialExpectedHand={isChallenge ? undefined : tutorialConfig?.expectedHand}
+              tutorialWrongSwipeHint={isChallenge ? undefined : tutorialConfig?.wrongSwipeHint}
+              onTutorialStepComplete={
+                !isChallenge && tutorialActive ? handleTutorialStepComplete : undefined
+              }
               blockerConfig={cfg.blockers}
               fixedObstacles={cfg.fixedObstacles}
               onHand={handleHand}
@@ -856,7 +887,94 @@ export function GameScreen({ username, startLevel, onMenu, onSignOut }: Props) {
         </div>
       </div>
 
-      {phase === "round_complete" && completedLevel !== null && completedCfg &&
+      {phase === "round_complete" && completedLevel !== null && completedCfg && isChallenge &&
+        gamePortal(
+        <div className="modal-overlay levelup-overlay round-complete-overlay">
+          <div className="modal levelup-modal round-complete-modal">
+            <div className="levelup-badge round-complete-badge">CHALLENGE CLEAR!</div>
+            <h2>Level {formatLevelId(completedLevel)}</h2>
+            <p className="levelup-label">{completedCfg.label}</p>
+            <div className="round-complete-stars" aria-label={`${completedStats?.stars ?? 0} of 3 stars`}>
+              {[1, 2, 3].map((i) => (
+                <span
+                  key={i}
+                  className={`round-complete-star${i <= (completedStats?.stars ?? 0) ? " round-complete-star--lit" : ""}`}
+                  aria-hidden
+                >
+                  ★
+                </span>
+              ))}
+            </div>
+            <div className="levelup-perks">
+              <div className="perk">
+                <span className="perk-icon">💰</span>
+                <span>{completedStats?.score.toLocaleString() ?? 0} pts · {completedStats?.hands ?? 0} moves</span>
+              </div>
+              {(() => {
+                if (!challengeResult) {
+                  return (
+                    <div className="perk">
+                      <span className="perk-icon">…</span>
+                      <span>Submitting result…</span>
+                    </div>
+                  );
+                }
+                const mine =
+                  challengeResult.you_are === "challenger"
+                    ? challengeResult.challenger_result
+                    : challengeResult.opponent_result;
+                const theirs =
+                  challengeResult.you_are === "challenger"
+                    ? challengeResult.opponent_result
+                    : challengeResult.challenger_result;
+                const myId =
+                  challengeResult.you_are === "challenger"
+                    ? challengeResult.challenger?.id
+                    : challengeResult.opponent?.id;
+                const opponentName =
+                  challengeResult.you_are === "challenger"
+                    ? challengeResult.opponent?.username
+                    : challengeResult.challenger?.username;
+                if (!theirs) {
+                  return (
+                    <div className="perk">
+                      <span className="perk-icon">⏳</span>
+                      <span>Waiting for {opponentName ?? "opponent"}…</span>
+                    </div>
+                  );
+                }
+                const outcome =
+                  challengeResult.winner_user_id == null
+                    ? "Tie"
+                    : challengeResult.winner_user_id === myId
+                      ? "You win!"
+                      : "You lose";
+                return (
+                  <>
+                    <div className="perk">
+                      <span className="perk-icon">🏆</span>
+                      <span>{outcome}</span>
+                    </div>
+                    <div className="perk">
+                      <span className="perk-icon">👤</span>
+                      <span>
+                        You {mine?.stars ?? 0}★ / {mine?.moves ?? 0}m / {(mine?.score ?? 0).toLocaleString()}
+                        {" · "}
+                        {opponentName ?? "Opp"} {theirs.stars}★ / {theirs.moves}m / {theirs.score.toLocaleString()}
+                      </span>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+            <button type="button" className="btn ghost" onClick={onMenu}>
+              Back to lobby
+            </button>
+          </div>
+        </div>
+        )}
+
+      {phase === "round_complete" && completedLevel !== null && completedCfg && !isChallenge &&
         gamePortal(
         <div className="modal-overlay levelup-overlay round-complete-overlay">
           <div className="modal levelup-modal round-complete-modal">

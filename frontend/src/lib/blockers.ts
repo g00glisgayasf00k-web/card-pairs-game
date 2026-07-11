@@ -130,13 +130,14 @@ export function emptyBlockerGrid(rows: number, cols: number): BlockerGrid {
 export function spawnBlockers(
   rows: number,
   cols: number,
-  config: BlockerSpawnConfig
+  config: BlockerSpawnConfig,
+  rng: () => number = Math.random
 ): BlockerGrid {
   const grid = emptyBlockerGrid(rows, cols);
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
-      if (Math.random() >= config.density) continue;
-      const kind: BlockerKind = Math.random() < config.crateRatio ? "crate" : "glass";
+      if (rng() >= config.density) continue;
+      const kind: BlockerKind = rng() < config.crateRatio ? "crate" : "glass";
       grid[r]![c] = { kind, hp: blockerMaxHp(kind) };
     }
   }
@@ -158,9 +159,10 @@ export function buildBlockerGrid(
   rows: number,
   cols: number,
   config: BlockerSpawnConfig | null,
-  fixed: FixedObstacle[] = []
+  fixed: FixedObstacle[] = [],
+  rng: () => number = Math.random
 ): BlockerGrid {
-  const base = config ? spawnBlockers(rows, cols, config) : emptyBlockerGrid(rows, cols);
+  const base = config ? spawnBlockers(rows, cols, config, rng) : emptyBlockerGrid(rows, cols);
   return applyFixedObstacles(base, fixed);
 }
 

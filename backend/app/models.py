@@ -69,3 +69,65 @@ class PurchaseRecord(db.Model):
     )
 
     user = db.relationship("User", backref=db.backref("purchases", lazy="dynamic"))
+
+
+class Friendship(db.Model):
+    __tablename__ = "friendships"
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "friend_id", name="uq_friendship_pair"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    friend_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    status = db.Column(db.String(16), nullable=False, default="pending")
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    updated_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    user = db.relationship("User", foreign_keys=[user_id])
+    friend = db.relationship("User", foreign_keys=[friend_id])
+
+
+class Challenge(db.Model):
+    __tablename__ = "challenges"
+
+    id = db.Column(db.Integer, primary_key=True)
+    challenger_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    opponent_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    level = db.Column(db.Integer, nullable=False)
+    board_seed = db.Column(db.BigInteger, nullable=False)
+    status = db.Column(db.String(16), nullable=False, default="pending")
+    wager_gems = db.Column(db.Integer, nullable=False, default=0)
+    expires_at = db.Column(db.DateTime, nullable=False)
+
+    challenger_stars = db.Column(db.Integer, nullable=True)
+    challenger_moves = db.Column(db.Integer, nullable=True)
+    challenger_score = db.Column(db.Integer, nullable=True)
+    challenger_submitted_at = db.Column(db.DateTime, nullable=True)
+
+    opponent_stars = db.Column(db.Integer, nullable=True)
+    opponent_moves = db.Column(db.Integer, nullable=True)
+    opponent_score = db.Column(db.Integer, nullable=True)
+    opponent_submitted_at = db.Column(db.DateTime, nullable=True)
+
+    winner_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    updated_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    challenger = db.relationship("User", foreign_keys=[challenger_id])
+    opponent = db.relationship("User", foreign_keys=[opponent_id])
+    winner = db.relationship("User", foreign_keys=[winner_user_id])

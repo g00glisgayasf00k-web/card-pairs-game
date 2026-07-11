@@ -5,6 +5,7 @@ export const HOME_ASSETS = {
     main: "/assets/background/bg_main.png",
   },
   hero: {
+    banner: "/assets/hero/banner_choose_mode.png",
     panelBg: "/assets/hero/panel_hero_bg.png",
     cardsHand: "/assets/hero/cards_hand.png",
     chipsStack: "/assets/hero/chips_stack.png",

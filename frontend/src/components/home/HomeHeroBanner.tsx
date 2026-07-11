@@ -1,40 +1,16 @@
-const ROYAL_FLUSH: { rank: string; tilt: number }[] = [
-  { rank: "10", tilt: -22 },
-  { rank: "J", tilt: -11 },
-  { rank: "Q", tilt: 0 },
-  { rank: "K", tilt: 11 },
-  { rank: "A", tilt: 22 },
-];
+import { HOME_ASSETS } from "./homeAssets";
 
 export function HomeHeroBanner() {
   return (
     <section className="home-hero-banner" aria-label="Choose your game mode">
-      <div className="home-hero-banner__art" aria-hidden>
-        <div className="home-hero-flush">
-          {ROYAL_FLUSH.map((card, i) => (
-            <span
-              key={card.rank}
-              className="home-hero-flush__card"
-              style={{
-                ["--tilt" as string]: `${card.tilt}deg`,
-                ["--i" as string]: String(i),
-              }}
-            >
-              <span className="home-hero-flush__corner">
-                <span className="home-hero-flush__rank">{card.rank}</span>
-                <span className="home-hero-flush__suit">♠</span>
-              </span>
-              <span className="home-hero-flush__pip">♠</span>
-            </span>
-          ))}
-        </div>
-      </div>
-      <h1 className="home-hero-banner__ask">
-        <span className="home-hero-banner__ask-line">Choose your</span>
-        <span className="home-hero-banner__ask-line home-hero-banner__ask-line--gold">
-          Game mode
-        </span>
-      </h1>
+      <img
+        className="home-hero-banner__img"
+        src={HOME_ASSETS.hero.banner}
+        alt="Choose your game mode"
+        width={1024}
+        height={512}
+        decoding="async"
+      />
     </section>
   );
 }

@@ -344,9 +344,10 @@ export function ChallengeFriendModal({
               </section>
 
               <section className="play-mode-section">
-                <h3 className="play-mode-modal__section">Board</h3>
+                <h3 className="play-mode-modal__section">How it works</h3>
                 <p className="play-mode-modal__hint">
-                  Both of you get the same seeded board, matched from campaign progress.
+                  You both play the identical board and clear the same goals. Best stars win —
+                  if tied, fewest moves, then highest score.
                 </p>
               </section>
 

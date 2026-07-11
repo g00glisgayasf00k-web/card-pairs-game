@@ -11,7 +11,6 @@ import {
   type ChallengeDto,
   type FriendshipItem,
 } from "../lib/api";
-import { formatLevelId } from "../lib/levelMap";
 
 interface Props {
   onClose: () => void;
@@ -53,9 +52,7 @@ function ResultCard({ c }: { c: ChallengeDto }) {
   return (
     <li className="challenge-results-card challenge-results-card--list">
       <div className="challenge-results-card__head">
-        <strong>
-          vs {other} · {formatLevelId(c.level)}
-        </strong>
+        <strong>vs {other}</strong>
         {outcome ? (
           <span className="challenge-results-card__outcome">{outcome}</span>
         ) : (
@@ -166,7 +163,7 @@ export function ChallengeFriendModal({
     setInfo(null);
     try {
       const { challenge } = await createChallenge(friendId);
-      setInfo(`Challenge sent — level ${formatLevelId(challenge.level)} (auto-matched)`);
+      setInfo("Challenge sent — same board for both of you");
       await reload();
       setTab("inbox");
       onPlayChallenge(challenge);
@@ -346,9 +343,9 @@ export function ChallengeFriendModal({
               </section>
 
               <section className="play-mode-section">
-                <h3 className="play-mode-modal__section">Level</h3>
+                <h3 className="play-mode-modal__section">Board</h3>
                 <p className="play-mode-modal__hint">
-                  Board level is chosen automatically from both players&apos; campaign progress.
+                  Both of you get the same seeded board, matched from campaign progress.
                 </p>
               </section>
 
@@ -376,9 +373,7 @@ export function ChallengeFriendModal({
                     return (
                       <li key={c.id} className="challenge-inbox-item">
                         <div>
-                          <strong>
-                            vs {other} · {formatLevelId(c.level)}
-                          </strong>
+                          <strong>vs {other}</strong>
                           <span className="challenge-inbox-item__meta">{c.status}</span>
                         </div>
                         <div className="challenge-inbox-item__actions">

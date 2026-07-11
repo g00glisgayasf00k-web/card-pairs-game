@@ -80,17 +80,6 @@ export function OnboardingScreen({
     <div className="home-screen home-screen--royal home-screen--v2">
       <div className="mobile-shell mobile-shell--home">
         <header className="home-topbar">
-          <button
-            type="button"
-            className="home-topbar__menu"
-            aria-label="Settings"
-            onClick={() => setMenu(menu === "account" ? null : "account")}
-          >
-            <span aria-hidden />
-            <span aria-hidden />
-            <span aria-hidden />
-          </button>
-
           <div className="home-topbar__brand" aria-label="Royal Poker Match">
             <span className="home-topbar__crown" aria-hidden>
               👑

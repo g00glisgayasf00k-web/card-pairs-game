@@ -10,6 +10,7 @@ import type { ChallengeDto } from "./lib/api";
 import type { ChallengeMatch } from "./screens/GameScreen";
 
 type Screen = "onboard" | "levels" | "game";
+export type PlayTheme = "solo" | "challenge" | "compete";
 
 function readResetTokenFromUrl(): string | null {
   const params = new URLSearchParams(window.location.search);
@@ -26,6 +27,7 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>("onboard");
   const [playLevel, setPlayLevel] = useState<number | undefined>(undefined);
   const [challengeMatch, setChallengeMatch] = useState<ChallengeMatch | null>(null);
+  const [playTheme, setPlayTheme] = useState<PlayTheme>("solo");
   const [loggedIn, setLoggedIn] = useState(() => isLoggedIn());
   const [username, setUsername] = useState<string | null>(() => getUsername());
   const [resetToken, setResetToken] = useState<string | null>(() => readResetTokenFromUrl());
@@ -53,6 +55,7 @@ export default function App() {
     setScreen("onboard");
     setPlayLevel(undefined);
     setChallengeMatch(null);
+    setPlayTheme("solo");
   };
 
   const startLevel = (globalLevel: number) => {
@@ -61,15 +64,14 @@ export default function App() {
       return;
     }
     setChallengeMatch(null);
+    setPlayTheme("solo");
     setPlayLevel(globalLevel);
     setScreen("game");
   };
 
   const startChallenge = (challenge: ChallengeDto) => {
     if (!isLoggedIn()) return;
-    if (challenge.status === "completed") {
-      // Still open game screen in view/result mode via GameScreen
-    }
+    setPlayTheme(challenge.kind === "quick" ? "compete" : "challenge");
     setPlayLevel(undefined);
     setChallengeMatch({
       id: challenge.id,
@@ -82,6 +84,7 @@ export default function App() {
   const goToLevels = () => {
     if (!isLoggedIn()) return;
     setChallengeMatch(null);
+    setPlayTheme("solo");
     setScreen("levels");
   };
 
@@ -100,7 +103,7 @@ export default function App() {
 
   if (screen === "game" && loggedIn) {
     return (
-      <div className="app app--game">
+      <div className={`app app--game app--theme-${playTheme}`} data-play-theme={playTheme}>
         <GameScreen
           username={username}
           startLevel={challengeMatch?.level ?? playLevel}
@@ -118,7 +121,7 @@ export default function App() {
 
   if (screen === "levels" && loggedIn) {
     return (
-      <div className="app app--levels">
+      <div className={`app app--levels app--theme-${playTheme}`} data-play-theme={playTheme}>
         <LevelSelectScreen
           onBack={() => setScreen("onboard")}
           onSelectLevel={startLevel}

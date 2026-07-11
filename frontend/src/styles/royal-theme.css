@@ -1542,41 +1542,19 @@ button.royal-resource:active {
 
 .home-topbar {
   display: grid;
-  grid-template-columns: auto 1fr auto;
+  grid-template-columns: 1fr auto;
   align-items: center;
   gap: 0.45rem;
   padding: 0.1rem 0.05rem 0.2rem;
 }
 
-.home-topbar__menu {
-  width: 2.35rem;
-  height: 2.35rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 0.28rem;
-  border: none;
-  border-radius: 10px;
-  background: transparent;
-  cursor: pointer;
-  padding: 0;
-}
-
-.home-topbar__menu span {
-  display: block;
-  width: 1.15rem;
-  height: 2px;
-  border-radius: 2px;
-  background: var(--royal-gold);
-}
-
 .home-topbar__brand {
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
   line-height: 1.05;
   min-width: 0;
+  padding-left: 0.15rem;
 }
 
 .home-topbar__crown {

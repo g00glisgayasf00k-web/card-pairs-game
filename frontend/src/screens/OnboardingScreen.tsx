@@ -9,10 +9,9 @@ import {
   HomeBottomNav,
   HomeHeader,
   HomeHeroBanner,
-  HomeLevelBar,
   type HomeNavTab,
 } from "../components/home";
-import { clearProgress, loadProgress } from "../lib/progress";
+import { loadProgress } from "../lib/progress";
 import { MAX_LEVEL } from "../lib/levels";
 import type { ChallengeDto } from "../lib/api";
 import { useNotificationSummary } from "../lib/useNotificationSummary";
@@ -54,11 +53,6 @@ export function OnboardingScreen({
     onChallengeSheetOpened?.();
   }, [openChallengeSheet, onChallengeSheetOpened]);
 
-  const startFresh = () => {
-    clearProgress();
-    onPlay();
-  };
-
   const closeMenu = () => setMenu(null);
 
   const handleAccountChange = () => {
@@ -67,7 +61,6 @@ export function OnboardingScreen({
   };
 
   const cleared = (saved?.completedLevels ?? []).length;
-  const currentLevel = saved?.level ?? 1;
   const gems = saved?.credits ?? 0;
   const progressPct = Math.min(100, Math.round((cleared / MAX_LEVEL) * 100));
 
@@ -138,12 +131,6 @@ export function OnboardingScreen({
                 onClick={() => setPlaySheet("compete")}
               />
             </div>
-
-            <HomeLevelBar
-              levelLabel={String(currentLevel)}
-              progressPercent={Math.min(100, ((currentLevel - 1) % 20) * 5)}
-              onClick={startFresh}
-            />
 
             <HomeBottomNav active={activeTab} onSelect={openTab} />
           </>

@@ -1783,8 +1783,7 @@ button.royal-resource:active {
   display: block;
   width: 100%;
   height: auto;
-  aspect-ratio: 2 / 1;
-  object-fit: cover;
+  object-fit: contain;
   object-position: center;
 }
 

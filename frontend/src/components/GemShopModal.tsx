@@ -34,13 +34,6 @@ interface Props {
 
 type AdKind = "gems" | "energy";
 
-const PACK_ICONS: Record<string, string> = {
-  handful: "💎",
-  pouch: "💠",
-  vault: "👑",
-  treasure: "🏆",
-};
-
 const FEATURED_PACK_ID = "treasure";
 
 const FALLBACK_PACKS: PaymentPack[] = GEM_SHOP_PACKS.map((p) => ({
@@ -249,23 +242,34 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
     setAdProgress(0);
   };
 
+  const green = HOME_ASSETS.cards.green;
+  const gemsIcon = HOME_ASSETS.header.gems;
+  const chestIcon = HOME_ASSETS.home.chest;
+
   const freeRewardsSection = (
-    <section className="royal-shop-section">
-      <h3 className="royal-shop__section-title">Free rewards</h3>
-      <p className="royal-shop__section-note">Watch a short video — limits reset at UK midnight.</p>
-      <ul className="royal-shop-rewards">
+    <section className="hk-shop__section">
+      <h3 className="hk-shop__title">Free rewards</h3>
+      <p className="hk-shop__note">Watch a short video — limits reset at UK midnight.</p>
+      <ul className="hk-shop__list">
         <li>
-          <div className="royal-shop-card royal-shop-card--row royal-shop-card--video">
-            <span className="royal-shop-card__icon">📺</span>
-            <div className="royal-shop-card__meta">
-              <span className="royal-shop-card__label">Watch video</span>
-              <span className="royal-shop-card__detail">
+          <div
+            className="hk-shop-card hk-shop-card--row"
+            style={{ backgroundImage: `url(${green.base})` }}
+          >
+            <span className="hk-shop-card__glow" style={{ backgroundImage: `url(${green.glow})` }} aria-hidden />
+            <span className="hk-shop-card__icon-wrap" aria-hidden>
+              <span className="hk-shop-card__ring" style={{ backgroundImage: `url(${green.circle})` }} />
+              <img className="hk-shop-card__icon" src={gemsIcon} alt="" />
+            </span>
+            <div className="hk-shop-card__body">
+              <span className="hk-shop-card__label">Watch video</span>
+              <span className="hk-shop-card__detail">
                 +{GEM_VIDEO_REWARD} gems · {gemAdsLeft}/{MAX_GEM_VIDEO_ADS_PER_DAY} left today
               </span>
             </div>
             <button
               type="button"
-              className="royal-shop-card__btn royal-shop-card__btn--video"
+              className="hk-shop-card__cta hk-shop-card__cta--free"
               onClick={() => void handleGemAd()}
               disabled={!canWatchGemAd || gemAdBusy}
             >
@@ -274,18 +278,24 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
           </div>
         </li>
         <li>
-          <div className="royal-shop-card royal-shop-card--row royal-shop-card--video">
-            <span className="royal-shop-card__icon">⚡</span>
-            <div className="royal-shop-card__meta">
-              <span className="royal-shop-card__label">Energy boost</span>
-              <span className="royal-shop-card__detail">
-                +{ENERGY_VIDEO_REWARD} energy · {energyAdsLeft}/{MAX_ENERGY_VIDEO_ADS_PER_DAY} left
-                today
+          <div
+            className="hk-shop-card hk-shop-card--row"
+            style={{ backgroundImage: `url(${green.base})` }}
+          >
+            <span className="hk-shop-card__glow" style={{ backgroundImage: `url(${green.glow})` }} aria-hidden />
+            <span className="hk-shop-card__icon-wrap" aria-hidden>
+              <span className="hk-shop-card__ring" style={{ backgroundImage: `url(${green.circle})` }} />
+              <span className="hk-shop-card__icon hk-shop-card__icon--emoji">⚡</span>
+            </span>
+            <div className="hk-shop-card__body">
+              <span className="hk-shop-card__label">Energy boost</span>
+              <span className="hk-shop-card__detail">
+                +{ENERGY_VIDEO_REWARD} energy · {energyAdsLeft}/{MAX_ENERGY_VIDEO_ADS_PER_DAY} left today
               </span>
             </div>
             <button
               type="button"
-              className="royal-shop-card__btn royal-shop-card__btn--video"
+              className="hk-shop-card__cta hk-shop-card__cta--free"
               onClick={() => void handleEnergyAd()}
               disabled={!canWatchEnergyAd || energyAdBusy}
             >
@@ -298,72 +308,95 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
   );
 
   const purchaseBanner = !paymentConfig?.enabled ? (
-    <p className="royal-shop-coming-soon" role="status">
+    <p className="hk-shop__banner" role="status">
       Gem purchases are not available yet. Free video rewards are still available below.
     </p>
   ) : !loggedIn ? (
-    <p className="royal-shop-coming-soon" role="status">
+    <p className="hk-shop__banner" role="status">
       Sign in to buy gems with Square. Free video rewards are still available below.
     </p>
   ) : null;
 
   const energySection = (
-    <section className="royal-shop-section royal-shop-energy">
-      <h3
-        className={`royal-shop__section-title${emphasizeEnergy ? " royal-shop__section-title--alert" : ""}`}
-      >
+    <section className="hk-shop__section">
+      <h3 className={`hk-shop__title${emphasizeEnergy ? " hk-shop__title--alert" : ""}`}>
         {emphasizeEnergy ? "Need energy to play" : "Refill energy"}
       </h3>
-      <p className="royal-shop__section-note">
+      <p className="hk-shop__note">
         Max {MAX_ENERGY} energy · +1 every 2 hours · each level attempt costs 1
       </p>
-      <div className={`royal-shop-card royal-shop-card--row${!canBuyEnergy ? " royal-shop-card--locked" : ""}`}>
-        <span className="royal-shop-card__icon">⚡</span>
-        <div className="royal-shop-card__meta">
-          <span className="royal-shop-card__label">Full bar</span>
-          <span className="royal-shop-card__detail">
+      <div
+        className={`hk-shop-card hk-shop-card--row${!canBuyEnergy ? " hk-shop-card--locked" : ""}`}
+        style={{ backgroundImage: `url(${green.base})` }}
+      >
+        <span className="hk-shop-card__glow" style={{ backgroundImage: `url(${green.glow})` }} aria-hidden />
+        <span className="hk-shop-card__icon-wrap" aria-hidden>
+          <span className="hk-shop-card__ring" style={{ backgroundImage: `url(${green.circle})` }} />
+          <span className="hk-shop-card__icon hk-shop-card__icon--emoji">⚡</span>
+        </span>
+        <div className="hk-shop-card__body">
+          <span className="hk-shop-card__label">Full bar</span>
+          <span className="hk-shop-card__detail">
             {energyFull
               ? `Energy already full (${MAX_ENERGY}/${MAX_ENERGY})`
-              : `Refill to ${MAX_ENERGY} instantly · costs ${ENERGY_BUY_TEN_COST} 💎`}
+              : `Refill to ${MAX_ENERGY} instantly`}
           </span>
         </div>
         <button
           type="button"
-          className="royal-shop-card__btn"
+          className="hk-shop-card__cta"
           onClick={handleBuyEnergy}
           disabled={!canBuyEnergy}
         >
-          {energyFull ? "Full" : `${ENERGY_BUY_TEN_COST} 💎`}
+          {energyFull ? (
+            "Full"
+          ) : (
+            <>
+              {ENERGY_BUY_TEN_COST}
+              <img src={gemsIcon} alt="" width={14} height={14} />
+            </>
+          )}
         </button>
       </div>
     </section>
   );
 
   const gemsSection = (
-    <section className="royal-shop-section">
-      <h3 className="royal-shop__section-title">Buy gems</h3>
-      <p className="royal-shop__section-note">
+    <section className="hk-shop__section">
+      <h3 className="hk-shop__title">Buy gems</h3>
+      <p className="hk-shop__note">
         {purchasesEnabled
           ? "Secure card checkout powered by Square."
           : paymentConfig?.enabled
             ? "Sign in to purchase gem packs."
             : "Gem packs will be available here soon."}
       </p>
-      <ul className="royal-shop-grid">
+      <ul className="hk-shop__grid">
         {shopPacks.map((pack) => {
           const featured = pack.id === FEATURED_PACK_ID;
           return (
             <li key={pack.id}>
               <div
-                className={`royal-shop-card${featured ? " royal-shop-card--featured" : ""}${!purchasesEnabled ? " royal-shop-card--locked" : ""}`}
+                className={`hk-shop-card${featured ? " hk-shop-card--featured" : ""}${!purchasesEnabled ? " hk-shop-card--locked" : ""}`}
+                style={{ backgroundImage: `url(${green.base})` }}
               >
-                {featured && <span className="royal-shop-card__badge">Best value</span>}
-                <span className="royal-shop-card__icon">{PACK_ICONS[pack.id] ?? "💎"}</span>
-                <span className="royal-shop-card__label">{pack.label}</span>
-                <span className="royal-shop-card__detail">+{pack.gems.toLocaleString()} gems</span>
+                <span className="hk-shop-card__glow" style={{ backgroundImage: `url(${green.glow})` }} aria-hidden />
+                {featured && <span className="hk-shop-card__badge">Best value</span>}
+                <span className="hk-shop-card__icon-wrap" aria-hidden>
+                  <span className="hk-shop-card__ring" style={{ backgroundImage: `url(${green.circle})` }} />
+                  <img
+                    className="hk-shop-card__icon"
+                    src={featured ? chestIcon : gemsIcon}
+                    alt=""
+                  />
+                </span>
+                <div className="hk-shop-card__body">
+                  <span className="hk-shop-card__label">{pack.label}</span>
+                  <span className="hk-shop-card__detail">+{pack.gems.toLocaleString()} gems</span>
+                </div>
                 <button
                   type="button"
-                  className={`royal-shop-card__btn${!purchasesEnabled ? " royal-shop-card__btn--soon" : ""}`}
+                  className="hk-shop-card__cta"
                   onClick={() => purchasesEnabled && setCheckoutPack(pack)}
                   disabled={!purchasesEnabled}
                 >
@@ -395,23 +428,20 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
           </span>
         }
         onClose={onClose}
-        hideHero={false}
       >
-        <div className="royal-shop gem-shop-modal" style={{ margin: 0, maxHeight: "none", overflow: "visible" }}>
-          <div className="royal-shop__header">
+        <div className="hk-shop">
+          <div className="hk-shop__wallet">
             <ResourceBar gems={gems} energy={energy} maxEnergy={MAX_ENERGY} />
           </div>
 
           {emphasizeEnergy && (
-            <p className="royal-shop-alert" role="status">
+            <p className="hk-shop__alert" role="status">
               You&apos;re out of energy — watch a free video below to keep playing.
             </p>
           )}
 
-          <div className="royal-shop__body">
-            {purchaseBanner}
-            {sections}
-          </div>
+          {purchaseBanner}
+          {sections}
 
           {adKind && (
             <VideoAdOverlay kind={adKind} progress={adProgress} onCancel={cancelAd} />

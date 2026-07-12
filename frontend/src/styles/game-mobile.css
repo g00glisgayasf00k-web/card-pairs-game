@@ -294,6 +294,146 @@ html.native-shell .app.app--levels {
   flex-direction: column;
   align-items: stretch;
   gap: 0.35rem;
+  position: relative;
+}
+
+/* Tutorial tips float over the board — does not shrink the flex layout */
+.tutorial-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 24;
+  pointer-events: none;
+  padding: 0 0.15rem;
+}
+
+.tutorial-overlay__panel,
+.tutorial-overlay__chip {
+  pointer-events: auto;
+}
+
+.tutorial-overlay__panel {
+  border-radius: 12px;
+  padding: 0.45rem 0.55rem 0.5rem;
+  background: linear-gradient(145deg, rgba(28, 22, 58, 0.94), rgba(18, 28, 48, 0.92));
+  border: 1px solid rgba(167, 139, 250, 0.45);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+  backdrop-filter: blur(8px);
+}
+
+.tutorial-overlay__head {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.tutorial-overlay__tag {
+  flex-shrink: 0;
+  font-size: 0.56rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #c4b5fd;
+}
+
+.tutorial-overlay__title {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #f3e8ff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tutorial-overlay__toggle {
+  flex-shrink: 0;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: #e9e0ff;
+  font: inherit;
+  font-size: 0.58rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  border-radius: 999px;
+  padding: 0.22rem 0.55rem;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tutorial-overlay__summary {
+  margin: 0.35rem 0 0;
+  font-size: 0.72rem;
+  line-height: 1.35;
+  color: rgba(255, 255, 255, 0.94);
+}
+
+.tutorial-overlay__details {
+  margin-top: 0.25rem;
+}
+
+.tutorial-overlay__more {
+  display: inline-block;
+  font-size: 0.56rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: rgba(196, 181, 253, 0.85);
+  cursor: pointer;
+  list-style: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tutorial-overlay__more::-webkit-details-marker {
+  display: none;
+}
+
+.tutorial-overlay__text {
+  margin: 0.3rem 0 0;
+  font-size: 0.66rem;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.tutorial-overlay__chip {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  width: 100%;
+  max-width: 100%;
+  margin: 0;
+  padding: 0.35rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid rgba(167, 139, 250, 0.4);
+  background: rgba(28, 22, 58, 0.9);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  color: #e9e0ff;
+  font: inherit;
+  font-size: 0.62rem;
+  font-weight: 700;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.tutorial-overlay__chip-title {
+  flex: 1;
+  min-width: 0;
+  text-align: left;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  opacity: 0.9;
+}
+
+.tutorial-overlay__chip-expand {
+  flex-shrink: 0;
+  font-size: 0.56rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  opacity: 0.75;
 }
 
 .game-goalbar {
@@ -1496,16 +1636,7 @@ html.native-shell .app.app--levels {
 }
 
 .game-hud--lesson {
-  gap: 0.3rem;
-  padding-bottom: 0.4rem;
-}
-
-.game-hud--lesson .xp-track {
-  min-height: 1.1rem;
-}
-
-.game-hud--lesson .game-hud__row {
-  gap: 0.25rem;
+  gap: 0.35rem;
 }
 
 /* Hand scores modal */

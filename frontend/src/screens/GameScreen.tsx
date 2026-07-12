@@ -214,6 +214,7 @@ export function GameScreen({
   const [showOutOfEnergy, setShowOutOfEnergy] = useState(false);
   const energyBlockedActionRef = useRef<"start" | "advance" | "retry" | null>(null);
   const [boardKey, setBoardKey] = useState(0);
+  const [tutorialPanelOpen, setTutorialPanelOpen] = useState(true);
   const [boardFeedback, setBoardFeedback] = useState<{ text: string; hint?: boolean } | null>(null);
   const [blockerIntro, setBlockerIntro] = useState<BlockerIntroKind | null>(null);
   const [confirmSpend, setConfirmSpend] = useState<"hint" | "shuffle" | "restart" | null>(null);
@@ -270,6 +271,10 @@ export function GameScreen({
   const level1SeedBoard = level === 1 ? getLevel1SeedBoard(tutorialStep) : undefined;
   const tutorialFreePlay = level === 1 && tutorialStep >= TUTORIAL_FREE_STEP;
   const showChallengeUi = isSpecialRun || level > 1 || tutorialFreePlay;
+
+  useEffect(() => {
+    if (tutorialActive) setTutorialPanelOpen(true);
+  }, [tutorialActive, tutorialStep]);
   const challengesDone = cfg.challenges.filter(
     (c) => challengeProgress(levelHandCounts, c) >= c.minCount
   ).length;
@@ -908,20 +913,6 @@ export function GameScreen({
             </button>
 
           </div>
-
-          {tutorialActive && tutorialConfig && (
-            <div className="tutorial-banner tutorial-banner--compact">
-              <div className="tutorial-banner__summary-row">
-                <span className="tutorial-banner__tag">🎓 Lesson {tutorialConfig.lesson}/3</span>
-                <span className="tutorial-banner__title">{tutorialConfig.title}</span>
-              </div>
-              <p className="tutorial-banner__summary">{tutorialConfig.summary}</p>
-              <details className="tutorial-banner__details">
-                <summary className="tutorial-banner__more">Show More Info</summary>
-                <p className="tutorial-banner__text">{tutorialConfig.message}</p>
-              </details>
-            </div>
-          )}
         </header>
 
         {showChallengeUi && cfg.challenges.length > 0 && (
@@ -944,6 +935,48 @@ export function GameScreen({
         )}
 
         <div className="mobile-shell__play">
+          {tutorialActive && tutorialConfig && (
+            <div
+              className={`tutorial-overlay${tutorialPanelOpen ? " tutorial-overlay--open" : " tutorial-overlay--collapsed"}`}
+            >
+              {tutorialPanelOpen ? (
+                <div className="tutorial-overlay__panel" role="region" aria-label="Lesson tips">
+                  <div className="tutorial-overlay__head">
+                    <span className="tutorial-overlay__tag">Lesson {tutorialConfig.lesson}/3</span>
+                    <span className="tutorial-overlay__title">{tutorialConfig.title}</span>
+                    <button
+                      type="button"
+                      className="tutorial-overlay__toggle"
+                      onClick={() => setTutorialPanelOpen(false)}
+                      aria-expanded={true}
+                      aria-label="Hide lesson tips"
+                    >
+                      Hide
+                    </button>
+                  </div>
+                  <p className="tutorial-overlay__summary">{tutorialConfig.summary}</p>
+                  <details className="tutorial-overlay__details">
+                    <summary className="tutorial-overlay__more">More info</summary>
+                    <p className="tutorial-overlay__text">{tutorialConfig.message}</p>
+                  </details>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="tutorial-overlay__chip"
+                  onClick={() => setTutorialPanelOpen(true)}
+                  aria-expanded={false}
+                  aria-label={`Show lesson ${tutorialConfig.lesson} tips`}
+                >
+                  <span>Lesson {tutorialConfig.lesson}/3</span>
+                  <span className="tutorial-overlay__chip-title">{tutorialConfig.title}</span>
+                  <span className="tutorial-overlay__chip-expand" aria-hidden>
+                    Show
+                  </span>
+                </button>
+              )}
+            </div>
+          )}
           <nav className="action-bar action-bar--bottom" aria-label="Game actions">
             <button
               type="button"

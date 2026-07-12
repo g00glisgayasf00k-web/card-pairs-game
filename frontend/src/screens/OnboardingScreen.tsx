@@ -118,7 +118,6 @@ export function OnboardingScreen({
                 label="Multiplayer"
                 title="Play online"
                 subtitle="Quick play or challenge a friend"
-                meta="Free · ⚡1 each"
                 badge={summary.total}
                 onClick={() => setPlaySheet("challenge")}
               />
@@ -127,7 +126,6 @@ export function OnboardingScreen({
                 label="Ranked"
                 title="Compete"
                 subtitle="Daily board or quick match ladder"
-                meta="No friends required"
                 onClick={() => setPlaySheet("compete")}
               />
             </div>

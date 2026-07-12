@@ -97,7 +97,7 @@ export function TournamentModal({ onClose, onBalanceChange, onOpenShop }: Props)
             </div>
 
             <div className="tn-kit__body">
-              <p className="tn-kit__hint">Top 3 split the pool · 50% / 30% / 20%</p>
+              <p className="tn-kit__hint">Top 3 earn the prize pool payouts shown on each cup.</p>
               {error && <p className="tn-kit__error">{error}</p>}
               {info && <p className="tn-kit__info">{info}</p>}
 
@@ -209,8 +209,11 @@ export function TournamentModal({ onClose, onBalanceChange, onOpenShop }: Props)
             <h2 id="tournament-enter-title">Enter {confirmTier.name}?</h2>
             <p>
               Entry fee <strong>{confirmTier.entryGems}</strong> gems. Prize pool{" "}
-              <strong>{confirmTier.rewardPool.toLocaleString()}</strong> gems for the top 3
-              (50% / 30% / 20%).
+              <strong>{confirmTier.rewardPool.toLocaleString()}</strong> gems — payouts{" "}
+              {payoutAmounts(confirmTier.rewardPool)
+                .map((p) => `${p.label} ${p.gems.toLocaleString()}`)
+                .join(" · ")}
+              .
             </p>
             <div className="tn-confirm__actions">
               <button

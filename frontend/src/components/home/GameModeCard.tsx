@@ -40,12 +40,14 @@ export function GameModeCard({
 }: Props) {
   const assets = CARD_ASSETS[glow];
   const badgeLabel = badge && badge > 0 ? (badge > 99 ? "99+" : String(badge)) : null;
+  const pct = progress ? Math.max(0, Math.min(100, progress.percent)) : 0;
 
   return (
     <button
       type="button"
       onClick={onClick}
       className={["home-mode-card", CARD_CLASS[glow]].join(" ")}
+      style={{ backgroundImage: `url(${assets.base})` }}
     >
       {badgeLabel && (
         <span className="home-mode-card__badge" aria-label={`${badge} notifications`}>
@@ -58,7 +60,7 @@ export function GameModeCard({
         style={{ backgroundImage: `url(${assets.glow})` }}
       />
       <div className="home-mode-card__body">
-        <span className="home-mode-card__tag">{label}</span>
+        <img className="home-mode-card__tag-img" src={assets.label} alt={label} />
         <span className="home-mode-card__title">{title}</span>
         <span className="home-mode-card__subtitle">{subtitle}</span>
         {meta && <span className="home-mode-card__meta">{meta}</span>}
@@ -67,14 +69,27 @@ export function GameModeCard({
             <span className="home-mode-card__meta home-mode-card__meta--progress">
               ★ {progress.label}
             </span>
-            <span className="home-mode-card__progress" aria-hidden>
-              <span style={{ width: `${Math.max(0, Math.min(100, progress.percent))}%` }} />
+            <span
+              className="home-mode-card__progress"
+              aria-hidden
+              style={{ backgroundImage: `url(${HOME_ASSETS.ui.progressBg})` }}
+            >
+              <span
+                style={{
+                  width: `${pct}%`,
+                  backgroundImage: `url(${HOME_ASSETS.ui.progressFill})`,
+                }}
+              />
             </span>
           </>
         )}
       </div>
 
-      <span className="home-mode-card__icon-wrap" aria-hidden>
+      <span
+        className="home-mode-card__icon-wrap"
+        aria-hidden
+        style={{ backgroundImage: `url(${HOME_ASSETS.ui.circleBg})` }}
+      >
         {icon ?? (
           <img
             className="home-mode-card__badge-img"

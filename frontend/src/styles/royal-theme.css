@@ -2042,17 +2042,14 @@ button.royal-resource:active {
   cursor: pointer;
 }
 
-.home-bottom-nav__glyph {
-  width: 1.4rem;
-  height: 1.4rem;
+.home-bottom-nav__icon {
+  width: 1.55rem;
+  height: 1.55rem;
   display: block;
-  background: currentColor;
-  mask-size: contain;
-  mask-repeat: no-repeat;
-  mask-position: center;
-  -webkit-mask-size: contain;
-  -webkit-mask-repeat: no-repeat;
-  -webkit-mask-position: center;
+  object-fit: contain;
+  opacity: 0.55;
+  transition: opacity 0.15s ease, filter 0.15s ease;
+  filter: grayscale(0.25);
 }
 
 .home-bottom-nav__label {
@@ -2061,6 +2058,11 @@ button.royal-resource:active {
 
 .home-bottom-nav__btn--on {
   color: #ffd700;
+}
+
+.home-bottom-nav__btn--on .home-bottom-nav__icon {
+  opacity: 1;
+  filter: drop-shadow(0 0 8px rgba(255, 215, 0, 0.35));
 }
 
 .home-bottom-nav__btn--on::before {

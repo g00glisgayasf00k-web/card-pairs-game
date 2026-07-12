@@ -89,7 +89,7 @@
   );
 }
 
-/* Premium game-mode buttons — mockup-matched depth / glow */
+/* Premium game-mode buttons — UI kit sheet assets */
 .home-mode-card {
   border-radius: 22px;
   padding: 1rem 0.85rem 1rem 1rem;
@@ -104,9 +104,16 @@
   color: #ffffff;
   font: inherit;
   cursor: pointer;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: none;
+  background-color: #1a0a3a;
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
   -webkit-tap-highlight-color: transparent;
   transition: transform 0.12s ease;
+  box-shadow:
+    0 10px 28px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 .home-mode-card:active {
@@ -118,23 +125,9 @@
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.18), transparent 42%);
-  opacity: 0.55;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.12), transparent 48%);
   pointer-events: none;
   z-index: 1;
-}
-
-.home-mode-card::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  opacity: 0.04;
-  pointer-events: none;
-  z-index: 1;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-  background-size: 120px 120px;
-  mix-blend-mode: overlay;
 }
 
 .home-mode-card__body,
@@ -147,48 +140,37 @@
 
 .home-mode-card__glow {
   position: absolute;
-  right: -8%;
-  top: 50%;
-  width: 7.5rem;
-  height: 7.5rem;
-  transform: translateY(-50%);
+  inset: -2px;
   z-index: 0;
   pointer-events: none;
   background-position: center;
   background-repeat: no-repeat;
-  background-size: contain;
-  opacity: 0.5;
-  mix-blend-mode: screen;
+  background-size: 100% 100%;
+  opacity: 0.95;
 }
 
 .home-mode-card--purple {
-  background:
-    radial-gradient(circle at 88% 50%, rgba(255, 215, 0, 0.18), transparent 42%),
-    linear-gradient(135deg, #7a35e8 0%, #6c2bd9 42%, #3b0e91 100%);
+  background-color: #4a1a8c;
   box-shadow:
-    0 0 36px rgba(108, 43, 217, 0.42),
-    inset 0 2px 6px rgba(255, 255, 255, 0.16),
-    inset 0 -4px 12px rgba(0, 0, 0, 0.42);
+    0 0 28px rgba(108, 43, 217, 0.4),
+    0 10px 28px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 .home-mode-card--blue {
-  background:
-    radial-gradient(circle at 88% 50%, rgba(255, 255, 255, 0.14), transparent 42%),
-    linear-gradient(135deg, #1565c0 0%, #0d47a1 42%, #072a66 100%);
+  background-color: #0d3a7a;
   box-shadow:
-    0 0 36px rgba(13, 71, 161, 0.42),
-    inset 0 2px 6px rgba(255, 255, 255, 0.16),
-    inset 0 -4px 12px rgba(0, 0, 0, 0.42);
+    0 0 28px rgba(13, 71, 161, 0.4),
+    0 10px 28px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 .home-mode-card--green {
-  background:
-    radial-gradient(circle at 88% 50%, rgba(255, 215, 0, 0.16), transparent 42%),
-    linear-gradient(135deg, #2e7d32 0%, #1b5e20 42%, #0f3a13 100%);
+  background-color: #1a5c28;
   box-shadow:
-    0 0 36px rgba(27, 94, 32, 0.42),
-    inset 0 2px 6px rgba(255, 255, 255, 0.16),
-    inset 0 -4px 12px rgba(0, 0, 0, 0.42);
+    0 0 28px rgba(27, 94, 32, 0.4),
+    0 10px 28px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 
 .home-mode-card__body {
@@ -198,34 +180,14 @@
   flex-direction: column;
 }
 
-.home-mode-card__tag {
-  display: inline-flex;
-  width: fit-content;
-  border-radius: 999px;
-  padding: 0.18rem 0.55rem;
-  margin-bottom: 0.35rem;
-  font-size: 0.62rem;
-  font-weight: 800;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: #ffffff;
-  background: rgba(0, 0, 0, 0.22);
-  border: 1px solid rgba(255, 255, 255, 0.16);
-}
-
-.home-mode-card--purple .home-mode-card__tag {
-  background: rgba(59, 14, 145, 0.55);
-  border-color: rgba(255, 243, 176, 0.28);
-}
-
-.home-mode-card--blue .home-mode-card__tag {
-  background: rgba(7, 42, 102, 0.55);
-  border-color: rgba(255, 255, 255, 0.22);
-}
-
-.home-mode-card--green .home-mode-card__tag {
-  background: rgba(15, 58, 19, 0.55);
-  border-color: rgba(255, 215, 0, 0.28);
+.home-mode-card__tag-img {
+  display: block;
+  width: auto;
+  height: 1.35rem;
+  margin-bottom: 0.4rem;
+  object-fit: contain;
+  object-position: left center;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.35));
 }
 
 .home-mode-card__title {
@@ -274,40 +236,45 @@
   display: block;
   width: 100%;
   max-width: 11.5rem;
-  height: 0.42rem;
+  height: 0.55rem;
   margin-top: 0.35rem;
   overflow: hidden;
   border-radius: 999px;
-  background: rgba(0, 0, 0, 0.38);
-  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.35);
+  background-color: rgba(0, 0, 0, 0.45);
+  background-size: 100% 100%;
+  background-repeat: no-repeat;
+  background-position: center;
 }
 
 .home-mode-card__progress > span {
   display: block;
   height: 100%;
   border-radius: inherit;
-  background: linear-gradient(90deg, #ffd700, #fff3b0);
+  background-size: cover;
+  background-repeat: no-repeat;
+  background-position: left center;
 }
 
 .home-mode-card__icon-wrap {
   display: inline-flex;
-  width: 3.85rem;
-  height: 3.85rem;
+  width: 4.1rem;
+  height: 4.1rem;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  background: radial-gradient(circle at 40% 35%, rgba(255, 255, 255, 0.22), rgba(0, 0, 0, 0.18));
-  border: 1px solid rgba(255, 255, 255, 0.18);
-  box-shadow:
-    0 8px 18px rgba(0, 0, 0, 0.28),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  background-color: transparent;
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+  border: none;
+  box-shadow: none;
 }
 
 .home-mode-card__badge-img {
   display: block;
-  width: 2.65rem;
-  height: 2.65rem;
+  width: 2.55rem;
+  height: 2.55rem;
   object-fit: contain;
   filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.35));
 }
@@ -318,7 +285,14 @@
   align-items: center;
   justify-content: center;
   width: 1.5rem;
-  opacity: 0.72;
+  opacity: 0.85;
+}
+
+.home-mode-card__chev img {
+  display: block;
+  width: 0.85rem;
+  height: auto;
+  object-fit: contain;
 }
 
 .home-mode-card__badge {

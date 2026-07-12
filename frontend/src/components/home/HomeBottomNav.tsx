@@ -27,9 +27,12 @@ export function HomeBottomNav({ active, onSelect }: Props) {
             onClick={() => onSelect(tab.id)}
             className={`home-bottom-nav__btn${on ? " home-bottom-nav__btn--on" : ""}`}
           >
-            <span
-              className="home-bottom-nav__glyph"
-              style={{ maskImage: `url(${tab.icon})`, WebkitMaskImage: `url(${tab.icon})` }}
+            <img
+              className="home-bottom-nav__icon"
+              src={tab.icon}
+              alt=""
+              width={28}
+              height={28}
               aria-hidden
             />
             <span className="home-bottom-nav__label">{tab.label}</span>

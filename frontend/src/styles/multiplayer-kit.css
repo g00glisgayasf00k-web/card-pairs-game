@@ -253,6 +253,15 @@
   transform: translateY(1px);
 }
 
+.mp-kit-card--locked {
+  opacity: 0.72;
+  filter: grayscale(0.35);
+}
+
+.mp-kit-card--locked:active {
+  transform: none;
+}
+
 .mp-kit-card::before {
   content: "";
   position: absolute;

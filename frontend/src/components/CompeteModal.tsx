@@ -6,6 +6,7 @@ import {
   type ChallengeDto,
 } from "../lib/api";
 import { formatLevelId } from "../lib/levelMap";
+import { isQuickPlayUnlocked, quickPlayUnlockLabel } from "../lib/quickPlayUnlock";
 
 type Ladder = "daily" | "quick";
 
@@ -63,6 +64,10 @@ export function CompeteModal({ onClose, onPlaySolo, onPlayChallenge }: Props) {
   }, [status]);
 
   const findMatch = async () => {
+    if (!isQuickPlayUnlocked()) {
+      setError(`Clear Solo ${quickPlayUnlockLabel()} to unlock Quick play`);
+      return;
+    }
     setBusy(true);
     setError(null);
     setMatched(null);

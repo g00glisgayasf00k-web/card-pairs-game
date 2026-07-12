@@ -12,7 +12,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 from app.challenge_mission import generate_challenge_mission
 from app.elo import ELO_MATCH_BAND, ELO_MATCH_BAND_WIDE
 from app.models import Challenge, MatchTicket, PlayerProgress, db
-from app.progress_grants import get_player_elo
+from app.progress_grants import get_player_elo, load_progress_payload
 
 
 matchmaking_bp = Blueprint("matchmaking", __name__)
@@ -20,6 +20,8 @@ matchmaking_bp = Blueprint("matchmaking", __name__)
 MAX_LEVEL = 500
 TICKET_TTL_SECONDS = 120
 CHALLENGE_TTL_HOURS = 24
+# Solo 1-1 (display world 1, stage 1) = global level 11
+QUICK_PLAY_MIN_LEVEL = 11
 
 
 def _utc_now():
@@ -47,6 +49,20 @@ def _highest_unlocked(user_id: int) -> int:
     if isinstance(level, (int, float)) and level >= 1:
         return min(MAX_LEVEL, int(level))
     return 1
+
+
+def _quick_play_unlocked(user_id: int) -> bool:
+    """Require Solo 1-1 cleared (or progress past it)."""
+    row = PlayerProgress.query.filter_by(user_id=user_id).first()
+    payload = load_progress_payload(row)
+    completed = payload.get("completedLevels") or []
+    if isinstance(completed, list) and QUICK_PLAY_MIN_LEVEL in completed:
+        return True
+    try:
+        highest = int(payload.get("highestUnlocked") or 1)
+    except (TypeError, ValueError):
+        highest = 1
+    return highest > QUICK_PLAY_MIN_LEVEL
 
 
 def _ticket_elo(t: MatchTicket) -> int:
@@ -119,6 +135,15 @@ def _pick_partner(me: int, my_elo: int, now: datetime) -> MatchTicket | None:
 @jwt_required()
 def join_quick():
     me = int(get_jwt_identity())
+    if not _quick_play_unlocked(me):
+        return (
+            jsonify(
+                {
+                    "error": "Clear Solo 1-1 before Quick play",
+                }
+            ),
+            403,
+        )
     _expire_stale_tickets()
 
     existing = _active_ticket(me)

@@ -10,6 +10,7 @@ import {
 import { formatLevelId } from "../lib/levelMap";
 import { hasEnergy, syncEnergyState, trySpendEnergyOnce } from "../lib/energy";
 import { loadProgress } from "../lib/progress";
+import { isQuickPlayUnlocked, quickPlayUnlockLabel } from "../lib/quickPlayUnlock";
 import { OutOfEnergyModal } from "./OutOfEnergyModal";
 
 type View = "hub" | "quick" | "friends";
@@ -144,6 +145,8 @@ export function MultiplayerModal({
   const a = HOME_ASSETS;
   const blue = a.cards.blue;
   const friendBadge = friendRequestCount + challengeCount;
+  const quickUnlocked = isQuickPlayUnlocked();
+  const unlockLabel = quickPlayUnlockLabel();
 
   useEffect(() => {
     return () => {
@@ -216,6 +219,10 @@ export function MultiplayerModal({
   };
 
   const startQuickWithEnergy = () => {
+    if (!isQuickPlayUnlocked()) {
+      setError(`Clear Solo ${unlockLabel} to unlock Quick play`);
+      return;
+    }
     syncEnergyState();
     if (!hasEnergy(1) || !trySpendEnergyOnce()) {
       setShowOutOfEnergy(true);
@@ -261,12 +268,17 @@ export function MultiplayerModal({
               lead="Play online versus similar players, or challenge your friends."
             />
             <div className="mp-kit__body">
+              {error && <p className="mp-kit__error">{error}</p>}
               <div className="mp-kit__options">
                 <button
                   type="button"
-                  className="mp-kit-card"
+                  className={`mp-kit-card${quickUnlocked ? "" : " mp-kit-card--locked"}`}
                   style={{ backgroundImage: `url(${blue.base})` }}
                   onClick={() => {
+                    if (!quickUnlocked) {
+                      setError(`Clear Solo ${unlockLabel} to unlock Quick play`);
+                      return;
+                    }
                     setView("quick");
                     setError(null);
                   }}
@@ -275,8 +287,14 @@ export function MultiplayerModal({
                   <div className="mp-kit-card__body">
                     <img className="mp-kit-card__tag" src={blue.label} alt="" />
                     <span className="mp-kit-card__title">Quick play</span>
-                    <span className="mp-kit-card__sub">Match near your Rating</span>
-                    <span className="mp-kit-card__meta">⚡ 1 energy</span>
+                    <span className="mp-kit-card__sub">
+                      {quickUnlocked
+                        ? "Match near your Rating"
+                        : `Locked · clear Solo ${unlockLabel}`}
+                    </span>
+                    <span className="mp-kit-card__meta">
+                      {quickUnlocked ? "⚡ 1 energy" : `Need ${unlockLabel}`}
+                    </span>
                   </div>
                   <span className="mp-kit-card__icon-wrap" aria-hidden>
                     <span className="mp-kit-card__ring" style={{ backgroundImage: `url(${blue.circle})` }} />
@@ -376,19 +394,33 @@ export function MultiplayerModal({
                 <img src={a.ui.chevron} alt="" /> Back
               </button>
             </div>
-            <MpHero title="Quick play" lead="Matched vs a similar Rating on the same board." />
+            <MpHero
+              title="Quick play"
+              lead={
+                quickUnlocked
+                  ? "Matched vs a similar Rating on the same board."
+                  : `Clear Solo ${unlockLabel} in campaign to unlock.`
+              }
+            />
             <div className="mp-kit__body">
               {error && <p className="mp-kit__error">{error}</p>}
-              <MpStage title="Ready when you are" sub="Spend 1 energy to enter the queue." />
+              <MpStage
+                title={quickUnlocked ? "Ready when you are" : "Locked"}
+                sub={
+                  quickUnlocked
+                    ? "Spend 1 energy to enter the queue."
+                    : `Reach Solo ${unlockLabel} first.`
+                }
+              />
             </div>
             <div className="mp-kit__footer">
               <button
                 type="button"
                 className="mp-kit__cta"
-                disabled={busy}
+                disabled={busy || !quickUnlocked}
                 onClick={startQuickWithEnergy}
               >
-                Find match · ⚡1
+                {quickUnlocked ? "Find match · ⚡1" : `Locked · ${unlockLabel}`}
               </button>
               <button
                 type="button"

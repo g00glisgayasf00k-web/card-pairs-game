@@ -358,16 +358,14 @@ export async function fetchChallenges() {
   return request<{ challenges: ChallengeDto[] }>("/api/challenges");
 }
 
-export async function createChallenge(friendUserId: number, wagerGems: number) {
+export async function createChallenge(friendUserId: number) {
   return request<{
     challenge: ChallengeDto;
     credits?: number;
     client_updated_at?: number;
-    fee_gems?: number;
-    charged_gems?: number;
   }>("/api/challenges", {
     method: "POST",
-    body: JSON.stringify({ friend_user_id: friendUserId, wager_gems: wagerGems }),
+    body: JSON.stringify({ friend_user_id: friendUserId }),
   });
 }
 
@@ -430,6 +428,13 @@ export async function submitChallenge(
     challenge?: ChallengeDto;
     credits?: number;
     client_updated_at?: number;
+    elo?: {
+      challenger_elo: number;
+      opponent_elo: number;
+      challenger_elo_before: number;
+      opponent_elo_before: number;
+      elo_delta: number;
+    };
   };
   // Already submitted / expired still include the locked-in challenge for the results UI
   if (data.challenge && (res.ok || res.status === 409)) {
@@ -437,6 +442,7 @@ export async function submitChallenge(
       challenge: data.challenge,
       credits: data.credits,
       client_updated_at: data.client_updated_at,
+      elo: data.elo,
     };
   }
   if (!res.ok) throw new Error(data.error ?? res.statusText);

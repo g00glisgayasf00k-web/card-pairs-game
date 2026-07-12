@@ -43,7 +43,8 @@ export function GameModeCard({
   const assets = CARD_ASSETS[glow];
   const badgeLabel = badge && badge > 0 ? (badge > 99 ? "99+" : String(badge)) : null;
   const pct = progress ? Math.max(0, Math.min(100, progress.percent)) : 0;
-  const resolvedMetaIcon = metaIcon ?? (glow === "blue" ? "gem" : glow === "green" ? "shield" : undefined);
+  const resolvedMetaIcon =
+    metaIcon ?? (glow === "green" ? "shield" : undefined);
 
   return (
     <button

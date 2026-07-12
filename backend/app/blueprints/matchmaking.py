@@ -1,4 +1,4 @@
-"""Quick matchmaking vs players of similar campaign progress."""
+"""Quick matchmaking vs players of similar Elo rating."""
 
 from __future__ import annotations
 
@@ -10,13 +10,14 @@ from flask import Blueprint, jsonify
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.challenge_mission import generate_challenge_mission
+from app.elo import ELO_MATCH_BAND, ELO_MATCH_BAND_WIDE
 from app.models import Challenge, MatchTicket, PlayerProgress, db
+from app.progress_grants import get_player_elo
 
 
 matchmaking_bp = Blueprint("matchmaking", __name__)
 
 MAX_LEVEL = 500
-MATCH_BAND = 15
 TICKET_TTL_SECONDS = 120
 CHALLENGE_TTL_HOURS = 24
 
@@ -48,6 +49,13 @@ def _highest_unlocked(user_id: int) -> int:
     return 1
 
 
+def _ticket_elo(t: MatchTicket) -> int:
+    raw = getattr(t, "elo", None)
+    if isinstance(raw, int) and raw > 0:
+        return raw
+    return get_player_elo(t.user_id)
+
+
 def _serialize_challenge(ch: Challenge, me: int) -> dict:
     from app.blueprints.challenges import _serialize
 
@@ -77,6 +85,36 @@ def _active_ticket(me: int) -> MatchTicket | None:
     )
 
 
+def _pick_partner(me: int, my_elo: int, now: datetime) -> MatchTicket | None:
+    candidates = (
+        MatchTicket.query.filter(
+            MatchTicket.status == "waiting",
+            MatchTicket.user_id != me,
+        )
+        .order_by(MatchTicket.created_at.asc())
+        .limit(60)
+        .all()
+    )
+    best: MatchTicket | None = None
+    best_dist = None
+    for t in candidates:
+        if _as_utc(t.expires_at) < now:
+            t.status = "cancelled"
+            continue
+        dist = abs(_ticket_elo(t) - my_elo)
+        if dist > ELO_MATCH_BAND_WIDE:
+            continue
+        if best is None or dist < best_dist:
+            # Prefer tight band first
+            if dist <= ELO_MATCH_BAND or best is None:
+                best = t
+                best_dist = dist
+            elif best_dist is not None and best_dist > ELO_MATCH_BAND and dist < best_dist:
+                best = t
+                best_dist = dist
+    return best
+
+
 @matchmaking_bp.post("/quick")
 @jwt_required()
 def join_quick():
@@ -89,38 +127,28 @@ def join_quick():
         if ch:
             return jsonify({"status": "matched", "challenge": _serialize_challenge(ch, me)})
     if existing and existing.status == "waiting" and _as_utc(existing.expires_at) >= _utc_now():
-        return jsonify({"status": "waiting", "ticket_id": existing.id})
+        return jsonify(
+            {
+                "status": "waiting",
+                "ticket_id": existing.id,
+                "elo": _ticket_elo(existing),
+            }
+        )
 
     if existing and existing.status == "waiting":
         existing.status = "cancelled"
 
     unlocked = _highest_unlocked(me)
+    my_elo = get_player_elo(me)
     now = _utc_now()
-    candidates = (
-        MatchTicket.query.filter(
-            MatchTicket.status == "waiting",
-            MatchTicket.user_id != me,
-        )
-        .order_by(MatchTicket.created_at.asc())
-        .limit(40)
-        .all()
-    )
-
-    partner = None
-    for t in candidates:
-        if _as_utc(t.expires_at) < now:
-            t.status = "cancelled"
-            continue
-        if abs(t.unlocked_level - unlocked) <= MATCH_BAND:
-            partner = t
-            break
+    partner = _pick_partner(me, my_elo, now)
     db.session.commit()
 
     if partner:
+        partner_elo = _ticket_elo(partner)
         level = max(1, min(MAX_LEVEL, min(unlocked, partner.unlocked_level)))
         seed = secrets.randbits(31)
         mission = generate_challenge_mission(seed)
-        # Older waiting player is challenger for stable ordering
         ch = Challenge(
             challenger_id=partner.user_id,
             opponent_id=me,
@@ -130,6 +158,10 @@ def join_quick():
             status="active",
             kind="quick",
             wager_gems=0,
+            fee_gems=0,
+            challenger_staked=False,
+            opponent_staked=False,
+            gems_settled=True,
             expires_at=now + timedelta(hours=CHALLENGE_TTL_HOURS),
         )
         db.session.add(ch)
@@ -141,23 +173,32 @@ def join_quick():
         my_ticket = MatchTicket(
             user_id=me,
             unlocked_level=unlocked,
+            elo=my_elo,
             status="matched",
             challenge_id=ch.id,
             expires_at=now + timedelta(seconds=TICKET_TTL_SECONDS),
         )
         db.session.add(my_ticket)
         db.session.commit()
-        return jsonify({"status": "matched", "challenge": _serialize_challenge(ch, me)})
+        return jsonify(
+            {
+                "status": "matched",
+                "challenge": _serialize_challenge(ch, me),
+                "elo": my_elo,
+                "opponent_elo": partner_elo,
+            }
+        )
 
     ticket = MatchTicket(
         user_id=me,
         unlocked_level=unlocked,
+        elo=my_elo,
         status="waiting",
         expires_at=now + timedelta(seconds=TICKET_TTL_SECONDS),
     )
     db.session.add(ticket)
     db.session.commit()
-    return jsonify({"status": "waiting", "ticket_id": ticket.id})
+    return jsonify({"status": "waiting", "ticket_id": ticket.id, "elo": my_elo})
 
 
 @matchmaking_bp.get("/quick")
@@ -171,13 +212,25 @@ def poll_quick():
     if ticket.status == "matched" and ticket.challenge_id:
         ch = Challenge.query.get(ticket.challenge_id)
         if ch:
-            return jsonify({"status": "matched", "challenge": _serialize_challenge(ch, me)})
+            return jsonify(
+                {
+                    "status": "matched",
+                    "challenge": _serialize_challenge(ch, me),
+                    "elo": get_player_elo(me),
+                }
+            )
     if ticket.status == "waiting":
         if _as_utc(ticket.expires_at) < _utc_now():
             ticket.status = "cancelled"
             db.session.commit()
             return jsonify({"status": "idle"})
-        return jsonify({"status": "waiting", "ticket_id": ticket.id})
+        return jsonify(
+            {
+                "status": "waiting",
+                "ticket_id": ticket.id,
+                "elo": _ticket_elo(ticket),
+            }
+        )
     return jsonify({"status": "idle"})
 
 

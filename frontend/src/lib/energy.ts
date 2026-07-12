@@ -90,6 +90,29 @@ export function clearEnergyPaidLevel(): void {
   saveProgress({ ...saved, energyPaidLevel: null });
 }
 
+/** Spend 1 energy for multiplayer entry (not tied to a campaign level). */
+export function trySpendEnergyOnce(): boolean {
+  const saved = loadProgress() ?? defaultProgress();
+  const refreshed = withRefreshedEnergy(saved as SavedProgress);
+  if (refreshed.energy < ENERGY_PER_ATTEMPT) {
+    saveProgress({ ...refreshed });
+    return false;
+  }
+  const wasFull = refreshed.energy >= MAX_ENERGY;
+  const newEnergy = refreshed.energy - ENERGY_PER_ATTEMPT;
+  saveProgress({
+    ...refreshed,
+    energy: newEnergy,
+    energyRegenAt:
+      newEnergy >= MAX_ENERGY
+        ? 0
+        : wasFull
+          ? Date.now() + ENERGY_REGEN_MS
+          : refreshed.energyRegenAt,
+  });
+  return true;
+}
+
 /** Spend 1 energy to start (or continue) an attempt on this level. Idempotent per level. */
 export function trySpendEnergyForLevel(globalLevel: number): boolean {
   const saved = loadProgress() ?? defaultProgress();

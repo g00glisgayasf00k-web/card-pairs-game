@@ -1,0 +1,305 @@
+import { useEffect, useRef, useState } from "react";
+import { ChallengeFriendModal } from "./ChallengeFriendModal";
+import {
+  joinQuickMatch,
+  leaveQuickMatch,
+  pollQuickMatch,
+  type ChallengeDto,
+} from "../lib/api";
+import { formatLevelId } from "../lib/levelMap";
+import { hasEnergy, syncEnergyState, trySpendEnergyOnce } from "../lib/energy";
+import { loadProgress } from "../lib/progress";
+import { OutOfEnergyModal } from "./OutOfEnergyModal";
+
+type View = "hub" | "quick" | "friends";
+
+interface Props {
+  onClose: () => void;
+  onPlayChallenge: (challenge: ChallengeDto) => void;
+  friendRequestCount?: number;
+  challengeCount?: number;
+  onNotificationsChange?: () => void;
+  /** Open directly on friends inbox (e.g. from push). */
+  initialView?: View;
+}
+
+export function MultiplayerModal({
+  onClose,
+  onPlayChallenge,
+  friendRequestCount = 0,
+  challengeCount = 0,
+  onNotificationsChange,
+  initialView = "hub",
+}: Props) {
+  const [view, setView] = useState<View>(initialView);
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<"idle" | "waiting" | "matched">("idle");
+  const [error, setError] = useState<string | null>(null);
+  const [matched, setMatched] = useState<ChallengeDto | null>(null);
+  const [confirmQuick, setConfirmQuick] = useState(false);
+  const [showOutOfEnergy, setShowOutOfEnergy] = useState(false);
+  const [elo, setElo] = useState(() => loadProgress()?.elo ?? 1000);
+  const pollingRef = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      pollingRef.current = false;
+      void leaveQuickMatch().catch(() => undefined);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (status !== "waiting") return;
+    pollingRef.current = true;
+    const id = window.setInterval(() => {
+      void pollQuickMatch()
+        .then((r) => {
+          if (!pollingRef.current) return;
+          if (r.status === "matched" && r.challenge) {
+            setMatched(r.challenge);
+            setStatus("matched");
+            setBusy(false);
+          } else if (r.status === "idle") {
+            setStatus("idle");
+            setBusy(false);
+            setError("Match timed out — try again");
+          }
+        })
+        .catch(() => undefined);
+    }, 1500);
+    return () => {
+      window.clearInterval(id);
+      pollingRef.current = false;
+    };
+  }, [status]);
+
+  if (view === "friends") {
+    return (
+      <ChallengeFriendModal
+        onClose={onClose}
+        onBack={() => setView("hub")}
+        onPlayChallenge={onPlayChallenge}
+        friendRequestCount={friendRequestCount}
+        challengeCount={challengeCount}
+        onNotificationsChange={onNotificationsChange}
+      />
+    );
+  }
+
+  const findMatch = async () => {
+    setBusy(true);
+    setError(null);
+    setMatched(null);
+    try {
+      const r = await joinQuickMatch();
+      if (typeof (r as { elo?: number }).elo === "number") {
+        setElo((r as { elo: number }).elo);
+      }
+      if (r.status === "matched" && r.challenge) {
+        setMatched(r.challenge);
+        setStatus("matched");
+      } else {
+        setStatus("waiting");
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Matchmaking failed");
+      setStatus("idle");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const startQuickWithEnergy = () => {
+    syncEnergyState();
+    if (!hasEnergy(1)) {
+      setConfirmQuick(false);
+      setShowOutOfEnergy(true);
+      return;
+    }
+    if (!trySpendEnergyOnce()) {
+      setConfirmQuick(false);
+      setShowOutOfEnergy(true);
+      return;
+    }
+    setConfirmQuick(false);
+    void findMatch();
+  };
+
+  const cancelQueue = async () => {
+    setBusy(true);
+    try {
+      await leaveQuickMatch();
+    } catch {
+      /* ignore */
+    }
+    setStatus("idle");
+    setBusy(false);
+  };
+
+  const playMatched = () => {
+    if (!matched) return;
+    onClose();
+    onPlayChallenge(matched);
+  };
+
+  const opponentName =
+    matched == null
+      ? null
+      : matched.you_are === "challenger"
+        ? matched.opponent?.username
+        : matched.challenger?.username;
+
+  return (
+    <>
+      <div className="modal-overlay scores-overlay home-menu-overlay" onClick={onClose} role="presentation">
+        <div
+          className="modal scores-modal home-menu-modal home-menu-modal--wide play-mode-modal play-mode-modal--challenge"
+          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-labelledby="multiplayer-title"
+        >
+          {view === "hub" && (
+            <>
+              <header className="play-mode-modal__header">
+                <h2 id="multiplayer-title">Multiplayer</h2>
+                <p className="play-mode-modal__lead">
+                  Free to play — each player spends 1 ⚡. Quick Play uses Elo matchmaking.
+                </p>
+                <p className="play-mode-modal__hint">Your Elo: {elo}</p>
+              </header>
+              <div className="play-mode-modal__body multiplayer-hub">
+                <button
+                  type="button"
+                  className="multiplayer-hub__card multiplayer-hub__card--quick"
+                  onClick={() => {
+                    setView("quick");
+                    setError(null);
+                  }}
+                >
+                  <span className="multiplayer-hub__tag">Quick play</span>
+                  <strong>Find a match</strong>
+                  <span>Random opponent near your Elo · ⚡1</span>
+                </button>
+                <button
+                  type="button"
+                  className="multiplayer-hub__card multiplayer-hub__card--friend"
+                  onClick={() => setView("friends")}
+                >
+                  <span className="multiplayer-hub__tag">Friends</span>
+                  <strong>Challenge a friend</strong>
+                  <span>Pick someone from your list · ⚡1 each</span>
+                </button>
+              </div>
+              <footer className="play-mode-modal__footer">
+                <button type="button" className="btn scores-close" onClick={onClose}>
+                  Close
+                </button>
+              </footer>
+            </>
+          )}
+
+          {view === "quick" && status === "matched" && matched && (
+            <>
+              <header className="play-mode-modal__header">
+                <h2 id="multiplayer-title">Match ready</h2>
+                <p className="play-mode-modal__lead">
+                  vs {opponentName ?? "opponent"} · {formatLevelId(matched.level)}
+                </p>
+              </header>
+              <div className="play-mode-modal__body">
+                <div className="play-mode-sent">
+                  <p>Same seeded board. Best stars win — then fewest moves, then score.</p>
+                  <p className="play-mode-modal__hint">Elo updates when both results are in.</p>
+                </div>
+                <button type="button" className="btn-primary" onClick={playMatched}>
+                  Play now
+                </button>
+              </div>
+              <footer className="play-mode-modal__footer">
+                <button type="button" className="btn scores-close" onClick={onClose}>
+                  Later
+                </button>
+              </footer>
+            </>
+          )}
+
+          {view === "quick" && status !== "matched" && (
+            <>
+              <header className="play-mode-modal__header">
+                <h2 id="multiplayer-title">Quick play</h2>
+                <p className="play-mode-modal__lead">
+                  Matched vs a similar Elo rating. Same board — better stars / moves wins.
+                </p>
+                <p className="play-mode-modal__hint">Your Elo: {elo}</p>
+              </header>
+              <div className="play-mode-modal__body">
+                {error && <p className="play-mode-modal__error">{error}</p>}
+                {status === "waiting" ? (
+                  <>
+                    <div className="play-mode-sent">
+                      <p>Searching for a similar-Elo opponent…</p>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn scores-close"
+                      disabled={busy}
+                      onClick={() => void cancelQueue()}
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn-primary"
+                    disabled={busy}
+                    onClick={() => setConfirmQuick(true)}
+                  >
+                    {busy ? "Finding…" : "Find match · ⚡1"}
+                  </button>
+                )}
+              </div>
+              <footer className="play-mode-modal__footer">
+                <button
+                  type="button"
+                  className="btn scores-close"
+                  onClick={() => {
+                    void cancelQueue();
+                    setView("hub");
+                  }}
+                >
+                  Back
+                </button>
+              </footer>
+            </>
+          )}
+        </div>
+      </div>
+
+      {confirmQuick && (
+        <div className="modal-overlay scores-overlay" role="presentation">
+          <div className="modal scores-modal" role="dialog" aria-labelledby="mp-energy-title">
+            <h2 id="mp-energy-title">Start Quick Play?</h2>
+            <p>This costs 1 ⚡. Your opponent also spends 1 ⚡ when they join.</p>
+            <div className="play-mode-modal__actions" style={{ display: "flex", gap: "0.5rem" }}>
+              <button type="button" className="btn-primary" onClick={startQuickWithEnergy}>
+                Spend ⚡1 &amp; find match
+              </button>
+              <button type="button" className="btn scores-close" onClick={() => setConfirmQuick(false)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showOutOfEnergy && (
+        <OutOfEnergyModal
+          onClose={() => setShowOutOfEnergy(false)}
+          onRefilled={() => setShowOutOfEnergy(false)}
+          onOpenTreasury={() => setShowOutOfEnergy(false)}
+        />
+      )}
+    </>
+  );
+}

@@ -7,8 +7,6 @@ import {
   declineFriend,
   fetchChallenges,
   fetchFriends,
-  negotiateChallenge,
-  rejectChallengeOffer,
   requestFriend,
   type ChallengeDto,
   type FriendshipItem,
@@ -17,15 +15,8 @@ import {
   countUnseenCompletedResults,
   markChallengeResultsSeen,
 } from "../lib/challengeResultSeen";
-import {
-  WAGER_MAX,
-  WAGER_MIN,
-  WAGER_PRESETS,
-  challengeFeeGems,
-  clampWager,
-} from "../lib/challengeWager";
-import { loadProgress, applyServerCredits } from "../lib/progress";
-import { flushProgressSync } from "../lib/progressSync";
+import { hasEnergy, syncEnergyState, trySpendEnergyOnce } from "../lib/energy";
+import { OutOfEnergyModal } from "./OutOfEnergyModal";
 
 interface Props {
   onClose: () => void;
@@ -34,9 +25,16 @@ interface Props {
   challengeCount?: number;
   /** Called after Results are marked seen so home badges can clear. */
   onNotificationsChange?: () => void;
+  /** If set, footer shows Back (calls onBack) in addition to Close. */
+  onBack?: () => void;
 }
 
 type Tab = "play" | "friends" | "inbox" | "results";
+
+type EnergyConfirm =
+  | { kind: "send" }
+  | { kind: "accept"; challengeId: number }
+  | null;
 
 function myAttempt(c: ChallengeDto) {
   return c.you_are === "challenger" ? c.challenger_result : c.opponent_result;
@@ -105,9 +103,6 @@ function ResultCard({ c }: { c: ChallengeDto }) {
         <span className="challenge-results-card__summary">
           <strong>vs {other}</strong>
           <span className="challenge-results-card__when">{when}</span>
-          {c.wager_gems > 0 && (
-            <span className="challenge-results-card__when">{c.wager_gems}💎 pot</span>
-          )}
         </span>
         <span className="challenge-results-card__side">
           {outcome ? (
@@ -144,6 +139,7 @@ export function ChallengeFriendModal({
   friendRequestCount = 0,
   challengeCount = 0,
   onNotificationsChange,
+  onBack,
 }: Props) {
   const [tab, setTab] = useState<Tab>("play");
   const [friends, setFriends] = useState<FriendshipItem[]>([]);
@@ -151,27 +147,13 @@ export function ChallengeFriendModal({
   const [outgoing, setOutgoing] = useState<FriendshipItem[]>([]);
   const [challenges, setChallenges] = useState<ChallengeDto[]>([]);
   const [friendId, setFriendId] = useState<number | null>(null);
-  const [wagerPreset, setWagerPreset] = useState<number | "custom">(5);
-  const [customWager, setCustomWager] = useState("10");
-  const [negotiateId, setNegotiateId] = useState<number | null>(null);
-  const [negotiatePreset, setNegotiatePreset] = useState<number | "custom">(25);
-  const [negotiateCustom, setNegotiateCustom] = useState("25");
   const [addName, setAddName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [seenTick, setSeenTick] = useState(0);
-
-  const wagerGems =
-    wagerPreset === "custom" ? clampWager(Number(customWager) || 0) : wagerPreset;
-  const feeGems = challengeFeeGems(wagerGems);
-  const createCost = wagerGems + feeGems;
-  const gemBalance = loadProgress()?.credits ?? 0;
-  const negotiateWager =
-    negotiatePreset === "custom"
-      ? clampWager(Number(negotiateCustom) || 0)
-      : negotiatePreset;
-  const negotiateFee = challengeFeeGems(negotiateWager);
+  const [energyConfirm, setEnergyConfirm] = useState<EnergyConfirm>(null);
+  const [showOutOfEnergy, setShowOutOfEnergy] = useState(false);
 
   const reload = useCallback(async () => {
     setError(null);
@@ -244,13 +226,14 @@ export function ChallengeFriendModal({
     }
   };
 
-  const applyCreditsIfPresent = (res: {
-    credits?: number;
-    client_updated_at?: number;
-  }) => {
-    if (typeof res.credits === "number") {
-      applyServerCredits(res.credits, res.client_updated_at);
+  const spendEnergyOrShowModal = (): boolean => {
+    syncEnergyState();
+    if (!hasEnergy(1) || !trySpendEnergyOnce()) {
+      setEnergyConfirm(null);
+      setShowOutOfEnergy(true);
+      return false;
     }
+    return true;
   };
 
   const sendChallenge = async () => {
@@ -258,24 +241,12 @@ export function ChallengeFriendModal({
       setError("Pick a friend first");
       return;
     }
-    if (wagerGems < WAGER_MIN) {
-      setError(`Wager must be at least ${WAGER_MIN} gem`);
-      return;
-    }
-    if (gemBalance < createCost) {
-      setError(`Not enough gems — need ${createCost} (${wagerGems} wager + ${feeGems} fee)`);
-      return;
-    }
     setBusy(true);
     setError(null);
     setInfo(null);
     try {
-      await flushProgressSync();
-      const res = await createChallenge(friendId, wagerGems);
-      applyCreditsIfPresent(res);
-      setInfo(
-        `Challenge sent for ${wagerGems}💎 (fee ${feeGems}💎). Waiting for your friend to accept, reject, or negotiate.`
-      );
+      await createChallenge(friendId);
+      setInfo("Challenge sent. Waiting for your friend to accept.");
       await reload();
       setTab("inbox");
     } catch (e) {
@@ -285,582 +256,353 @@ export function ChallengeFriendModal({
     }
   };
 
+  const doAcceptChallenge = async (challengeId: number) => {
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await acceptChallenge(challengeId);
+      onPlayChallenge(r.challenge);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Could not accept");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const confirmEnergyAction = () => {
+    if (!energyConfirm) return;
+    if (!spendEnergyOrShowModal()) return;
+    const action = energyConfirm;
+    setEnergyConfirm(null);
+    if (action.kind === "send") {
+      void sendChallenge();
+    } else {
+      void doAcceptChallenge(action.challengeId);
+    }
+  };
+
   return (
-    <div className="modal-overlay scores-overlay home-menu-overlay" onClick={onClose} role="presentation">
-      <div
-        className="modal scores-modal home-menu-modal home-menu-modal--wide play-mode-modal play-mode-modal--challenge"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-labelledby="challenge-title"
-      >
-        <header className="play-mode-modal__header">
-          <h2 id="challenge-title">Challenge your friends</h2>
-          <p className="play-mode-modal__lead">
-            Wager gems on a shared-board duel. Your friend can accept, reject, or negotiate
-            the stake (fee is 5%, min 1💎, paid by the challenger).
-          </p>
-        </header>
+    <>
+      <div className="modal-overlay scores-overlay home-menu-overlay" onClick={onClose} role="presentation">
+        <div
+          className="modal scores-modal home-menu-modal home-menu-modal--wide play-mode-modal play-mode-modal--challenge"
+          onClick={(e) => e.stopPropagation()}
+          role="dialog"
+          aria-labelledby="challenge-title"
+        >
+          <header className="play-mode-modal__header">
+            <h2 id="challenge-title">Challenge a friend</h2>
+            <p className="play-mode-modal__lead">
+              Free multiplayer — each player spends 1 ⚡. No gems. Same board; best stars win.
+            </p>
+          </header>
 
-        <div className="play-mode-tabs" role="tablist">
-          {(["play", "friends", "inbox", "results"] as Tab[]).map((t) => {
-            const badge =
-              t === "friends"
-                ? friendsBadge
-                : t === "inbox"
-                  ? inboxBadge
-                  : t === "results"
-                    ? resultsBadge
-                    : 0;
-            const label =
-              t === "play" ? "New" : t === "friends" ? "Friends" : t === "inbox" ? "Inbox" : "Results";
-            return (
-              <button
-                key={t}
-                type="button"
-                role="tab"
-                aria-selected={tab === t}
-                className={`play-mode-tab${tab === t ? " play-mode-tab--on" : ""}`}
-                onClick={() => setTab(t)}
-              >
-                {label}
-                {badge > 0 && (
-                  <span className="play-mode-tab__badge" aria-hidden>
-                    {badge > 99 ? "99+" : badge}
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
-
-        <div className="play-mode-modal__body">
-          {error && <p className="play-mode-modal__error">{error}</p>}
-          {info && <p className="play-mode-modal__note">{info}</p>}
-
-          {tab === "friends" && (
-            <div className="play-mode-panel">
-              <div className="challenge-add-friend">
-                <input
-                  type="text"
-                  value={addName}
-                  onChange={(e) => setAddName(e.target.value)}
-                  placeholder="Username"
-                  aria-label="Friend username"
-                  maxLength={64}
-                />
-                <button type="button" className="btn-primary" disabled={busy} onClick={() => void sendFriendRequest()}>
-                  Add
+          <div className="play-mode-tabs" role="tablist">
+            {(["play", "friends", "inbox", "results"] as Tab[]).map((t) => {
+              const badge =
+                t === "friends"
+                  ? friendsBadge
+                  : t === "inbox"
+                    ? inboxBadge
+                    : t === "results"
+                      ? resultsBadge
+                      : 0;
+              const label =
+                t === "play" ? "New" : t === "friends" ? "Friends" : t === "inbox" ? "Inbox" : "Results";
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  role="tab"
+                  aria-selected={tab === t}
+                  className={`play-mode-tab${tab === t ? " play-mode-tab--on" : ""}`}
+                  onClick={() => setTab(t)}
+                >
+                  {label}
+                  {badge > 0 && (
+                    <span className="play-mode-tab__badge" aria-hidden>
+                      {badge > 99 ? "99+" : badge}
+                    </span>
+                  )}
                 </button>
-              </div>
+              );
+            })}
+          </div>
 
-              {incoming.length > 0 && (
-                <section className="play-mode-section">
-                  <h3 className="play-mode-modal__section">Incoming</h3>
-                  <ul className="challenge-friend-list">
-                    {incoming.map((f) => (
-                      <li key={f.id}>
-                        <div className="challenge-friend challenge-friend--row">
-                          <span className="challenge-friend__name">{f.user.username}</span>
-                          <button
-                            type="button"
-                            className="play-mode-wager play-mode-wager--on"
-                            disabled={busy}
-                            onClick={() => void acceptFriend(f.id).then(reload)}
-                          >
-                            Accept
-                          </button>
-                          <button
-                            type="button"
-                            className="play-mode-wager"
-                            disabled={busy}
-                            onClick={() => void declineFriend(f.id).then(reload)}
-                          >
-                            Decline
-                          </button>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              )}
+          <div className="play-mode-modal__body">
+            {error && <p className="play-mode-modal__error">{error}</p>}
+            {info && <p className="play-mode-modal__note">{info}</p>}
 
-              <section className="play-mode-section">
-                <h3 className="play-mode-modal__section">Friends</h3>
-                {friends.length === 0 ? (
-                  <p className="play-mode-modal__hint">No friends yet — add someone by username.</p>
-                ) : (
-                  <ul className="challenge-friend-list">
-                    {friends.map((f) => (
-                      <li key={f.id}>
-                        <div className="challenge-friend">
-                          <span className="challenge-friend__name">{f.user.username}</span>
-                          <span className="challenge-friend__status challenge-friend__status--online">friend</span>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
-
-              {outgoing.length > 0 && (
-                <section className="play-mode-section">
-                  <h3 className="play-mode-modal__section">Outgoing</h3>
-                  <ul className="challenge-friend-list">
-                    {outgoing.map((f) => (
-                      <li key={f.id}>
-                        <div className="challenge-friend">
-                          <span className="challenge-friend__name">{f.user.username}</span>
-                          <span className="challenge-friend__status">pending</span>
-                          <button
-                            type="button"
-                            className="play-mode-wager"
-                            disabled={busy}
-                            onClick={() => void declineFriend(f.id).then(reload)}
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              )}
-            </div>
-          )}
-
-          {tab === "play" && (
-            <div className="play-mode-panel">
-              <section className="play-mode-section">
-                <h3 className="play-mode-modal__section">Opponent</h3>
-                {friends.length === 0 ? (
-                  <p className="play-mode-modal__hint">Add a friend first (Friends tab).</p>
-                ) : (
-                  <ul className="challenge-friend-list">
-                    {friends.map((f) => (
-                      <li key={f.id}>
-                        <button
-                          type="button"
-                          className={`challenge-friend${friendId === f.user.id ? " challenge-friend--selected" : ""}`}
-                          onClick={() => setFriendId(f.user.id)}
-                        >
-                          <span className="challenge-friend__name">{f.user.username}</span>
-                          <span className="challenge-friend__level">
-                            {friendId === f.user.id ? "Selected" : "Select"}
-                          </span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </section>
-
-              <section className="play-mode-section">
-                <h3 className="play-mode-modal__section">Wager</h3>
-                <div className="play-mode-wagers" role="group" aria-label="Wager amount">
-                  {WAGER_PRESETS.map((amount) => (
-                    <button
-                      key={amount}
-                      type="button"
-                      className={`play-mode-wager${wagerPreset === amount ? " play-mode-wager--on" : ""}`}
-                      onClick={() => setWagerPreset(amount)}
-                    >
-                      {amount}💎
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    className={`play-mode-wager${wagerPreset === "custom" ? " play-mode-wager--on" : ""}`}
-                    onClick={() => setWagerPreset("custom")}
-                  >
-                    Custom
+            {tab === "friends" && (
+              <div className="play-mode-panel">
+                <div className="challenge-add-friend">
+                  <input
+                    type="text"
+                    value={addName}
+                    onChange={(e) => setAddName(e.target.value)}
+                    placeholder="Username"
+                    aria-label="Friend username"
+                    maxLength={64}
+                  />
+                  <button type="button" className="btn-primary" disabled={busy} onClick={() => void sendFriendRequest()}>
+                    Add
                   </button>
                 </div>
-                {wagerPreset === "custom" && (
-                  <label className="play-mode-custom-wager">
-                    <span>Custom wager</span>
-                    <input
-                      type="number"
-                      min={WAGER_MIN}
-                      max={WAGER_MAX}
-                      value={customWager}
-                      onChange={(e) => setCustomWager(e.target.value)}
-                      inputMode="numeric"
-                    />
-                  </label>
-                )}
-                <p className="play-mode-modal__hint play-mode-modal__hint--energy">
-                  You stake {wagerGems}💎 + {feeGems}💎 fee ({createCost}💎 total). Friend matches{" "}
-                  {wagerGems}💎. Winner takes {wagerGems * 2}💎. You have {gemBalance.toLocaleString()}💎.
-                </p>
-              </section>
 
-              <section className="play-mode-section">
-                <h3 className="play-mode-modal__section">How it works</h3>
-                <p className="play-mode-modal__hint">
-                  You both play the identical board and clear the same goals. Best stars win —
-                  if tied, fewest moves, then highest score.
-                </p>
-              </section>
-
-              <button
-                type="button"
-                className="btn-primary"
-                disabled={busy || friendId == null || gemBalance < createCost}
-                onClick={() => void sendChallenge()}
-              >
-                Send challenge · {createCost}💎
-              </button>
-            </div>
-          )}
-
-          {tab === "inbox" && (
-            <div className="play-mode-panel">
-              {pendingInbox.length === 0 ? (
-                <p className="play-mode-modal__hint">
-                  Nothing to play — check Results for finished matches.
-                </p>
-              ) : (
-                <ul className="challenge-inbox-list">
-                  {pendingInbox.map((c) => {
-                    const other = opponentName(c);
-                    const wager = c.wager_gems || 0;
-                    const fee = c.fee_gems ?? challengeFeeGems(wager);
-                    const proposed = c.proposed_wager_gems ?? null;
-                    const proposedFee = c.proposed_fee_gems ?? (proposed ? challengeFeeGems(proposed) : null);
-                    const proposedByMe = c.proposed_by === c.you_are;
-                    const hasOpenOffer = proposed != null && c.proposed_by != null;
-                    const canRespondToOffer = hasOpenOffer && !proposedByMe;
-                    const isNegotiating = negotiateId === c.id;
-                    const pendingIncoming = c.status === "pending" && c.you_are === "opponent" && !hasOpenOffer;
-                    const pendingOutgoing =
-                      c.status === "pending" && c.you_are === "challenger" && !hasOpenOffer;
-                    const waitingOnMyOffer = c.status === "pending" && hasOpenOffer && proposedByMe;
-
-                    return (
-                      <li key={c.id} className="challenge-inbox-item challenge-inbox-item--stack">
-                        <div>
-                          <strong>vs {other}</strong>
-                          <span className="challenge-inbox-item__meta">
-                            {c.status}
-                            {wager > 0 ? ` · ${wager}💎` : ""}
-                            {fee > 0 ? ` · fee ${fee}💎` : ""}
-                          </span>
-                          {hasOpenOffer && (
-                            <span className="challenge-inbox-item__meta challenge-inbox-item__meta--offer">
-                              {proposedByMe ? "Your offer" : "Their offer"}: {proposed}💎
-                              {proposedFee != null ? ` (fee ${proposedFee}💎)` : ""}
-                            </span>
-                          )}
-                        </div>
-
-                        <div className="challenge-inbox-item__actions">
-                          {pendingIncoming && (
-                            <>
-                              <button
-                                type="button"
-                                className="play-mode-wager play-mode-wager--on"
-                                disabled={busy}
-                                onClick={() => {
-                                  void (async () => {
-                                    setBusy(true);
-                                    setError(null);
-                                    try {
-                                      await flushProgressSync();
-                                      const r = await acceptChallenge(c.id);
-                                      applyCreditsIfPresent(r);
-                                      onPlayChallenge(r.challenge);
-                                    } catch (e) {
-                                      setError(
-                                        e instanceof Error ? e.message : "Could not accept"
-                                      );
-                                    } finally {
-                                      setBusy(false);
-                                    }
-                                  })();
-                                }}
-                              >
-                                Accept · {wager}💎
-                              </button>
-                              <button
-                                type="button"
-                                className="play-mode-wager"
-                                disabled={busy}
-                                onClick={() => {
-                                  setNegotiateId(c.id);
-                                  setNegotiatePreset(
-                                    WAGER_PRESETS.includes(wager as (typeof WAGER_PRESETS)[number])
-                                      ? (wager as (typeof WAGER_PRESETS)[number])
-                                      : "custom"
-                                  );
-                                  setNegotiateCustom(String(wager || 25));
-                                }}
-                              >
-                                Negotiate
-                              </button>
-                              <button
-                                type="button"
-                                className="play-mode-wager"
-                                disabled={busy}
-                                onClick={() => {
-                                  void declineChallenge(c.id).then((r) => {
-                                    applyCreditsIfPresent(r);
-                                    return reload();
-                                  });
-                                }}
-                              >
-                                Reject
-                              </button>
-                            </>
-                          )}
-
-                          {canRespondToOffer && (
-                            <>
-                              <button
-                                type="button"
-                                className="play-mode-wager play-mode-wager--on"
-                                disabled={busy}
-                                onClick={() => {
-                                  void (async () => {
-                                    setBusy(true);
-                                    setError(null);
-                                    try {
-                                      await flushProgressSync();
-                                      const r = await acceptChallenge(c.id);
-                                      applyCreditsIfPresent(r);
-                                      setNegotiateId(null);
-                                      onPlayChallenge(r.challenge);
-                                    } catch (e) {
-                                      setError(
-                                        e instanceof Error ? e.message : "Could not accept offer"
-                                      );
-                                    } finally {
-                                      setBusy(false);
-                                    }
-                                  })();
-                                }}
-                              >
-                                Accept offer · {proposed}💎
-                              </button>
-                              <button
-                                type="button"
-                                className="play-mode-wager"
-                                disabled={busy}
-                                onClick={() => {
-                                  void rejectChallengeOffer(c.id).then((r) => {
-                                    applyCreditsIfPresent(r);
-                                    return reload();
-                                  });
-                                }}
-                              >
-                                Reject offer
-                              </button>
-                              <button
-                                type="button"
-                                className="play-mode-wager"
-                                disabled={busy}
-                                onClick={() => {
-                                  setNegotiateId(c.id);
-                                  setNegotiatePreset(25);
-                                  setNegotiateCustom("25");
-                                }}
-                              >
-                                Counter
-                              </button>
-                              <button
-                                type="button"
-                                className="play-mode-wager"
-                                disabled={busy}
-                                onClick={() => {
-                                  void declineChallenge(c.id).then((r) => {
-                                    applyCreditsIfPresent(r);
-                                    setNegotiateId(null);
-                                    return reload();
-                                  });
-                                }}
-                              >
-                                Reject challenge
-                              </button>
-                            </>
-                          )}
-
-                          {waitingOnMyOffer && (
-                            <>
-                              <span className="challenge-inbox-item__meta">Waiting for reply…</span>
-                              <button
-                                type="button"
-                                className="play-mode-wager"
-                                disabled={busy}
-                                onClick={() => {
-                                  setNegotiateId(c.id);
-                                  setNegotiatePreset(
-                                    proposed != null &&
-                                      WAGER_PRESETS.includes(proposed as (typeof WAGER_PRESETS)[number])
-                                      ? (proposed as (typeof WAGER_PRESETS)[number])
-                                      : "custom"
-                                  );
-                                  setNegotiateCustom(String(proposed ?? 25));
-                                }}
-                              >
-                                Change offer
-                              </button>
-                              <button
-                                type="button"
-                                className="play-mode-wager"
-                                disabled={busy}
-                                onClick={() => {
-                                  void declineChallenge(c.id).then((r) => {
-                                    applyCreditsIfPresent(r);
-                                    setNegotiateId(null);
-                                    return reload();
-                                  });
-                                }}
-                              >
-                                Cancel
-                              </button>
-                            </>
-                          )}
-
-                          {pendingOutgoing && (
-                            <>
-                              <span className="challenge-inbox-item__meta">
-                                Waiting for accept / negotiate…
-                              </span>
-                              <button
-                                type="button"
-                                className="play-mode-wager"
-                                disabled={busy}
-                                onClick={() => {
-                                  void declineChallenge(c.id).then((r) => {
-                                    applyCreditsIfPresent(r);
-                                    return reload();
-                                  });
-                                }}
-                              >
-                                Cancel
-                              </button>
-                            </>
-                          )}
-
-                          {c.status === "active" && (
+                {incoming.length > 0 && (
+                  <section className="play-mode-section">
+                    <h3 className="play-mode-modal__section">Incoming</h3>
+                    <ul className="challenge-friend-list">
+                      {incoming.map((f) => (
+                        <li key={f.id}>
+                          <div className="challenge-friend challenge-friend--row">
+                            <span className="challenge-friend__name">{f.user.username}</span>
                             <button
                               type="button"
                               className="play-mode-wager play-mode-wager--on"
-                              onClick={() => onPlayChallenge(c)}
+                              disabled={busy}
+                              onClick={() => void acceptFriend(f.id).then(reload)}
                             >
-                              Play{wager > 0 ? ` · ${wager}💎` : ""}
+                              Accept
                             </button>
-                          )}
-                        </div>
+                            <button
+                              type="button"
+                              className="play-mode-wager"
+                              disabled={busy}
+                              onClick={() => void declineFriend(f.id).then(reload)}
+                            >
+                              Decline
+                            </button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                )}
 
-                        {isNegotiating && (
-                          <div className="challenge-negotiate">
-                            <p className="play-mode-modal__hint">
-                              Propose a wager — fee is 5% (min 1💎). Creator pays the fee.
-                            </p>
-                            <div className="play-mode-wagers" role="group" aria-label="Negotiate wager">
-                              {WAGER_PRESETS.map((amount) => (
+                <section className="play-mode-section">
+                  <h3 className="play-mode-modal__section">Friends</h3>
+                  {friends.length === 0 ? (
+                    <p className="play-mode-modal__hint">No friends yet — add someone by username.</p>
+                  ) : (
+                    <ul className="challenge-friend-list">
+                      {friends.map((f) => (
+                        <li key={f.id}>
+                          <div className="challenge-friend">
+                            <span className="challenge-friend__name">{f.user.username}</span>
+                            <span className="challenge-friend__status challenge-friend__status--online">friend</span>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
+
+                {outgoing.length > 0 && (
+                  <section className="play-mode-section">
+                    <h3 className="play-mode-modal__section">Outgoing</h3>
+                    <ul className="challenge-friend-list">
+                      {outgoing.map((f) => (
+                        <li key={f.id}>
+                          <div className="challenge-friend">
+                            <span className="challenge-friend__name">{f.user.username}</span>
+                            <span className="challenge-friend__status">pending</span>
+                            <button
+                              type="button"
+                              className="play-mode-wager"
+                              disabled={busy}
+                              onClick={() => void declineFriend(f.id).then(reload)}
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                )}
+              </div>
+            )}
+
+            {tab === "play" && (
+              <div className="play-mode-panel">
+                <section className="play-mode-section">
+                  <h3 className="play-mode-modal__section">Opponent</h3>
+                  {friends.length === 0 ? (
+                    <p className="play-mode-modal__hint">Add a friend first (Friends tab).</p>
+                  ) : (
+                    <ul className="challenge-friend-list">
+                      {friends.map((f) => (
+                        <li key={f.id}>
+                          <button
+                            type="button"
+                            className={`challenge-friend${friendId === f.user.id ? " challenge-friend--selected" : ""}`}
+                            onClick={() => setFriendId(f.user.id)}
+                          >
+                            <span className="challenge-friend__name">{f.user.username}</span>
+                            <span className="challenge-friend__level">
+                              {friendId === f.user.id ? "Selected" : "Select"}
+                            </span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </section>
+
+                <section className="play-mode-section">
+                  <h3 className="play-mode-modal__section">How it works</h3>
+                  <p className="play-mode-modal__hint">
+                    You both play the identical board and clear the same goals. Best stars win —
+                    if tied, fewest moves, then highest score. Each of you spends 1 ⚡.
+                  </p>
+                </section>
+
+                <button
+                  type="button"
+                  className="btn-primary"
+                  disabled={busy || friendId == null}
+                  onClick={() => setEnergyConfirm({ kind: "send" })}
+                >
+                  Send challenge · ⚡1
+                </button>
+              </div>
+            )}
+
+            {tab === "inbox" && (
+              <div className="play-mode-panel">
+                {pendingInbox.length === 0 ? (
+                  <p className="play-mode-modal__hint">
+                    Nothing to play — check Results for finished matches.
+                  </p>
+                ) : (
+                  <ul className="challenge-inbox-list">
+                    {pendingInbox.map((c) => {
+                      const other = opponentName(c);
+                      const pendingIncoming = c.status === "pending" && c.you_are === "opponent";
+                      const pendingOutgoing = c.status === "pending" && c.you_are === "challenger";
+
+                      return (
+                        <li key={c.id} className="challenge-inbox-item challenge-inbox-item--stack">
+                          <div>
+                            <strong>vs {other}</strong>
+                            <span className="challenge-inbox-item__meta">{c.status}</span>
+                          </div>
+
+                          <div className="challenge-inbox-item__actions">
+                            {pendingIncoming && (
+                              <>
                                 <button
-                                  key={amount}
                                   type="button"
-                                  className={`play-mode-wager${negotiatePreset === amount ? " play-mode-wager--on" : ""}`}
-                                  onClick={() => setNegotiatePreset(amount)}
+                                  className="play-mode-wager play-mode-wager--on"
+                                  disabled={busy}
+                                  onClick={() => setEnergyConfirm({ kind: "accept", challengeId: c.id })}
                                 >
-                                  {amount}💎
+                                  Accept · ⚡1
                                 </button>
-                              ))}
-                              <button
-                                type="button"
-                                className={`play-mode-wager${negotiatePreset === "custom" ? " play-mode-wager--on" : ""}`}
-                                onClick={() => setNegotiatePreset("custom")}
-                              >
-                                Custom
-                              </button>
-                            </div>
-                            {negotiatePreset === "custom" && (
-                              <label className="play-mode-custom-wager">
-                                <span>Custom wager</span>
-                                <input
-                                  type="number"
-                                  min={WAGER_MIN}
-                                  max={WAGER_MAX}
-                                  value={negotiateCustom}
-                                  onChange={(e) => setNegotiateCustom(e.target.value)}
-                                  inputMode="numeric"
-                                />
-                              </label>
+                                <button
+                                  type="button"
+                                  className="play-mode-wager"
+                                  disabled={busy}
+                                  onClick={() => {
+                                    void declineChallenge(c.id).then(() => reload());
+                                  }}
+                                >
+                                  Reject
+                                </button>
+                              </>
                             )}
-                            <p className="play-mode-modal__hint">
-                              Offer {negotiateWager}💎 · fee {negotiateFee}💎 · pot {negotiateWager * 2}💎
-                            </p>
-                            <div className="challenge-inbox-item__actions">
+
+                            {pendingOutgoing && (
+                              <>
+                                <span className="challenge-inbox-item__meta">Waiting for accept…</span>
+                                <button
+                                  type="button"
+                                  className="play-mode-wager"
+                                  disabled={busy}
+                                  onClick={() => {
+                                    void declineChallenge(c.id).then(() => reload());
+                                  }}
+                                >
+                                  Cancel
+                                </button>
+                              </>
+                            )}
+
+                            {c.status === "active" && (
                               <button
                                 type="button"
                                 className="play-mode-wager play-mode-wager--on"
-                                disabled={busy || negotiateWager < WAGER_MIN}
-                                onClick={() => {
-                                  void (async () => {
-                                    setBusy(true);
-                                    setError(null);
-                                    try {
-                                      const r = await negotiateChallenge(c.id, negotiateWager);
-                                      applyCreditsIfPresent(r);
-                                      setNegotiateId(null);
-                                      setInfo(`Offer sent: ${negotiateWager}💎`);
-                                      await reload();
-                                    } catch (e) {
-                                      setError(
-                                        e instanceof Error ? e.message : "Could not send offer"
-                                      );
-                                    } finally {
-                                      setBusy(false);
-                                    }
-                                  })();
-                                }}
+                                onClick={() => onPlayChallenge(c)}
                               >
-                                Send offer
+                                Play
                               </button>
-                              <button
-                                type="button"
-                                className="play-mode-wager"
-                                disabled={busy}
-                                onClick={() => setNegotiateId(null)}
-                              >
-                                Back
-                              </button>
-                            </div>
+                            )}
                           </div>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              )}
-            </div>
-          )}
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            )}
 
-          {tab === "results" && (
-            <div className="play-mode-panel">
-              {resultsList.length === 0 ? (
-                <p className="play-mode-modal__hint">
-                  No results yet — finish a challenge to see scores here.
-                </p>
-              ) : (
-                <ul className="challenge-results-list">
-                  {resultsList.map((c) => (
-                    <ResultCard key={c.id} c={c} />
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
+            {tab === "results" && (
+              <div className="play-mode-panel">
+                {resultsList.length === 0 ? (
+                  <p className="play-mode-modal__hint">
+                    No results yet — finish a challenge to see scores here.
+                  </p>
+                ) : (
+                  <ul className="challenge-results-list">
+                    {resultsList.map((c) => (
+                      <ResultCard key={c.id} c={c} />
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+
+          <footer className="play-mode-modal__footer">
+            {onBack && (
+              <button type="button" className="btn scores-close" onClick={onBack}>
+                Back
+              </button>
+            )}
+            <button type="button" className="btn scores-close" onClick={onClose}>
+              Close
+            </button>
+          </footer>
         </div>
-
-        <footer className="play-mode-modal__footer">
-          <button type="button" className="btn scores-close" onClick={onClose}>
-            Close
-          </button>
-        </footer>
       </div>
-    </div>
+
+      {energyConfirm && (
+        <div className="modal-overlay scores-overlay" role="presentation">
+          <div className="modal scores-modal" role="dialog" aria-labelledby="challenge-energy-title">
+            <h2 id="challenge-energy-title">
+              {energyConfirm.kind === "send" ? "Send challenge?" : "Accept challenge?"}
+            </h2>
+            <p>This costs 1 ⚡</p>
+            <div className="play-mode-modal__actions" style={{ display: "flex", gap: "0.5rem" }}>
+              <button type="button" className="btn-primary" onClick={confirmEnergyAction}>
+                Spend ⚡1 &amp; {energyConfirm.kind === "send" ? "send" : "accept"}
+              </button>
+              <button type="button" className="btn scores-close" onClick={() => setEnergyConfirm(null)}>
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showOutOfEnergy && (
+        <OutOfEnergyModal
+          onClose={() => setShowOutOfEnergy(false)}
+          onRefilled={() => setShowOutOfEnergy(false)}
+          onOpenTreasury={() => setShowOutOfEnergy(false)}
+        />
+      )}
+    </>
   );
 }

@@ -159,12 +159,8 @@ function initRunState(startLevel?: number): RunState {
 export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSignOut }: Props) {
   const savedSnapshot = useRef(loadProgress());
   const isChallenge = Boolean(challengeMatch);
-  /** Friend duels use gem stakes; quick-match challenger still pays 1 energy. */
-  const challengeEnergyFree =
-    isChallenge &&
-    (challengeMatch?.kind === "friend" ||
-      challengeMatch?.kind == null ||
-      challengeMatch?.youAre === "opponent");
+  /** Energy already paid at the multiplayer modal before entering. */
+  const challengeEnergyFree = isChallenge;
   const isReplaySession = useRef(
     !challengeMatch &&
       startLevel !== undefined &&
@@ -513,6 +509,16 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
               applyServerCredits(r.credits, r.client_updated_at);
               refreshWallet();
               setRun((prev) => ({ ...prev, credits: r.credits ?? prev.credits }));
+            }
+            if (r.elo && challengeMatch.youAre) {
+              const saved = loadProgress();
+              if (saved) {
+                const nextElo =
+                  challengeMatch.youAre === "challenger"
+                    ? r.elo.challenger_elo
+                    : r.elo.opponent_elo;
+                saveProgress({ ...saved, elo: nextElo });
+              }
             }
             setChallengeResult(r.challenge);
           })

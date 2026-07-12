@@ -104,6 +104,19 @@ def ensure_schema():
                 pass
             ch_cols = {c["name"] for c in inspector.get_columns("challenges")}
 
+    if "match_tickets" in inspector.get_table_names():
+        mt_cols = {c["name"] for c in inspector.get_columns("match_tickets")}
+        if "elo" not in mt_cols:
+            try:
+                with engine.begin() as conn:
+                    conn.execute(
+                        text(
+                            "ALTER TABLE match_tickets ADD COLUMN elo INTEGER DEFAULT 1000 NOT NULL"
+                        )
+                    )
+            except OperationalError:
+                pass
+
 
 def ensure_admin_user():
     username = (os.environ.get("ADMIN_USERNAME") or "").strip()

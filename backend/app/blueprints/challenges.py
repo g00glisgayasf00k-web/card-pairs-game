@@ -10,7 +10,8 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.models import Challenge, Friendship, PlayerProgress, User, db
-from app.progress_grants import adjust_gems, challenge_fee_gems
+from app.progress_grants import adjust_gems, challenge_fee_gems, get_player_elo, set_player_elo
+from app.elo import apply_elo_result
 from app.services.push import send_to_user
 from app.challenge_mission import generate_challenge_mission
 
@@ -138,7 +139,6 @@ def _settle_wager(ch: Challenge) -> None:
         except ValueError:
             pass
     else:
-        # Tie — return each staked share
         half = wager if pot >= wager * 2 else pot // 2
         if half > 0:
             try:
@@ -151,6 +151,30 @@ def _settle_wager(ch: Challenge) -> None:
                 pass
 
     ch.gems_settled = True
+
+
+def _apply_quick_elo(ch: Challenge) -> dict | None:
+    """Update Elo for ranked quick matches. Friend challenges do not affect rating."""
+    if (getattr(ch, "kind", None) or "friend") != "quick":
+        return None
+    a = get_player_elo(ch.challenger_id)
+    b = get_player_elo(ch.opponent_id)
+    if ch.winner_user_id == ch.challenger_id:
+        winner = "a"
+    elif ch.winner_user_id == ch.opponent_id:
+        winner = "b"
+    else:
+        winner = "tie"
+    new_a, new_b, delta = apply_elo_result(a, b, winner)
+    set_player_elo(ch.challenger_id, new_a)
+    set_player_elo(ch.opponent_id, new_b)
+    return {
+        "challenger_elo": new_a,
+        "opponent_elo": new_b,
+        "challenger_elo_before": a,
+        "opponent_elo_before": b,
+        "elo_delta": delta,
+    }
 
 
 def _compare_attempts(
@@ -305,6 +329,7 @@ def list_challenges():
 @challenges_bp.post("")
 @jwt_required()
 def create_challenge():
+    """Create a free friend duel (1 energy spent client-side). No gem wager."""
     me = int(get_jwt_identity())
     data = request.get_json(silent=True) or {}
     friend_id = data.get("friend_user_id")
@@ -322,29 +347,9 @@ def create_challenge():
     if not opponent:
         return jsonify({"error": "Player not found"}), 404
 
-    wager = _parse_wager(data.get("wager_gems"))
-    if wager is None:
-        return jsonify({"error": f"wager_gems must be between {WAGER_MIN} and {WAGER_MAX}"}), 400
-
-    fee = challenge_fee_gems(wager)
-    total_charge = wager + fee
-
-    # Display/progress band only — the duel uses a random board + mission, not campaign goals
+    # Display/progress band only — the duel uses a random board + mission
     level = min(_highest_unlocked(me), _highest_unlocked(friend_id))
     level = max(1, min(MAX_LEVEL, level))
-
-    try:
-        credits, client_updated_at = adjust_gems(me, -total_charge)
-    except ValueError:
-        return (
-            jsonify(
-                {
-                    "error": f"Not enough gems — need {total_charge} "
-                    f"({wager} wager + {fee} fee)"
-                }
-            ),
-            402,
-        )
 
     seed = secrets.randbits(31)
     mission = generate_challenge_mission(seed)
@@ -355,44 +360,25 @@ def create_challenge():
         board_seed=seed,
         status="pending",
         kind="friend",
-        wager_gems=wager,
-        fee_gems=fee,
-        challenger_staked=True,
+        wager_gems=0,
+        fee_gems=0,
+        challenger_staked=False,
         opponent_staked=False,
-        gems_settled=False,
+        gems_settled=True,
         mission_json=json.dumps(mission),
         expires_at=_utc_now() + timedelta(hours=CHALLENGE_TTL_HOURS),
     )
     db.session.add(ch)
-    try:
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
-        try:
-            adjust_gems(me, total_charge)
-        except ValueError:
-            pass
-        return jsonify({"error": "Could not create challenge"}), 500
+    db.session.commit()
     me_user = User.query.get(me)
     me_name = me_user.username if me_user else "A friend"
     _notify(
         friend_id,
         "New challenge",
-        f"{me_name} challenged you for {wager} gems",
+        f"{me_name} challenged you to a multiplayer duel",
         {"type": "challenge", "challenge_id": str(ch.id)},
     )
-    return (
-        jsonify(
-            {
-                "challenge": _serialize(ch, me),
-                "credits": credits,
-                "client_updated_at": client_updated_at,
-                "fee_gems": fee,
-                "charged_gems": total_charge,
-            }
-        ),
-        201,
-    )
+    return jsonify({"challenge": _serialize(ch, me)}), 201
 
 
 @challenges_bp.get("/<int:challenge_id>")
@@ -413,106 +399,35 @@ def get_challenge(challenge_id: int):
 @challenges_bp.post("/<int:challenge_id>/accept")
 @jwt_required()
 def accept_challenge(challenge_id: int):
-    """Accept current terms, or accept the other player's counter-offer."""
+    """Accept a free friend challenge (1 energy spent client-side)."""
     me = int(get_jwt_identity())
     ch = Challenge.query.get(challenge_id)
-    if not ch or (ch.challenger_id != me and ch.opponent_id != me):
+    if not ch or ch.opponent_id != me:
         return jsonify({"error": "Challenge not found"}), 404
     _expire_if_needed(ch)
     if ch.status != "pending":
         db.session.commit()
         return jsonify({"error": f"Challenge is {ch.status}"}), 409
 
-    proposed = getattr(ch, "proposed_wager_gems", None)
-    proposed_by = getattr(ch, "proposed_by_id", None)
-    has_offer = proposed is not None and proposed_by is not None
-
-    if has_offer:
-        if proposed_by == me:
-            return jsonify({"error": "Waiting for the other player to respond to your offer"}), 409
-        new_wager = int(proposed)
-        old_wager = int(ch.wager_gems or 0)
-        old_fee = int(getattr(ch, "fee_gems", 0) or 0) or challenge_fee_gems(old_wager)
-        new_fee = challenge_fee_gems(new_wager)
-        old_total = old_wager + old_fee if getattr(ch, "challenger_staked", False) else 0
-        new_total = new_wager + new_fee
-        challenger_delta = new_total - old_total
-        opponent_charged = False
-        challenger_adjusted = False
-        try:
-            # Charge the matching stake first, then adjust creator escrow
-            if not getattr(ch, "opponent_staked", False):
-                adjust_gems(ch.opponent_id, -new_wager)
-                opponent_charged = True
-                ch.opponent_staked = True
-            if challenger_delta != 0:
-                adjust_gems(ch.challenger_id, -challenger_delta)
-                challenger_adjusted = True
-            ch.wager_gems = new_wager
-            ch.fee_gems = new_fee
-            ch.challenger_staked = True
-            ch.proposed_wager_gems = None
-            ch.proposed_by_id = None
-            ch.status = "active"
-            ch.updated_at = _utc_now()
-            credits, client_updated_at = adjust_gems(me, 0)
-        except ValueError:
-            if challenger_adjusted:
-                try:
-                    adjust_gems(ch.challenger_id, challenger_delta)
-                except ValueError:
-                    pass
-            if opponent_charged:
-                try:
-                    adjust_gems(ch.opponent_id, new_wager)
-                except ValueError:
-                    pass
-            db.session.rollback()
-            return jsonify({"error": "Not enough gems to accept these terms"}), 402
-
-        db.session.commit()
-        me_user = User.query.get(me)
-        me_name = me_user.username if me_user else "Your friend"
-        other_id = ch.opponent_id if me == ch.challenger_id else ch.challenger_id
-        _notify(
-            other_id,
-            "Terms accepted",
-            f"{me_name} accepted the {new_wager}-gem challenge",
-            {"type": "challenge", "challenge_id": str(ch.id)},
-        )
-        return jsonify(
-            {
-                "challenge": _serialize(ch, me),
-                "credits": credits,
-                "client_updated_at": client_updated_at,
-            }
-        )
-
-    if ch.opponent_id != me:
-        return jsonify({"error": "Waiting for your friend to accept or negotiate"}), 409
-
-    wager = int(ch.wager_gems or 0)
-    try:
-        credits, client_updated_at = _activate_with_opponent_stake(ch, me)
-    except ValueError:
-        return jsonify({"error": f"Not enough gems — need {wager} to match the wager"}), 402
-
+    # Clear any legacy negotiate state
+    ch.proposed_wager_gems = None
+    ch.proposed_by_id = None
+    ch.wager_gems = 0
+    ch.fee_gems = 0
+    ch.gems_settled = True
+    ch.status = "active"
+    ch.updated_at = _utc_now()
     db.session.commit()
+
     me_user = User.query.get(me)
     me_name = me_user.username if me_user else "Your friend"
     _notify(
         ch.challenger_id,
         "Challenge accepted",
-        f"{me_name} accepted your {wager}-gem challenge",
+        f"{me_name} accepted your multiplayer challenge",
         {"type": "challenge", "challenge_id": str(ch.id)},
     )
-    return jsonify(
-        {
-            "challenge": _serialize(ch, me),
-            "credits": credits,
-            "client_updated_at": client_updated_at,
-        }
-    )
+    return jsonify({"challenge": _serialize(ch, me)})
 
 
 @challenges_bp.post("/<int:challenge_id>/negotiate")
@@ -642,7 +557,7 @@ def submit_challenge(challenge_id: int):
             )
         return jsonify({"error": "Challenge expired", **_credits_payload(me)}), 409
     if ch.status == "pending":
-        return jsonify({"error": "Wait until both players agree on the wager"}), 409
+        return jsonify({"error": "Wait until your opponent accepts the challenge"}), 409
     if ch.status not in ("active", "completed"):
         return jsonify({"error": f"Challenge is {ch.status}"}), 409
 
@@ -688,6 +603,7 @@ def submit_challenge(challenge_id: int):
         ch.opponent_score = score
         ch.opponent_submitted_at = now
 
+    elo_update = None
     if ch.challenger_submitted_at and ch.opponent_submitted_at:
         ch.winner_user_id = _compare_attempts(
             ch.challenger_stars or 0,
@@ -701,6 +617,7 @@ def submit_challenge(challenge_id: int):
         )
         ch.status = "completed"
         _settle_wager(ch)
+        elo_update = _apply_quick_elo(ch)
 
     ch.updated_at = now
     db.session.commit()
@@ -723,4 +640,7 @@ def submit_challenge(challenge_id: int):
             {"type": "challenge", "challenge_id": str(ch.id)},
         )
 
-    return jsonify({"challenge": _serialize(ch, me), **_credits_payload(me)})
+    out = {"challenge": _serialize(ch, me), **_credits_payload(me)}
+    if elo_update:
+        out["elo"] = elo_update
+    return jsonify(out)

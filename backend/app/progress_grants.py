@@ -104,9 +104,34 @@ def adjust_gems(user_id: int, delta: int) -> tuple[int, int]:
 
 
 def challenge_fee_gems(wager: int) -> int:
-    """Platform fee: 5% of wager, minimum 1 gem."""
+    """Platform fee: 5% of wager, minimum 1 gem. (Legacy — friend duels are free now.)"""
     import math
 
     if wager < 1:
         return 0
     return max(1, int(math.ceil(wager * 0.05)))
+
+
+DEFAULT_ELO = 1000
+
+
+def get_player_elo(user_id: int) -> int:
+    row = PlayerProgress.query.filter_by(user_id=user_id).first()
+    payload = load_progress_payload(row)
+    raw = payload.get("elo")
+    try:
+        elo = int(raw)
+    except (TypeError, ValueError):
+        return DEFAULT_ELO
+    return max(100, elo)
+
+
+def set_player_elo(user_id: int, elo: int) -> int:
+    row = PlayerProgress.query.filter_by(user_id=user_id).first()
+    payload = load_progress_payload(row)
+    now = _now_ms()
+    value = max(100, int(elo))
+    payload["elo"] = value
+    payload["updatedAt"] = now
+    save_progress_payload(user_id, payload, now)
+    return value

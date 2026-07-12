@@ -40,6 +40,8 @@ export interface SavedProgress {
   bestHand: HandLabel;
   /** In-game currency for buying extra moves. */
   credits: number;
+  /** Multiplayer Elo rating (quick play). */
+  elo?: number;
   /** Play attempts remaining (max 12, +1 every 120 minutes). */
   energy: number;
   /** Timestamp (ms) when the next +1 energy arrives; 0 when full. */
@@ -315,6 +317,7 @@ export function defaultProgress(): Omit<SavedProgress, "v" | "updatedAt"> {
     handsCleared: 0,
     bestHand: "pair",
     credits: STARTING_CREDITS,
+    elo: 1000,
     energy: MAX_ENERGY,
     energyRegenAt: 0,
     energyPaidLevel: null,

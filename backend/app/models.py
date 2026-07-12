@@ -171,6 +171,7 @@ class MatchTicket(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
     unlocked_level = db.Column(db.Integer, nullable=False, default=1)
+    elo = db.Column(db.Integer, nullable=False, default=1000)
     status = db.Column(db.String(16), nullable=False, default="waiting")
     challenge_id = db.Column(db.Integer, db.ForeignKey("challenges.id"), nullable=True)
     created_at = db.Column(

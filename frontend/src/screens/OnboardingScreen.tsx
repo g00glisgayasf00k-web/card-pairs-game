@@ -1,8 +1,7 @@
 import { useEffect, useState } from "react";
 import { AuthPanel } from "../components/AuthPanel";
 import { ProfileModal } from "../components/ProfileModal";
-import { ChallengeFriendModal } from "../components/ChallengeFriendModal";
-import { CompeteModal } from "../components/CompeteModal";
+import { MultiplayerModal } from "../components/MultiplayerModal";
 import { GemShopModal } from "../components/GemShopModal";
 import { Leaderboard } from "../components/Leaderboard";
 import {
@@ -116,10 +115,10 @@ export function OnboardingScreen({
               />
               <GameModeCard
                 glow="blue"
-                label="Friends"
-                title="Challenge a friend"
-                subtitle="Same seed — best stars / fewest moves"
-                meta="Wager gems · 5% fee"
+                label="Multiplayer"
+                title="Play online"
+                subtitle="Quick play or challenge a friend"
+                meta="Free · ⚡1 each"
                 badge={summary.total}
                 onClick={() => setPlaySheet("challenge")}
               />
@@ -209,7 +208,7 @@ export function OnboardingScreen({
       )}
 
       {playSheet === "challenge" && (
-        <ChallengeFriendModal
+        <MultiplayerModal
           onClose={() => {
             setPlaySheet(null);
             void refreshNotifs();
@@ -226,14 +225,18 @@ export function OnboardingScreen({
       )}
 
       {playSheet === "compete" && (
-        <CompeteModal
-          onClose={() => setPlaySheet(null)}
-          onPlaySolo={() => {
+        <MultiplayerModal
+          initialView="quick"
+          onClose={() => {
             setPlaySheet(null);
-            onPlay();
+            void refreshNotifs();
           }}
+          friendRequestCount={summary.friend_requests}
+          challengeCount={summary.challenges}
+          onNotificationsChange={() => void refreshNotifs()}
           onPlayChallenge={(c) => {
             setPlaySheet(null);
+            void refreshNotifs();
             onPlayChallenge(c);
           }}
         />

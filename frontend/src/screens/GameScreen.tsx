@@ -63,7 +63,7 @@ import { GameBoard, type GameBoardHandle } from "../components/GameBoard";
 import { ProfileModal } from "../components/ProfileModal";
 import { GemShopModal } from "../components/GemShopModal";
 import { OutOfEnergyModal } from "../components/OutOfEnergyModal";
-import { fetchChallenge, forfeitChallenge, submitChallenge, submitTournamentRun, type ChallengeDto, type ChallengeMissionDto } from "../lib/api";
+import { fetchChallenge, forfeitChallenge, leaveQuickMatch, submitChallenge, submitTournamentRun, type ChallengeDto, type ChallengeMissionDto } from "../lib/api";
 import type { TournamentBoardPick } from "../lib/tournamentTiers";
 import { onHardwareBack } from "../lib/nativeBack";
 
@@ -726,6 +726,9 @@ export function GameScreen({
 
   const leaveToMenu = () => {
     submitRunScore();
+    if (isChallenge && challengeMatch?.kind === "quick") {
+      void leaveQuickMatch().catch(() => undefined);
+    }
     onMenu();
   };
 

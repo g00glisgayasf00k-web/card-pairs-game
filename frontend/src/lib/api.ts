@@ -504,12 +504,16 @@ export async function forfeitChallenge(id: number) {
 
 export type MatchmakingStatus = "idle" | "waiting" | "matched" | "settled";
 
-export async function joinQuickMatch() {
+export async function joinQuickMatch(opts?: { fresh?: boolean }) {
   return request<{ status: MatchmakingStatus; ticket_id?: number; challenge?: ChallengeDto }>(
     "/api/matchmaking/quick",
-    { method: "POST" }
+    {
+      method: "POST",
+      body: JSON.stringify({ fresh: opts?.fresh !== false }),
+    }
   );
 }
+
 
 export async function pollQuickMatch() {
   return request<{ status: MatchmakingStatus; ticket_id?: number; challenge?: ChallengeDto }>(

@@ -6,7 +6,7 @@ import json
 import secrets
 from datetime import datetime, timedelta, timezone
 
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.challenge_mission import generate_challenge_mission
@@ -101,6 +101,19 @@ def _active_ticket(me: int) -> MatchTicket | None:
     )
 
 
+def _cancel_ticket(t: MatchTicket | None) -> None:
+    if t and t.status in ("waiting", "matched"):
+        t.status = "cancelled"
+
+
+def _player_submitted(ch: Challenge, me: int) -> bool:
+    if ch.challenger_id == me:
+        return bool(ch.challenger_submitted_at)
+    if ch.opponent_id == me:
+        return bool(ch.opponent_submitted_at)
+    return False
+
+
 def _pick_partner(me: int, my_elo: int, now: datetime) -> MatchTicket | None:
     candidates = (
         MatchTicket.query.filter(
@@ -148,31 +161,68 @@ def join_quick():
 
     from app.blueprints.challenges import _expire_if_needed
 
+    data = request.get_json(silent=True) or {}
+    # Fresh search: drop any prior ticket so the player isn't stuck on an old match.
+    want_fresh = bool(data.get("fresh"))
+
     existing = _active_ticket(me)
     if existing and existing.status == "matched" and existing.challenge_id:
         ch = Challenge.query.get(existing.challenge_id)
         if ch:
             _expire_if_needed(ch)
             db.session.commit()
-            # Only reopen an unfinished duel — completed/expired free the player to rematch.
-            if ch.status == "active":
+            unfinished = ch.status == "active"
+            already_done = _player_submitted(ch, me)
+            if unfinished and not already_done and not want_fresh:
                 return jsonify({"status": "matched", "challenge": _serialize_challenge(ch, me)})
-            existing.status = "cancelled"
+            if unfinished and not already_done and want_fresh:
+                # Explicit new search — record 0 for the abandoned duel, then queue again.
+                now = _utc_now()
+                if ch.challenger_id == me:
+                    ch.challenger_stars = 0
+                    ch.challenger_moves = 0
+                    ch.challenger_score = 0
+                    ch.challenger_submitted_at = now
+                else:
+                    ch.opponent_stars = 0
+                    ch.opponent_moves = 0
+                    ch.opponent_score = 0
+                    ch.opponent_submitted_at = now
+                from app.blueprints.challenges import (
+                    _arm_quick_finish_window,
+                    _finish_if_both_submitted,
+                    _release_player_ticket,
+                )
+
+                _release_player_ticket(ch, me)
+                _arm_quick_finish_window(ch, now)
+                _finish_if_both_submitted(ch)
+                ch.updated_at = now
+                db.session.commit()
+            else:
+                _cancel_ticket(existing)
+                db.session.commit()
+        else:
+            _cancel_ticket(existing)
+            db.session.commit()
+    elif existing and existing.status == "waiting":
+        if want_fresh or _as_utc(existing.expires_at) < _utc_now():
+            _cancel_ticket(existing)
             db.session.commit()
         else:
-            existing.status = "cancelled"
-            db.session.commit()
-    if existing and existing.status == "waiting" and _as_utc(existing.expires_at) >= _utc_now():
-        return jsonify(
-            {
-                "status": "waiting",
-                "ticket_id": existing.id,
-                "elo": _ticket_elo(existing),
-            }
-        )
+            return jsonify(
+                {
+                    "status": "waiting",
+                    "ticket_id": existing.id,
+                    "elo": _ticket_elo(existing),
+                }
+            )
 
-    if existing and existing.status == "waiting":
-        existing.status = "cancelled"
+    # Drop any leftover active tickets before creating a new one.
+    leftover = _active_ticket(me)
+    if leftover:
+        _cancel_ticket(leftover)
+        db.session.commit()
 
     unlocked = _highest_unlocked(me)
     my_elo = get_player_elo(me)
@@ -252,7 +302,7 @@ def poll_quick():
         if ch:
             _expire_if_needed(ch)
             db.session.commit()
-            if ch.status == "active":
+            if ch.status == "active" and not _player_submitted(ch, me):
                 return jsonify(
                     {
                         "status": "matched",
@@ -260,15 +310,18 @@ def poll_quick():
                         "elo": get_player_elo(me),
                     }
                 )
+            # Already submitted or settled — free the ticket so they aren't stuck.
             ticket.status = "cancelled"
             db.session.commit()
-            return jsonify(
-                {
-                    "status": "settled",
-                    "challenge": _serialize_challenge(ch, me),
-                    "elo": get_player_elo(me),
-                }
-            )
+            if ch.status != "active":
+                return jsonify(
+                    {
+                        "status": "settled",
+                        "challenge": _serialize_challenge(ch, me),
+                        "elo": get_player_elo(me),
+                    }
+                )
+            return jsonify({"status": "idle", "elo": get_player_elo(me)})
         ticket.status = "cancelled"
         db.session.commit()
     if ticket.status == "waiting":
@@ -289,12 +342,28 @@ def poll_quick():
 @matchmaking_bp.delete("/quick")
 @jwt_required()
 def leave_quick():
+    """Leave the queue. Also clears matched tickets after you've already submitted."""
     me = int(get_jwt_identity())
+    from app.blueprints.challenges import _expire_if_needed
+
     rows = MatchTicket.query.filter(
         MatchTicket.user_id == me,
-        MatchTicket.status == "waiting",
+        MatchTicket.status.in_(("waiting", "matched")),
     ).all()
     for t in rows:
-        t.status = "cancelled"
+        if t.status == "waiting":
+            t.status = "cancelled"
+            continue
+        # matched: only drop if duel is done for this player (submitted / settled)
+        if t.challenge_id:
+            ch = Challenge.query.get(t.challenge_id)
+            if ch:
+                _expire_if_needed(ch)
+                if ch.status != "active" or _player_submitted(ch, me):
+                    t.status = "cancelled"
+            else:
+                t.status = "cancelled"
+        else:
+            t.status = "cancelled"
     db.session.commit()
     return jsonify({"ok": True})

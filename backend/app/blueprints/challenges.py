@@ -111,6 +111,21 @@ def _release_match_tickets(ch: Challenge) -> None:
     )
 
 
+def _release_player_ticket(ch: Challenge, user_id: int) -> None:
+    """Free one player to rematch while the duel may still be waiting on the other."""
+    MatchTicket.query.filter_by(user_id=user_id, challenge_id=ch.id).update(
+        {"status": "cancelled"}, synchronize_session=False
+    )
+
+
+def _player_has_submitted(ch: Challenge, user_id: int) -> bool:
+    if ch.challenger_id == user_id:
+        return bool(ch.challenger_submitted_at)
+    if ch.opponent_id == user_id:
+        return bool(ch.opponent_submitted_at)
+    return False
+
+
 def _dq_missing_side(ch: Challenge) -> None:
     """Assign 0★ / 0 moves / 0 score to the player who never submitted, then settle."""
     now = _utc_now()
@@ -707,6 +722,8 @@ def submit_challenge(challenge_id: int):
         ch.opponent_score = score
         ch.opponent_submitted_at = now
 
+    # Free this player to queue again immediately (don't wait on the opponent).
+    _release_player_ticket(ch, me)
     _arm_quick_finish_window(ch, now)
     elo_update = _finish_if_both_submitted(ch)
 
@@ -777,9 +794,7 @@ def forfeit_challenge(challenge_id: int):
     _arm_quick_finish_window(ch, now)
     elo_update = _finish_if_both_submitted(ch)
     # Free the quitting player to queue again even if the opponent still has time left.
-    MatchTicket.query.filter_by(user_id=me, challenge_id=ch.id).update(
-        {"status": "cancelled"}, synchronize_session=False
-    )
+    _release_player_ticket(ch, me)
     ch.updated_at = now
     db.session.commit()
 

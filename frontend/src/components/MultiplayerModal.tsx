@@ -200,7 +200,9 @@ export function MultiplayerModal({
     setMatched(null);
     setStatus("waiting");
     try {
-      const r = await joinQuickMatch();
+      // Cancel any leftover queue/ticket from a finished duel, then search fresh.
+      await leaveQuickMatch().catch(() => undefined);
+      const r = await joinQuickMatch({ fresh: true });
       if (typeof (r as { elo?: number }).elo === "number") {
         setElo((r as { elo: number }).elo);
       }

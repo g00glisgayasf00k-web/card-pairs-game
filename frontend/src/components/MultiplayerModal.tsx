@@ -37,7 +37,6 @@ export function MultiplayerModal({
   const [status, setStatus] = useState<"idle" | "waiting" | "matched">("idle");
   const [error, setError] = useState<string | null>(null);
   const [matched, setMatched] = useState<ChallengeDto | null>(null);
-  const [confirmQuick, setConfirmQuick] = useState(false);
   const [showOutOfEnergy, setShowOutOfEnergy] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [elo, setElo] = useState(() => loadProgress()?.elo ?? 1000);
@@ -115,17 +114,10 @@ export function MultiplayerModal({
 
   const startQuickWithEnergy = () => {
     syncEnergyState();
-    if (!hasEnergy(1)) {
-      setConfirmQuick(false);
+    if (!hasEnergy(1) || !trySpendEnergyOnce()) {
       setShowOutOfEnergy(true);
       return;
     }
-    if (!trySpendEnergyOnce()) {
-      setConfirmQuick(false);
-      setShowOutOfEnergy(true);
-      return;
-    }
-    setConfirmQuick(false);
     void findMatch();
   };
 
@@ -248,10 +240,7 @@ export function MultiplayerModal({
               {finding ? (
                 <>
                   <header className="play-mode-modal__header">
-                    <h2 id="multiplayer-title">Finding an opponent</h2>
-                    <p className="play-mode-modal__lead">
-                      Looking for a player near your Rating…
-                    </p>
+                    <h2 id="multiplayer-title">Looking for a player</h2>
                   </header>
                   <div className="play-mode-modal__body">
                     {error && <p className="play-mode-modal__error">{error}</p>}
@@ -271,9 +260,7 @@ export function MultiplayerModal({
                         />
                         <img className="quick-find__icon" src={blue.icon} alt="" width={96} height={96} />
                       </div>
-                      <img className="quick-find__label" src={blue.label} alt="Multiplayer" />
-                      <p className="quick-find__status">Finding an opponent…</p>
-                      <p className="quick-find__sub">Your Rating: {elo}</p>
+                      <p className="quick-find__status">Looking for a player…</p>
                     </div>
                     <button
                       type="button"
@@ -313,13 +300,12 @@ export function MultiplayerModal({
                         <img className="quick-find__icon" src={blue.icon} alt="" width={88} height={88} />
                       </div>
                       <img className="quick-find__label" src={blue.label} alt="Multiplayer" />
-                      <p className="quick-find__sub">Costs 1 ⚡ to enter the queue</p>
                     </div>
                     <button
                       type="button"
                       className="btn-primary"
                       disabled={busy}
-                      onClick={() => setConfirmQuick(true)}
+                      onClick={startQuickWithEnergy}
                     >
                       Find match · ⚡1
                     </button>
@@ -342,22 +328,6 @@ export function MultiplayerModal({
           )}
         </div>
       </div>
-
-      {confirmQuick && (
-        <div className="modal-overlay scores-overlay" role="presentation">
-          <div className="modal scores-modal" role="dialog" aria-labelledby="mp-energy-title">
-            <h2 id="mp-energy-title">Spend 1 energy and find match?</h2>
-            <div className="play-mode-modal__actions" style={{ display: "flex", gap: "0.5rem" }}>
-              <button type="button" className="btn-primary" onClick={startQuickWithEnergy}>
-                Find match
-              </button>
-              <button type="button" className="btn scores-close" onClick={() => setConfirmQuick(false)}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {showOutOfEnergy && (
         <OutOfEnergyModal

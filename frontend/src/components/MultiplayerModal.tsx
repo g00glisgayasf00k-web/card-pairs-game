@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { ChallengeFriendModal } from "./ChallengeFriendModal";
 import { HOME_ASSETS } from "./home/homeAssets";
 import {
@@ -20,8 +20,108 @@ interface Props {
   friendRequestCount?: number;
   challengeCount?: number;
   onNotificationsChange?: () => void;
-  /** Open directly on friends inbox (e.g. from push). */
   initialView?: View;
+}
+
+function MpShell({
+  children,
+  onClose,
+  rating,
+  showRating = true,
+}: {
+  children: ReactNode;
+  onClose: () => void;
+  rating?: number;
+  showRating?: boolean;
+}) {
+  const a = HOME_ASSETS;
+  return (
+    <div className="mp-kit-overlay" onClick={onClose} role="presentation">
+      <div
+        className="mp-kit"
+        style={{ backgroundImage: `url(${a.background.main})` }}
+        onClick={(e) => e.stopPropagation()}
+        role="dialog"
+        aria-labelledby="multiplayer-title"
+      >
+        <div className="mp-kit__veil" aria-hidden />
+        <div className="mp-kit__inner">
+          <div className="mp-kit__top">
+            <div className="mp-kit__brand">
+              <img className="mp-kit__brand-label" src={a.cards.blue.label} alt="Multiplayer" />
+              {showRating && rating != null && (
+                <span className="mp-kit__rating">
+                  <img src={a.home.levelBadge} alt="" />
+                  Rating {rating}
+                </span>
+              )}
+            </div>
+            <button type="button" className="mp-kit__close" onClick={onClose} aria-label="Close">
+              ×
+            </button>
+          </div>
+          {children}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function MpHero({ title, lead }: { title: string; lead: string }) {
+  const a = HOME_ASSETS;
+  return (
+    <div className="mp-kit__hero" style={{ backgroundImage: `url(${a.hero.panelBg})` }}>
+      <span
+        className="mp-kit__hero-particles"
+        style={{ backgroundImage: `url(${a.hero.particlesGold})` }}
+        aria-hidden
+      />
+      <img className="mp-kit__hero-cards" src={a.hero.cardsHand} alt="" />
+      <img className="mp-kit__hero-chips" src={a.hero.chipsStack} alt="" />
+      <div className="mp-kit__hero-copy">
+        <h2 id="multiplayer-title">{title}</h2>
+        <p>{lead}</p>
+      </div>
+    </div>
+  );
+}
+
+function MpStage({
+  pulse,
+  title,
+  sub,
+  progress,
+}: {
+  pulse?: boolean;
+  title: string;
+  sub?: string;
+  progress?: boolean;
+}) {
+  const blue = HOME_ASSETS.cards.blue;
+  const ui = HOME_ASSETS.ui;
+  return (
+    <div className="mp-kit-stage" style={{ backgroundImage: `url(${blue.base})` }}>
+      <span className="mp-kit-stage__glow" style={{ backgroundImage: `url(${blue.glow})` }} aria-hidden />
+      <div
+        className={`mp-kit-stage__icon-wrap${pulse ? " mp-kit-stage__icon-wrap--pulse" : ""}`}
+        aria-hidden
+      >
+        <span className="mp-kit-stage__ring" style={{ backgroundImage: `url(${blue.circle})` }} />
+        <img className="mp-kit-stage__icon" src={blue.icon} alt="" width={96} height={96} />
+      </div>
+      <img className="mp-kit-stage__label" src={blue.label} alt="" />
+      <p className="mp-kit-stage__title">{title}</p>
+      {sub && <p className="mp-kit-stage__sub">{sub}</p>}
+      {progress && (
+        <div className="mp-kit-progress" style={{ backgroundImage: `url(${ui.progressBg})` }} aria-hidden>
+          <span
+            className="mp-kit-progress__fill"
+            style={{ backgroundImage: `url(${ui.progressFill})` }}
+          />
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function MultiplayerModal({
@@ -41,7 +141,9 @@ export function MultiplayerModal({
   const [cancelling, setCancelling] = useState(false);
   const [elo, setElo] = useState(() => loadProgress()?.elo ?? 1000);
   const pollingRef = useRef(false);
-  const blue = HOME_ASSETS.cards.blue;
+  const a = HOME_ASSETS;
+  const blue = a.cards.blue;
+  const friendBadge = friendRequestCount + challengeCount;
 
   useEffect(() => {
     return () => {
@@ -84,6 +186,7 @@ export function MultiplayerModal({
         friendRequestCount={friendRequestCount}
         challengeCount={challengeCount}
         onNotificationsChange={onNotificationsChange}
+        kitShell
       />
     );
   }
@@ -150,184 +253,158 @@ export function MultiplayerModal({
 
   return (
     <>
-      <div className="modal-overlay scores-overlay home-menu-overlay" onClick={onClose} role="presentation">
-        <div
-          className="modal scores-modal home-menu-modal home-menu-modal--wide play-mode-modal play-mode-modal--challenge"
-          onClick={(e) => e.stopPropagation()}
-          role="dialog"
-          aria-labelledby="multiplayer-title"
-        >
-          {view === "hub" && (
-            <>
-              <header className="play-mode-modal__header">
-                <h2 id="multiplayer-title">Multiplayer</h2>
-                <p className="play-mode-modal__lead">
-                  Play online versus like-minded players, or challenge your friends.
-                </p>
-                <p className="play-mode-modal__hint">Your Rating: {elo}</p>
-              </header>
-              <div className="play-mode-modal__body multiplayer-hub">
+      <MpShell onClose={onClose} rating={elo}>
+        {view === "hub" && (
+          <>
+            <MpHero
+              title="Multiplayer"
+              lead="Play online versus similar players, or challenge your friends."
+            />
+            <div className="mp-kit__body">
+              <div className="mp-kit__options">
                 <button
                   type="button"
-                  className="multiplayer-hub__card multiplayer-hub__card--quick"
+                  className="mp-kit-card"
+                  style={{ backgroundImage: `url(${blue.base})` }}
                   onClick={() => {
                     setView("quick");
                     setError(null);
                   }}
                 >
-                  <span className="multiplayer-hub__tag">Quick play</span>
-                  <strong>Find a match</strong>
-                  <span>Random opponent near your Rating · ⚡1</span>
+                  <span className="mp-kit-card__glow" style={{ backgroundImage: `url(${blue.glow})` }} aria-hidden />
+                  <div className="mp-kit-card__body">
+                    <img className="mp-kit-card__tag" src={blue.label} alt="" />
+                    <span className="mp-kit-card__title">Quick play</span>
+                    <span className="mp-kit-card__sub">Match near your Rating</span>
+                    <span className="mp-kit-card__meta">⚡ 1 energy</span>
+                  </div>
+                  <span className="mp-kit-card__icon-wrap" aria-hidden>
+                    <span className="mp-kit-card__ring" style={{ backgroundImage: `url(${blue.circle})` }} />
+                    <img className="mp-kit-card__icon" src={blue.icon} alt="" />
+                  </span>
+                  <img className="mp-kit-card__chev" src={a.ui.chevron} alt="" />
                 </button>
+
                 <button
                   type="button"
-                  className="multiplayer-hub__card multiplayer-hub__card--friend"
+                  className="mp-kit-card"
+                  style={{ backgroundImage: `url(${blue.base})` }}
                   onClick={() => setView("friends")}
                 >
-                  <span className="multiplayer-hub__tag">Friends</span>
-                  <strong>Challenge a friend</strong>
-                  <span>Pick someone from your list · ⚡1 each</span>
+                  {friendBadge > 0 && (
+                    <span className="mp-kit-card__badge">{friendBadge > 99 ? "99+" : friendBadge}</span>
+                  )}
+                  <span className="mp-kit-card__glow" style={{ backgroundImage: `url(${blue.glow})` }} aria-hidden />
+                  <div className="mp-kit-card__body">
+                    <img className="mp-kit-card__tag" src={a.cards.blue.label} alt="" />
+                    <span className="mp-kit-card__title">Challenge a friend</span>
+                    <span className="mp-kit-card__sub">Pick someone from your list</span>
+                    <span className="mp-kit-card__meta">⚡ 1 each</span>
+                  </div>
+                  <span className="mp-kit-card__icon-wrap" aria-hidden>
+                    <span className="mp-kit-card__ring" style={{ backgroundImage: `url(${a.ui.circleBg})` }} />
+                    <img className="mp-kit-card__icon" src={a.home.chest} alt="" />
+                  </span>
+                  <img className="mp-kit-card__chev" src={a.ui.chevron} alt="" />
                 </button>
               </div>
-              <footer className="play-mode-modal__footer">
-                <button type="button" className="btn scores-close" onClick={onClose}>
-                  Close
-                </button>
-              </footer>
-            </>
-          )}
+            </div>
+            <div className="mp-kit__footer">
+              <button type="button" className="mp-kit__ghost" onClick={onClose}>
+                Close
+              </button>
+            </div>
+          </>
+        )}
 
-          {view === "quick" && status === "matched" && matched && (
-            <>
-              <header className="play-mode-modal__header">
-                <h2 id="multiplayer-title">Match ready</h2>
-                <p className="play-mode-modal__lead">
-                  vs {opponentName ?? "opponent"} · {formatLevelId(matched.level)}
-                </p>
-              </header>
-              <div className="play-mode-modal__body">
-                <div className="quick-find quick-find--ready" style={{ backgroundImage: `url(${blue.base})` }}>
-                  <span
-                    className="quick-find__glow"
-                    aria-hidden
-                    style={{ backgroundImage: `url(${blue.glow})` }}
-                  />
-                  <div className="quick-find__icon-wrap" aria-hidden>
-                    <span
-                      className="quick-find__ring"
-                      style={{ backgroundImage: `url(${blue.circle})` }}
-                    />
-                    <img className="quick-find__icon" src={blue.icon} alt="" width={88} height={88} />
-                  </div>
-                  <img className="quick-find__label" src={blue.label} alt="Multiplayer" />
-                  <p>Same seeded board. Best stars win — then fewest moves, then score.</p>
-                  <p className="quick-find__sub">Rating updates when both results are in.</p>
-                </div>
-                <button type="button" className="btn-primary" onClick={playMatched}>
-                  Play now
-                </button>
-              </div>
-              <footer className="play-mode-modal__footer">
-                <button type="button" className="btn scores-close" onClick={onClose}>
-                  Later
-                </button>
-              </footer>
-            </>
-          )}
+        {view === "quick" && status === "matched" && matched && (
+          <>
+            <div className="mp-kit__back-row">
+              <button type="button" className="mp-kit__back" onClick={onClose}>
+                <img src={a.ui.chevron} alt="" /> Later
+              </button>
+            </div>
+            <div className="mp-kit__body">
+              <MpStage
+                title="Match ready"
+                sub={`vs ${opponentName ?? "opponent"} · ${formatLevelId(matched.level)}`}
+              />
+              <p className="mp-kit-stage__sub" style={{ textAlign: "center", margin: 0 }}>
+                Same seeded board. Best stars win — then fewest moves, then score.
+              </p>
+            </div>
+            <div className="mp-kit__footer">
+              <button type="button" className="mp-kit__cta" onClick={playMatched}>
+                Play now
+              </button>
+              <button type="button" className="mp-kit__ghost" onClick={onClose}>
+                Later
+              </button>
+            </div>
+          </>
+        )}
 
-          {view === "quick" && status !== "matched" && (
-            <>
-              {finding ? (
-                <>
-                  <header className="play-mode-modal__header">
-                    <h2 id="multiplayer-title">Looking for a player</h2>
-                  </header>
-                  <div className="play-mode-modal__body">
-                    {error && <p className="play-mode-modal__error">{error}</p>}
-                    <div
-                      className="quick-find quick-find--searching"
-                      style={{ backgroundImage: `url(${blue.base})` }}
-                    >
-                      <span
-                        className="quick-find__glow"
-                        aria-hidden
-                        style={{ backgroundImage: `url(${blue.glow})` }}
-                      />
-                      <div className="quick-find__icon-wrap quick-find__icon-wrap--pulse" aria-hidden>
-                        <span
-                          className="quick-find__ring"
-                          style={{ backgroundImage: `url(${blue.circle})` }}
-                        />
-                        <img className="quick-find__icon" src={blue.icon} alt="" width={96} height={96} />
-                      </div>
-                      <p className="quick-find__status">Looking for a player…</p>
-                    </div>
-                    <button
-                      type="button"
-                      className="btn scores-close"
-                      disabled={cancelling}
-                      onClick={() => void cancelQueue()}
-                    >
-                      {cancelling ? "Cancelling…" : "Cancel"}
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <header className="play-mode-modal__header">
-                    <h2 id="multiplayer-title">Quick play</h2>
-                    <p className="play-mode-modal__lead">
-                      Matched vs a similar Rating. Same board — better stars / moves wins.
-                    </p>
-                    <p className="play-mode-modal__hint">Your Rating: {elo}</p>
-                  </header>
-                  <div className="play-mode-modal__body">
-                    {error && <p className="play-mode-modal__error">{error}</p>}
-                    <div
-                      className="quick-find quick-find--idle"
-                      style={{ backgroundImage: `url(${blue.base})` }}
-                    >
-                      <span
-                        className="quick-find__glow"
-                        aria-hidden
-                        style={{ backgroundImage: `url(${blue.glow})` }}
-                      />
-                      <div className="quick-find__icon-wrap" aria-hidden>
-                        <span
-                          className="quick-find__ring"
-                          style={{ backgroundImage: `url(${blue.circle})` }}
-                        />
-                        <img className="quick-find__icon" src={blue.icon} alt="" width={88} height={88} />
-                      </div>
-                      <img className="quick-find__label" src={blue.label} alt="Multiplayer" />
-                    </div>
-                    <button
-                      type="button"
-                      className="btn-primary"
-                      disabled={busy}
-                      onClick={startQuickWithEnergy}
-                    >
-                      Find match · ⚡1
-                    </button>
-                  </div>
-                  <footer className="play-mode-modal__footer">
-                    <button
-                      type="button"
-                      className="btn scores-close"
-                      onClick={() => {
-                        void cancelQueue();
-                        setView("hub");
-                      }}
-                    >
-                      Back
-                    </button>
-                  </footer>
-                </>
-              )}
-            </>
-          )}
-        </div>
-      </div>
+        {view === "quick" && status !== "matched" && finding && (
+          <>
+            <div className="mp-kit__body">
+              {error && <p className="mp-kit__error">{error}</p>}
+              <MpStage pulse progress title="Looking for a player…" />
+            </div>
+            <div className="mp-kit__footer">
+              <button
+                type="button"
+                className="mp-kit__ghost"
+                disabled={cancelling}
+                onClick={() => void cancelQueue()}
+              >
+                {cancelling ? "Cancelling…" : "Cancel"}
+              </button>
+            </div>
+          </>
+        )}
+
+        {view === "quick" && status !== "matched" && !finding && (
+          <>
+            <div className="mp-kit__back-row">
+              <button
+                type="button"
+                className="mp-kit__back"
+                onClick={() => {
+                  void cancelQueue();
+                  setView("hub");
+                }}
+              >
+                <img src={a.ui.chevron} alt="" /> Back
+              </button>
+            </div>
+            <MpHero title="Quick play" lead="Matched vs a similar Rating on the same board." />
+            <div className="mp-kit__body">
+              {error && <p className="mp-kit__error">{error}</p>}
+              <MpStage title="Ready when you are" sub="Spend 1 energy to enter the queue." />
+            </div>
+            <div className="mp-kit__footer">
+              <button
+                type="button"
+                className="mp-kit__cta"
+                disabled={busy}
+                onClick={startQuickWithEnergy}
+              >
+                Find match · ⚡1
+              </button>
+              <button
+                type="button"
+                className="mp-kit__ghost"
+                onClick={() => {
+                  void cancelQueue();
+                  setView("hub");
+                }}
+              >
+                Back
+              </button>
+            </div>
+          </>
+        )}
+      </MpShell>
 
       {showOutOfEnergy && (
         <OutOfEnergyModal

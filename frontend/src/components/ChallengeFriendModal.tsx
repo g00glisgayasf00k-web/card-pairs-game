@@ -17,6 +17,7 @@ import {
 } from "../lib/challengeResultSeen";
 import { hasEnergy, syncEnergyState, trySpendEnergyOnce } from "../lib/energy";
 import { OutOfEnergyModal } from "./OutOfEnergyModal";
+import { HOME_ASSETS } from "./home/homeAssets";
 
 interface Props {
   onClose: () => void;
@@ -27,6 +28,8 @@ interface Props {
   onNotificationsChange?: () => void;
   /** If set, footer shows Back (calls onBack) in addition to Close. */
   onBack?: () => void;
+  /** Use the Multiplayer UI-kit full-screen shell. */
+  kitShell?: boolean;
 }
 
 type Tab = "play" | "friends" | "inbox" | "results";
@@ -140,6 +143,7 @@ export function ChallengeFriendModal({
   challengeCount = 0,
   onNotificationsChange,
   onBack,
+  kitShell = false,
 }: Props) {
   const [tab, setTab] = useState<Tab>("play");
   const [friends, setFriends] = useState<FriendshipItem[]>([]);
@@ -283,13 +287,39 @@ export function ChallengeFriendModal({
 
   return (
     <>
-      <div className="modal-overlay scores-overlay home-menu-overlay" onClick={onClose} role="presentation">
+      <div
+        className={kitShell ? "mp-kit-overlay" : "modal-overlay scores-overlay home-menu-overlay"}
+        onClick={onClose}
+        role="presentation"
+      >
         <div
-          className="modal scores-modal home-menu-modal home-menu-modal--wide play-mode-modal play-mode-modal--challenge"
+          className={
+            kitShell
+              ? "mp-kit mp-kit--friends"
+              : "modal scores-modal home-menu-modal home-menu-modal--wide play-mode-modal play-mode-modal--challenge"
+          }
+          style={kitShell ? { backgroundImage: `url(${HOME_ASSETS.background.main})` } : undefined}
           onClick={(e) => e.stopPropagation()}
           role="dialog"
           aria-labelledby="challenge-title"
         >
+          {kitShell && <div className="mp-kit__veil" aria-hidden />}
+          <div className={kitShell ? "mp-kit__inner" : undefined}>
+            {kitShell && (
+              <div className="mp-kit__top">
+                <div className="mp-kit__brand">
+                  <img
+                    className="mp-kit__brand-label"
+                    src={HOME_ASSETS.cards.blue.label}
+                    alt="Multiplayer"
+                  />
+                </div>
+                <button type="button" className="mp-kit__close" onClick={onClose} aria-label="Close">
+                  ×
+                </button>
+              </div>
+            )}
+
           <header className="play-mode-modal__header">
             <h2 id="challenge-title">Challenge a friend</h2>
             <p className="play-mode-modal__lead">
@@ -564,16 +594,25 @@ export function ChallengeFriendModal({
             )}
           </div>
 
-          <footer className="play-mode-modal__footer">
+          <footer className={kitShell ? "mp-kit__footer" : "play-mode-modal__footer"}>
             {onBack && (
-              <button type="button" className="btn scores-close" onClick={onBack}>
+              <button
+                type="button"
+                className={kitShell ? "mp-kit__ghost" : "btn scores-close"}
+                onClick={onBack}
+              >
                 Back
               </button>
             )}
-            <button type="button" className="btn scores-close" onClick={onClose}>
+            <button
+              type="button"
+              className={kitShell ? "mp-kit__ghost" : "btn scores-close"}
+              onClick={onClose}
+            >
               Close
             </button>
           </footer>
+          </div>
         </div>
       </div>
 

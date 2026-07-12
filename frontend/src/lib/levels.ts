@@ -4,6 +4,7 @@ import {
   RANKS,
   RANK_VALUES,
   ranksForStraightHigh,
+  STRAIGHT_FLUSH_HIGH_RANKS,
   STRAIGHT_HIGH_RANKS,
   SUITS,
   type FullHandResult,
@@ -162,7 +163,8 @@ function specifyChallenge(c: HandChallenge, rng: () => number): HandChallenge {
     return { ...c, ranks: [trips, pair] };
   }
   if (c.hand === "straight" || c.hand === "straight_flush") {
-    const high = STRAIGHT_HIGH_RANKS[Math.floor(rng() * STRAIGHT_HIGH_RANKS.length)]!;
+    const highs = c.hand === "straight_flush" ? STRAIGHT_FLUSH_HIGH_RANKS : STRAIGHT_HIGH_RANKS;
+    const high = highs[Math.floor(rng() * highs.length)]!;
     const ranks = ranksForStraightHigh(high);
     if (c.hand === "straight_flush") {
       return { ...c, ranks, suit: pickSuit(rng) };
@@ -410,6 +412,15 @@ export function formatChallengeLabel(c: HandChallenge): string {
     return `${formatRankCluster(c.ranks[0]!, 3)}${formatRankCluster(c.ranks[1]!, 2)}`;
   }
   if ((c.hand === "straight" || c.hand === "straight_flush") && c.ranks?.length === 5) {
+    const broadway =
+      c.ranks[0] === "10" &&
+      c.ranks[1] === "J" &&
+      c.ranks[2] === "Q" &&
+      c.ranks[3] === "K" &&
+      c.ranks[4] === "A";
+    if (c.hand === "straight_flush" && broadway) {
+      return c.suit ? `${SUIT_SYMBOL[c.suit]} Royal Flush` : "Royal Flush";
+    }
     const seq = c.ranks.map(compactRank).join("");
     if (c.hand === "straight_flush" && c.suit) {
       return `${SUIT_SYMBOL[c.suit]} ${seq}`;
@@ -428,6 +439,22 @@ export function formatChallenge(c: HandChallenge): string {
 }
 
 export function handMatchesChallenge(result: FullHandResult, c: HandChallenge): boolean {
+  // Ace-high suited broadway is always a royal flush — never a straight flush.
+  // Older missions may still list 10-J-Q-K-A under straight_flush; accept the royal.
+  const broadway =
+    c.ranks?.length === 5 &&
+    c.ranks[0] === "10" &&
+    c.ranks[1] === "J" &&
+    c.ranks[2] === "Q" &&
+    c.ranks[3] === "K" &&
+    c.ranks[4] === "A";
+
+  if (c.hand === "straight_flush" && broadway) {
+    if (result.hand !== "royal_flush") return false;
+    if (c.suit && result.flushSuit !== c.suit) return false;
+    return true;
+  }
+
   if (result.hand !== c.hand) return false;
   if (!isChallengeSpecific(c)) return true;
 

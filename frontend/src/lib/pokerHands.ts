@@ -51,6 +51,19 @@ export const HAND_DISPLAY: Record<HandLabel, string> = {
   royal_flush: "Royal Flush",
 };
 
+/** Short definitions shown in Hand payouts. */
+export const HAND_BLURB: Record<HandLabel, string> = {
+  pair: "Two cards of the same rank",
+  two_pair: "Two different pairs",
+  three_of_a_kind: "Three of the same rank",
+  straight: "Five ranks in a row, mixed suits",
+  flush: "Five cards, same suit",
+  full_house: "Three of a kind + a pair",
+  four_of_a_kind: "Four of the same rank",
+  straight_flush: "Any straight, all one suit (not 10-A)",
+  royal_flush: "10-J-Q-K-A, all one suit",
+};
+
 /** All hands sorted low → high, for score reference UI */
 export const HAND_SCORE_LIST: { hand: HandLabel; points: number }[] = (
   Object.keys(HAND_SCORES) as HandLabel[]
@@ -74,6 +87,25 @@ const VALUE_TO_RANK: Record<number, Rank> = {
 /** Straight high cards (5 = wheel A-2-3-4-5, A = broadway 10-J-Q-K-A). */
 export const STRAIGHT_HIGH_RANKS: Rank[] = ["5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"];
 
+/**
+ * Straight-flush highs — excludes Ace.
+ * A-high suited broadway (10-J-Q-K-A) is a royal flush, not a straight flush.
+ */
+export const STRAIGHT_FLUSH_HIGH_RANKS: Rank[] = [
+  "5",
+  "6",
+  "7",
+  "8",
+  "9",
+  "10",
+  "J",
+  "Q",
+  "K",
+];
+
+/** Exact ranks for a royal flush: 10-J-Q-K-A. */
+export const ROYAL_FLUSH_RANKS: Rank[] = ["10", "J", "Q", "K", "A"];
+
 /** Five ranks for a straight ending at `high` (wheel when high is 5). */
 export function ranksForStraightHigh(high: Rank): Rank[] {
   if (high === "5") return ["A", "2", "3", "4", "5"];
@@ -85,7 +117,7 @@ export function rankFromValue(value: number): Rank | undefined {
   return VALUE_TO_RANK[value];
 }
 
-const ROYAL = new Set([10, 11, 12, 13, 14]);
+const ROYAL = new Set([10, 11, 12, 13, 14]); // 10, J, Q, K, A
 
 const ALL_CARDS: { rank: Rank; suit: Suit }[] = RANKS.flatMap((rank) =>
   SUITS.map((suit) => ({ rank, suit }))
@@ -258,10 +290,15 @@ function isStraight(cards: { rank: Rank }[]): boolean {
   return cards.length === 5 && straightValues(cards.map((c) => RANK_VALUES[c.rank]));
 }
 
+/** Royal flush = exactly 10-J-Q-K-A of one suit (not any Ace-high straight flush). */
 function isRoyal(cards: { rank: Rank; suit: Suit }[]): boolean {
   if (cards.length !== 5 || !isFlush5(cards)) return false;
   const vals = new Set(cards.map((c) => RANK_VALUES[c.rank]));
-  return vals.size === 5 && [...vals].every((v) => ROYAL.has(v)) && isStraight(cards);
+  if (vals.size !== 5) return false;
+  for (const v of ROYAL) {
+    if (!vals.has(v)) return false;
+  }
+  return true;
 }
 
 export interface HandAnalysis {

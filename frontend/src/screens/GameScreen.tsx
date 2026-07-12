@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { createPortal } from "react-dom";
 import { submitScore } from "../lib/api";
 import {
+  HAND_BLURB,
   HAND_DISPLAY,
   HAND_RANK_ORDER,
   HAND_SCORE_LIST,
@@ -1679,7 +1680,10 @@ export function GameScreen({
             <ul className="scores-list">
               {HAND_SCORE_LIST.map(({ hand, points }) => (
                 <li key={hand} className="scores-row">
-                  <span className="scores-hand">{HAND_DISPLAY[hand]}</span>
+                  <span className="scores-hand">
+                    {HAND_DISPLAY[hand]}
+                    <span className="scores-hand__blurb">{HAND_BLURB[hand]}</span>
+                  </span>
                   <span className="scores-pts">{points.toLocaleString()}</span>
                 </li>
               ))}

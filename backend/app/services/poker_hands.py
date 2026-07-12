@@ -100,11 +100,11 @@ def _is_straight(cards: Sequence[Card]) -> bool:
 
 
 def _is_royal(cards: Sequence[Card]) -> bool:
+    """Royal flush = exactly 10-J-Q-K-A of one suit."""
     return (
         len(cards) == 5
         and _is_flush(cards)
         and {c.value for c in cards} == ROYAL_RANKS
-        and _straight_values([c.value for c in cards])
     )
 
 

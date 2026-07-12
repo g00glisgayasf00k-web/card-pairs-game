@@ -33,6 +33,8 @@ RANKS = ["2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"]
 RANK_VALUES = {r: i for i, r in enumerate(RANKS, start=2)}
 SUITS = ["hearts", "diamonds", "clubs", "spades"]
 STRAIGHT_HIGH_RANKS = ["5", "6", "7", "8", "9", "10", "J", "Q", "K", "A"]
+# Ace-high suited broadway is a royal flush — never generate it as straight_flush.
+STRAIGHT_FLUSH_HIGH_RANKS = ["5", "6", "7", "8", "9", "10", "J", "Q", "K"]
 
 AVG_PTS_PER_MOVE = 120
 STAR_MULT = {"three": 1.15, "two": 1.55, "one": 2.0}
@@ -83,7 +85,7 @@ def _specify(hand: str, min_count: int, rng: random.Random) -> dict[str, Any]:
         high = rng.choice(STRAIGHT_HIGH_RANKS)
         goal["ranks"] = _ranks_for_straight_high(high)
     elif hand == "straight_flush":
-        high = rng.choice(STRAIGHT_HIGH_RANKS)
+        high = rng.choice(STRAIGHT_FLUSH_HIGH_RANKS)
         goal["ranks"] = _ranks_for_straight_high(high)
         goal["suit"] = rng.choice(SUITS)
     elif hand == "flush":

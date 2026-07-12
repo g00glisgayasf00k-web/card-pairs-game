@@ -1705,6 +1705,18 @@ html.native-shell .app.app--levels {
 
 .scores-hand {
   font-weight: 600;
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+  padding-right: 0.75rem;
+}
+
+.scores-hand__blurb {
+  font-weight: 500;
+  font-size: 0.68rem;
+  line-height: 1.25;
+  color: rgba(245, 240, 230, 0.55);
 }
 
 .scores-pts {

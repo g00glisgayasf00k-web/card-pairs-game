@@ -2068,6 +2068,10 @@ button.royal-resource:active {
   background: #050914;
 }
 
+html.native-shell .home-bottom-nav {
+  padding-bottom: max(0.55rem, calc(var(--safe-bottom) + 0.35rem));
+}
+
 .home-bottom-nav__btn {
   position: relative;
   display: flex;

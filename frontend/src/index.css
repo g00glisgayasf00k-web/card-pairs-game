@@ -14,19 +14,29 @@
   --suit-diamonds: #2962ff;
   --suit-clubs: #2ecc71;
   --suit-spades: #1b1b1b;
-  /* Extra inset beyond system safe-area so camera / nav never cover UI */
-  --safe-top: max(0.75rem, env(safe-area-inset-top, 0px));
-  --safe-bottom: max(0.9rem, env(safe-area-inset-bottom, 0px));
-  --safe-left: max(0px, env(safe-area-inset-left, 0px));
-  --safe-right: max(0px, env(safe-area-inset-right, 0px));
+  /* Extra inset beyond system safe-area so camera / nav never cover UI.
+     On Android WebView, env(safe-area-inset-*) is often 0 — MainActivity injects
+     --android-safe-* from WindowInsetsCompat. */
+  --safe-top: max(0.75rem, env(safe-area-inset-top, 0px), var(--android-safe-top, 0px));
+  --safe-bottom: max(0.9rem, env(safe-area-inset-bottom, 0px), var(--android-safe-bottom, 0px));
+  --safe-left: max(0px, env(safe-area-inset-left, 0px), var(--android-safe-left, 0px));
+  --safe-right: max(0px, env(safe-area-inset-right, 0px), var(--android-safe-right, 0px));
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
   color: var(--cream);
   min-height: 100dvh;
 }
 
 html.native-shell {
-  --safe-top: max(1.35rem, env(safe-area-inset-top, 0px));
-  --safe-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));
+  --safe-top: max(
+    env(safe-area-inset-top, 0px),
+    var(--android-safe-top, 28px)
+  );
+  --safe-bottom: max(
+    env(safe-area-inset-bottom, 0px),
+    var(--android-safe-bottom, 24px)
+  );
+  --safe-left: max(0px, env(safe-area-inset-left, 0px), var(--android-safe-left, 0px));
+  --safe-right: max(0px, env(safe-area-inset-right, 0px), var(--android-safe-right, 0px));
 }
 
 * {
@@ -109,12 +119,23 @@ html.native-shell #root {
   min-height: 100svh;
 }
 
-html.native-shell .app,
-html.native-shell .bg-home-page {
+html.native-shell .app {
   padding-top: var(--safe-top);
   padding-bottom: var(--safe-bottom);
   padding-left: var(--safe-left);
   padding-right: var(--safe-right);
+  box-sizing: border-box;
+}
+
+/* Screens that manage their own insets — avoid min-h-dvh + outer padding clip */
+html.native-shell .app.app--home,
+html.native-shell .app.app--game {
+  padding: 0;
+}
+
+/* Home: pad the shell, not the outer page — avoids min-h-dvh + padding clipping under #root */
+html.native-shell .bg-home-page {
+  padding: 0;
   box-sizing: border-box;
 }
 

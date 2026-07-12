@@ -90,9 +90,12 @@
 }
 
 html.native-shell .home-screen-shell {
-  /* Parent already pads safe-area; keep spacing for bottom nav only */
-  padding-top: 0.45rem;
-  padding-bottom: 5.85rem;
+  /* Pad for status bar + bottom nav (nav itself also includes --safe-bottom) */
+  padding-top: max(0.45rem, var(--safe-top));
+  padding-bottom: calc(4.75rem + var(--safe-bottom));
+  min-height: 100dvh;
+  min-height: 100svh;
+  box-sizing: border-box;
 }
 
 /* Premium game-mode buttons — matched to home mockup + UI kit assets */

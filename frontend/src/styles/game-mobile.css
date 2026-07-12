@@ -20,6 +20,11 @@
   padding-bottom: 0;
 }
 
+/* Level map: HUD / footer apply --safe-* themselves */
+html.native-shell .app.app--levels {
+  padding: 0;
+}
+
 /* ── App wrapper when in game mode ── */
 .app--game {
   max-width: none;
@@ -272,9 +277,9 @@
   margin: 0 auto;
   overflow: hidden;
   padding:
-    max(0.35rem, env(safe-area-inset-top))
+    max(0.35rem, var(--safe-top, env(safe-area-inset-top, 0px)))
     0.5rem
-    max(0.35rem, env(safe-area-inset-bottom));
+    max(0.35rem, var(--safe-bottom, env(safe-area-inset-bottom, 0px)));
   gap: 0.3rem;
 }
 
@@ -2843,7 +2848,7 @@
 
 .mobile-shell--home {
   gap: 0.65rem;
-  padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+  padding-bottom: max(1.25rem, var(--safe-bottom, env(safe-area-inset-bottom, 0px)));
 }
 
 .mobile-shell--home,

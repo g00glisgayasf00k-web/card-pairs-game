@@ -89,11 +89,14 @@ const WORLD_INTRO_HAND: HandLabel[] = [
   "royal_flush",
 ];
 
-/** Move budget multipliers on target ÷ avg pts: 3★ +20%, 2★ +70%, 1★ +120%. */
+/**
+ * Move budget multipliers on target ÷ avg pts.
+ * Tuned so early pair-heavy levels have room (pairs score 50, not ~360).
+ */
 export const STAR_MOVE_MULTIPLIER = {
-  threeStar: 1.2,
-  twoStar: 1.7,
-  oneStar: 2.2,
+  threeStar: 2.4,
+  twoStar: 3.4,
+  oneStar: 4.4,
 } as const;
 
 const CAMPAIGN_TIERS = [

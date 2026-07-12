@@ -46,11 +46,6 @@ export function GameModeCard({
       type="button"
       onClick={onClick}
       className={["home-mode-card", CARD_CLASS[glow]].join(" ")}
-      style={{
-        backgroundImage: `url(${assets.base})`,
-        backgroundSize: "cover",
-        backgroundPosition: "center",
-      }}
     >
       {badgeLabel && (
         <span className="home-mode-card__badge" aria-label={`${badge} notifications`}>
@@ -62,44 +57,36 @@ export function GameModeCard({
         aria-hidden
         style={{ backgroundImage: `url(${assets.glow})` }}
       />
-      <div className="home-mode-card__body flex min-w-0 flex-1 flex-col">
+      <div className="home-mode-card__body">
         <span className="home-mode-card__tag">{label}</span>
         <span className="home-mode-card__title">{title}</span>
         <span className="home-mode-card__subtitle">{subtitle}</span>
         {meta && <span className="home-mode-card__meta">{meta}</span>}
         {progress && (
           <>
-            <span className="home-mode-card__meta">{progress.label}</span>
-            <span
-              className="home-mode-card__progress"
-              aria-hidden
-              style={{ backgroundImage: `url(${HOME_ASSETS.ui.progressBg})`, backgroundSize: "100% 100%" }}
-            >
-              <span
-                style={{
-                  width: `${Math.max(0, Math.min(100, progress.percent))}%`,
-                  backgroundImage: `url(${HOME_ASSETS.ui.progressFill})`,
-                  backgroundSize: "cover",
-                }}
-              />
+            <span className="home-mode-card__meta home-mode-card__meta--progress">
+              ★ {progress.label}
+            </span>
+            <span className="home-mode-card__progress" aria-hidden>
+              <span style={{ width: `${Math.max(0, Math.min(100, progress.percent))}%` }} />
             </span>
           </>
         )}
       </div>
 
-      <span className="home-mode-card__icon" aria-hidden>
+      <span className="home-mode-card__icon-wrap" aria-hidden>
         {icon ?? (
           <img
             className="home-mode-card__badge-img"
             src={assets.icon}
             alt=""
-            width={56}
-            height={56}
+            width={64}
+            height={64}
           />
         )}
       </span>
       <span className="home-mode-card__chev" aria-hidden>
-        <img src={HOME_ASSETS.ui.chevron} alt="" width={18} height={18} />
+        <img src={HOME_ASSETS.ui.chevron} alt="" width={16} height={16} />
       </span>
     </button>
   );

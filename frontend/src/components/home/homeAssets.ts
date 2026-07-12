@@ -15,17 +15,17 @@ export const HOME_ASSETS = {
     purple: {
       base: "/assets/cards/purple/card_base.png",
       glow: "/assets/cards/purple/card_glow.png",
-      icon: "/assets/home/badge-solo.png",
+      icon: "/assets/cards/purple/icon_trophy.svg",
     },
     blue: {
       base: "/assets/cards/blue/card_base.png",
       glow: "/assets/cards/blue/card_glow.png",
-      icon: "/assets/home/badge-friends.png",
+      icon: "/assets/cards/blue/icon_vs.svg",
     },
     green: {
       base: "/assets/cards/green/card_base.png",
       glow: "/assets/cards/green/card_glow.png",
-      icon: "/assets/home/badge-ranked.png",
+      icon: "/assets/cards/green/icon_crown.svg",
     },
   },
   ui: {

@@ -109,15 +109,15 @@ export function OnboardingScreen({
                 title="Enter table"
                 subtitle="Campaign levels, stars & energy"
                 progress={{
-                  label: `★ ${cleared} / ${MAX_LEVEL} cleared`,
+                  label: `${cleared} / ${MAX_LEVEL} cleared`,
                   percent: progressPct,
                 }}
                 onClick={onPlay}
               />
               <GameModeCard
                 glow="blue"
-                label="Friends"
-                title="Challenge your friends"
+                label="Async"
+                title="Challenge a friend"
                 subtitle="Same seed — best stars / fewest moves"
                 meta="Optional gem wager"
                 badge={summary.total}

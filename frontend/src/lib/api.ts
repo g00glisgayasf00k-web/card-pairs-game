@@ -324,6 +324,19 @@ export async function fetchFriends() {
   }>("/api/friends");
 }
 
+export type RecentMetFriendshipStatus = "accepted" | "pending_out" | "pending_in" | null;
+
+export interface RecentMetPlayer {
+  user: FriendUser;
+  last_played_at: string;
+  friendship_status: RecentMetFriendshipStatus;
+  friendship_id?: number | null;
+}
+
+export async function fetchRecentMet() {
+  return request<{ players: RecentMetPlayer[] }>("/api/friends/recent-met");
+}
+
 export async function requestFriend(username: string) {
   return request<{ friendship: FriendshipItem }>("/api/friends/request", {
     method: "POST",

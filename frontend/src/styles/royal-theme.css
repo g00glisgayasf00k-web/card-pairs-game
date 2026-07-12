@@ -1234,6 +1234,18 @@ button.royal-resource:active {
   cursor: default;
 }
 
+.challenge-friend__meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  min-width: 0;
+}
+
+.challenge-friend__meta .challenge-friend__status {
+  font-size: 0.72rem;
+  opacity: 0.75;
+}
+
 .challenge-level-row {
   display: grid;
   grid-template-columns: 1fr auto auto;

@@ -7,10 +7,13 @@ from datetime import datetime, timezone
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
-from app.models import Friendship, User, db
+from app.models import Challenge, Friendship, User, db
 from app.services.push import send_to_user
 
 friends_bp = Blueprint("friends", __name__)
+
+RECENT_MET_LIMIT = 40
+RECENT_MET_SCAN = 120
 
 
 def _utc_now():
@@ -73,6 +76,58 @@ def list_friends():
     return jsonify(
         {"friends": accepted, "incoming": incoming, "outgoing": outgoing}
     )
+
+
+@friends_bp.get("/recent-met")
+@jwt_required()
+def recent_met():
+    """Players met via Quick Play, newest first — for Add Friend."""
+    me = int(get_jwt_identity())
+    rows = (
+        Challenge.query.filter(
+            Challenge.kind == "quick",
+            (Challenge.challenger_id == me) | (Challenge.opponent_id == me),
+        )
+        .order_by(Challenge.created_at.desc())
+        .limit(RECENT_MET_SCAN)
+        .all()
+    )
+
+    seen: set[int] = set()
+    players: list[dict] = []
+    for ch in rows:
+        other_id = ch.opponent_id if ch.challenger_id == me else ch.challenger_id
+        if other_id in seen:
+            continue
+        seen.add(other_id)
+        other = User.query.get(other_id)
+        if not other:
+            continue
+
+        friendship = _find_friendship(me, other_id)
+        friendship_status = None
+        friendship_id = None
+        if friendship:
+            friendship_id = friendship.id
+            if friendship.status == "accepted":
+                friendship_status = "accepted"
+            elif friendship.user_id == me:
+                friendship_status = "pending_out"
+            else:
+                friendship_status = "pending_in"
+
+        players.append(
+            {
+                "user": _user_public(other),
+                "last_played_at": ch.created_at.isoformat(),
+                "friendship_status": friendship_status,
+                "friendship_id": friendship_id,
+            }
+        )
+        if len(players) >= RECENT_MET_LIMIT:
+            break
+
+    return jsonify({"players": players})
 
 
 @friends_bp.post("/request")

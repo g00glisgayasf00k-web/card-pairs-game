@@ -7,9 +7,11 @@ import {
   declineFriend,
   fetchChallenges,
   fetchFriends,
+  fetchRecentMet,
   requestFriend,
   type ChallengeDto,
   type FriendshipItem,
+  type RecentMetPlayer,
 } from "../lib/api";
 import {
   countUnseenCompletedResults,
@@ -32,7 +34,7 @@ interface Props {
   kitShell?: boolean;
 }
 
-type Tab = "play" | "friends" | "inbox" | "results";
+type Tab = "play" | "friends" | "recent" | "inbox" | "results";
 
 type EnergyConfirm =
   | { kind: "send" }
@@ -84,6 +86,14 @@ function formatResultWhen(d: Date): string {
     });
   } catch {
     return d.toISOString();
+  }
+}
+
+function formatMetWhen(iso: string): string {
+  try {
+    return formatResultWhen(new Date(iso));
+  } catch {
+    return iso;
   }
 }
 
@@ -149,6 +159,7 @@ export function ChallengeFriendModal({
   const [friends, setFriends] = useState<FriendshipItem[]>([]);
   const [incoming, setIncoming] = useState<FriendshipItem[]>([]);
   const [outgoing, setOutgoing] = useState<FriendshipItem[]>([]);
+  const [recentMet, setRecentMet] = useState<RecentMetPlayer[]>([]);
   const [challenges, setChallenges] = useState<ChallengeDto[]>([]);
   const [friendId, setFriendId] = useState<number | null>(null);
   const [addName, setAddName] = useState("");
@@ -162,10 +173,15 @@ export function ChallengeFriendModal({
   const reload = useCallback(async () => {
     setError(null);
     try {
-      const [f, c] = await Promise.all([fetchFriends(), fetchChallenges()]);
+      const [f, c, recent] = await Promise.all([
+        fetchFriends(),
+        fetchChallenges(),
+        fetchRecentMet().catch(() => ({ players: [] as RecentMetPlayer[] })),
+      ]);
       setFriends(f.friends);
       setIncoming(f.incoming);
       setOutgoing(f.outgoing);
+      setRecentMet(recent.players);
       setChallenges(c.challenges.filter((ch) => (ch.kind ?? "friend") === "friend"));
       if (friendId == null && f.friends[0]) setFriendId(f.friends[0].user.id);
     } catch (e) {
@@ -213,15 +229,16 @@ export function ChallengeFriendModal({
     if (before > 0) onNotificationsChange?.();
   }, [tab, resultIdsKey, challenges, onNotificationsChange]);
 
-  const sendFriendRequest = async () => {
-    if (!addName.trim()) return;
+  const sendFriendRequest = async (username?: string) => {
+    const name = (username ?? addName).trim();
+    if (!name) return;
     setBusy(true);
     setError(null);
     setInfo(null);
     try {
-      await requestFriend(addName.trim());
-      setAddName("");
-      setInfo("Friend request sent");
+      await requestFriend(name);
+      if (!username) setAddName("");
+      setInfo(`Friend request sent to ${name}`);
       await reload();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Request failed");
@@ -328,7 +345,7 @@ export function ChallengeFriendModal({
           </header>
 
           <div className="play-mode-tabs" role="tablist">
-            {(["play", "friends", "inbox", "results"] as Tab[]).map((t) => {
+            {(["play", "friends", "recent", "inbox", "results"] as Tab[]).map((t) => {
               const badge =
                 t === "friends"
                   ? friendsBadge
@@ -338,7 +355,15 @@ export function ChallengeFriendModal({
                       ? resultsBadge
                       : 0;
               const label =
-                t === "play" ? "New" : t === "friends" ? "Friends" : t === "inbox" ? "Inbox" : "Results";
+                t === "play"
+                  ? "New"
+                  : t === "friends"
+                    ? "Friends"
+                    : t === "recent"
+                      ? "Recent"
+                      : t === "inbox"
+                        ? "Inbox"
+                        : "Results";
               return (
                 <button
                   key={t}
@@ -362,6 +387,64 @@ export function ChallengeFriendModal({
           <div className="play-mode-modal__body">
             {error && <p className="play-mode-modal__error">{error}</p>}
             {info && <p className="play-mode-modal__note">{info}</p>}
+
+            {tab === "recent" && (
+              <div className="play-mode-panel">
+                <p className="play-mode-modal__hint">
+                  Players you met in Quick Play — add them as friends to challenge later.
+                </p>
+                {recentMet.length === 0 ? (
+                  <p className="play-mode-modal__hint">No recent opponents yet. Play a Quick match first.</p>
+                ) : (
+                  <ul className="challenge-friend-list">
+                    {recentMet.map((p) => {
+                      const status = p.friendship_status;
+                      return (
+                        <li key={p.user.id}>
+                          <div className="challenge-friend challenge-friend--row">
+                            <div className="challenge-friend__meta">
+                              <span className="challenge-friend__name">{p.user.username}</span>
+                              <span className="challenge-friend__status">
+                                Met {formatMetWhen(p.last_played_at)}
+                              </span>
+                            </div>
+                            {status === "accepted" ? (
+                              <span className="challenge-friend__status challenge-friend__status--online">
+                                friend
+                              </span>
+                            ) : status === "pending_out" ? (
+                              <span className="challenge-friend__status">pending</span>
+                            ) : status === "pending_in" ? (
+                              <button
+                                type="button"
+                                className="play-mode-wager play-mode-wager--on"
+                                disabled={busy || !p.friendship_id}
+                                onClick={() =>
+                                  p.friendship_id != null
+                                    ? void acceptFriend(p.friendship_id).then(reload)
+                                    : undefined
+                                }
+                              >
+                                Accept
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                className="play-mode-wager play-mode-wager--on"
+                                disabled={busy}
+                                onClick={() => void sendFriendRequest(p.user.username)}
+                              >
+                                Add
+                              </button>
+                            )}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                )}
+              </div>
+            )}
 
             {tab === "friends" && (
               <div className="play-mode-panel">

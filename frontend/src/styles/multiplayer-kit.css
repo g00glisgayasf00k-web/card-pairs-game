@@ -623,6 +623,15 @@
 .mp-kit--friends .play-mode-tabs {
   background: rgba(0, 0, 0, 0.4);
   border-color: rgba(96, 165, 250, 0.25);
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.mp-kit--friends .play-mode-tab {
+  flex: 1 1 auto;
+  min-width: 0;
+  padding-inline: 0.45rem;
+  font-size: 0.78rem;
 }
 
 .mp-kit--friends .mp-kit__inner {

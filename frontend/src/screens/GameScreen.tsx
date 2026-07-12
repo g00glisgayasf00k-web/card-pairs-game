@@ -11,7 +11,7 @@ import {
   type FullHandResult,
   type HandLabel,
 } from "../lib/pokerHands";
-import { campaignLeaderboardPoints, campaignLeaderboardPointsFromProgress, computeLevelStars, challengeKey, challengeProgress, formatChallenge, formatChallengeLabel, applyHandToChallengeCounts, buildChallengeMissionConfig, getLevelConfig, levelPointsMet, levelRequirementsMet, movesRemaining, MAX_LEVEL, outOfMoves, type HandCounts } from "../lib/levels";
+import { campaignLeaderboardPoints, campaignLeaderboardPointsFromProgress, computeLevelStars, challengeKey, challengeProgress, challengesMet, formatChallenge, formatChallengeLabel, applyHandToChallengeCounts, buildChallengeMissionConfig, getLevelConfig, levelPointsMet, levelRequirementsMet, movesRemaining, MAX_LEVEL, outOfMoves, type HandCounts } from "../lib/levels";
 import {
   canAffordMovesPack,
   HINT_COST,
@@ -120,6 +120,33 @@ function formatFinishCountdown(deadlineIso: string, nowMs: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
+function formatRaceClock(ms: number): string {
+  const totalSec = Math.floor(Math.max(0, ms) / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  const tenths = Math.floor((Math.max(0, ms) % 1000) / 100);
+  return `${m}:${s.toString().padStart(2, "0")}.${tenths}`;
+}
+
+function formatDurationMs(ms: number | null | undefined): string {
+  if (ms == null || !Number.isFinite(ms) || ms < 0) return "—";
+  const totalSec = Math.floor(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  if (m <= 0) return `${s}s`;
+  return `${m}m ${s.toString().padStart(2, "0")}s`;
+}
+
+function applyChallengeElo(
+  youAre: "challenger" | "opponent",
+  elo: { challenger_elo: number; opponent_elo: number }
+) {
+  const saved = loadProgress();
+  if (!saved) return;
+  const nextElo = youAre === "challenger" ? elo.challenger_elo : elo.opponent_elo;
+  saveProgress({ ...saved, elo: nextElo });
+}
+
 function gamePortal(node: ReactNode) {
   if (typeof document === "undefined") return null;
   return createPortal(node, document.body);
@@ -187,6 +214,7 @@ export function GameScreen({
   /** Energy already paid at the multiplayer/tournament modal before entering. */
   const challengeEnergyFree = isChallenge || isTournament;
   const isSpecialRun = isChallenge || isTournament;
+  const isQuickRace = Boolean(challengeMatch && challengeMatch.kind === "quick");
   const isReplaySession = useRef(
     !isSpecialRun &&
       startLevel !== undefined &&
@@ -245,6 +273,9 @@ export function GameScreen({
   const [playDeadlineAt, setPlayDeadlineAt] = useState<string | null>(
     challengeMatch?.finishDeadlineAt ?? null
   );
+  const raceStartedAtRef = useRef<number>(performance.now());
+  const [raceClockMs, setRaceClockMs] = useState(0);
+  const [eloDeltaShown, setEloDeltaShown] = useState<number | null>(null);
 
   const boardRef = useRef<GameBoardHandle>(null);
   const boardFeedbackTimer = useRef<number | null>(null);
@@ -259,7 +290,18 @@ export function GameScreen({
 
   const cfg = useMemo(() => {
     if (challengeMatch?.mission) {
-      return buildChallengeMissionConfig(challengeMatch.mission, challengeMatch.level);
+      const base = buildChallengeMissionConfig(challengeMatch.mission, challengeMatch.level);
+      if (challengeMatch.kind === "quick") {
+        // Race mode: finish goals; turns are scored, not a hard fail budget.
+        return {
+          ...base,
+          label: "Quick Play race",
+          targetPoints: Math.max(1, base.challengePoints),
+          moveLimit: 999,
+          starMoveLimits: { one: 999, two: 999, three: 999 },
+        };
+      }
+      return base;
     }
     if (tournamentMatch) {
       return tournamentMatch.cfg;
@@ -295,6 +337,16 @@ export function GameScreen({
   useEffect(() => {
     if (tutorialActive) setTutorialPanelOpen(true);
   }, [tutorialActive, tutorialStep]);
+
+  useEffect(() => {
+    if (!isQuickRace || phase !== "playing") return;
+    raceStartedAtRef.current = performance.now();
+    setRaceClockMs(0);
+    const id = window.setInterval(() => {
+      setRaceClockMs(performance.now() - raceStartedAtRef.current);
+    }, 100);
+    return () => window.clearInterval(id);
+  }, [isQuickRace, phase, boardKey]);
   const challengesDone = cfg.challenges.filter(
     (c) => challengeProgress(levelHandCounts, c) >= c.minCount
   ).length;
@@ -539,11 +591,12 @@ export function GameScreen({
     (score: number, handCounts: HandCounts, hands: number) => {
       if (phase !== "playing" || advancingRef.current) return false;
       if (level === 1 && tutorialStep < TUTORIAL_FREE_STEP && !isSpecialRun) return false;
-      if (!levelRequirementsMet(score, handCounts, cfg)) return false;
+      const raceGoalsDone = isQuickRace && challengesMet(handCounts, cfg.challenges);
+      if (!raceGoalsDone && !levelRequirementsMet(score, handCounts, cfg)) return false;
 
       advancingRef.current = true;
       setBoardFeedback(null);
-      const stars = computeLevelStars(score, handCounts, hands, cfg);
+      const stars = isQuickRace ? 0 : computeLevelStars(score, handCounts, hands, cfg);
 
       if (isTournament && tournamentMatch) {
         setCompletedLevel(level);
@@ -573,7 +626,17 @@ export function GameScreen({
         setCompletedStats({ score, hands, stars, handCounts: { ...handCounts } });
         setPhase("round_complete");
         challengeSubmittedRef.current = true;
-        void submitChallenge(challengeMatch.id, { stars, moves: hands, score })
+        const durationMs = Math.max(
+          1,
+          Math.round(performance.now() - raceStartedAtRef.current)
+        );
+        setRaceClockMs(durationMs);
+        void submitChallenge(challengeMatch.id, {
+          stars,
+          moves: hands,
+          score: isQuickRace ? 0 : score,
+          duration_ms: durationMs,
+        })
           .then((r) => {
             if (typeof r.credits === "number") {
               applyServerCredits(r.credits, r.client_updated_at);
@@ -581,22 +644,35 @@ export function GameScreen({
               setRun((prev) => ({ ...prev, credits: r.credits ?? prev.credits }));
             }
             if (r.elo && challengeMatch.youAre) {
-              const saved = loadProgress();
-              if (saved) {
-                const nextElo =
-                  challengeMatch.youAre === "challenger"
-                    ? r.elo.challenger_elo
-                    : r.elo.opponent_elo;
-                saveProgress({ ...saved, elo: nextElo });
+              const before = loadProgress()?.elo;
+              applyChallengeElo(challengeMatch.youAre, r.elo);
+              const after =
+                challengeMatch.youAre === "challenger"
+                  ? r.elo.challenger_elo
+                  : r.elo.opponent_elo;
+              if (typeof before === "number") setEloDeltaShown(after - before);
+              else if (typeof r.elo.elo_delta === "number") {
+                const won =
+                  r.challenge.winner_user_id != null &&
+                  ((challengeMatch.youAre === "challenger" &&
+                    r.challenge.winner_user_id === r.challenge.challenger?.id) ||
+                    (challengeMatch.youAre === "opponent" &&
+                      r.challenge.winner_user_id === r.challenge.opponent?.id));
+                const tied = r.challenge.winner_user_id == null;
+                setEloDeltaShown(tied ? 0 : won ? r.elo.elo_delta : -r.elo.elo_delta);
               }
             }
             setChallengeResult(r.challenge);
           })
           .catch(() =>
             fetchChallenge(challengeMatch.id)
-              .then((r) => setChallengeResult(r.challenge))
+              .then((r) => {
+                if (r.elo && challengeMatch.youAre) {
+                  applyChallengeElo(challengeMatch.youAre, r.elo);
+                }
+                setChallengeResult(r.challenge);
+              })
               .catch(() => {
-                // Still leave the round-complete screen usable with local stats
                 setChallengeResult(null);
               })
           );
@@ -627,7 +703,7 @@ export function GameScreen({
       }
       return true;
     },
-    [cfg, level, phase, tutorialStep, isChallenge, isTournament, isSpecialRun, challengeMatch, tournamentMatch]
+    [cfg, level, phase, tutorialStep, isChallenge, isTournament, isSpecialRun, isQuickRace, challengeMatch, tournamentMatch]
   );
 
   const handleTutorialStepComplete = useCallback(() => {
@@ -798,6 +874,17 @@ export function GameScreen({
       void fetchChallenge(challengeMatch.id)
         .then((r) => {
           setChallengeResult(r.challenge);
+          if (r.elo && challengeMatch.youAre) {
+            const before = loadProgress()?.elo;
+            applyChallengeElo(challengeMatch.youAre, r.elo);
+            const after =
+              challengeMatch.youAre === "challenger"
+                ? r.elo.challenger_elo
+                : r.elo.opponent_elo;
+            if (typeof before === "number" && r.challenge.status === "completed") {
+              setEloDeltaShown(after - before);
+            }
+          }
           if (r.challenge.finish_deadline_at) {
             playDeadlineRef.current = r.challenge.finish_deadline_at;
             setPlayDeadlineAt(r.challenge.finish_deadline_at);
@@ -931,7 +1018,15 @@ export function GameScreen({
               </button>
               <div className="moves-banner__main">
                 <div className="moves-banner__head">
-                  {threeStarBudgetLost ? (
+                  {isQuickRace ? (
+                    <>
+                      <span className="moves-banner__count">{levelHands}</span>
+                      <span className="moves-banner__label">
+                        turn{levelHands === 1 ? "" : "s"}
+                      </span>
+                      <span className="moves-banner__limit">· {formatRaceClock(raceClockMs)}</span>
+                    </>
+                  ) : threeStarBudgetLost ? (
                     <>
                       <span className="moves-banner__label moves-banner__label--warn">3★ budget used</span>
                       <span className="moves-banner__limit">
@@ -1004,13 +1099,30 @@ export function GameScreen({
               </span>
             </div>
 
-            <div className="score-chip score-chip--compact score-chip--target hud-labeled-chip" title={`Target: ${levelScore.toLocaleString()} / ${cfg.targetPoints.toLocaleString()} points`}>
-              <span className="hud-labeled-chip__label">Target</span>
+            <div
+              className="score-chip score-chip--compact score-chip--target hud-labeled-chip"
+              title={
+                isQuickRace
+                  ? `Turns ${levelHands} · ${formatRaceClock(raceClockMs)}`
+                  : `Target: ${levelScore.toLocaleString()} / ${cfg.targetPoints.toLocaleString()} points`
+              }
+            >
+              <span className="hud-labeled-chip__label">{isQuickRace ? "Race" : "Target"}</span>
               <span className="hud-labeled-chip__body">
-                <span className="score-chip__icon" aria-hidden>$</span>
-                <span className="score-chip__value">{levelScore.toLocaleString()}</span>
-                <span className="score-chip__sep">/</span>
-                <span className="score-chip__target">{cfg.targetPoints.toLocaleString()}</span>
+                {isQuickRace ? (
+                  <>
+                    <span className="score-chip__value">{levelHands}</span>
+                    <span className="score-chip__sep">·</span>
+                    <span className="score-chip__target">{formatRaceClock(raceClockMs)}</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="score-chip__icon" aria-hidden>$</span>
+                    <span className="score-chip__value">{levelScore.toLocaleString()}</span>
+                    <span className="score-chip__sep">/</span>
+                    <span className="score-chip__target">{cfg.targetPoints.toLocaleString()}</span>
+                  </>
+                )}
               </span>
             </div>
 
@@ -1232,9 +1344,14 @@ export function GameScreen({
         gamePortal(
         <div className="modal-overlay levelup-overlay round-complete-overlay">
           <div className="modal levelup-modal round-complete-modal">
-            <div className="levelup-badge round-complete-badge">CHALLENGE CLEAR!</div>
-            <h2>Shared board duel</h2>
-            <p className="levelup-label">{completedCfg.label}</p>
+            <div className="levelup-badge round-complete-badge">
+              {isQuickRace ? "RACE CLEAR!" : "CHALLENGE CLEAR!"}
+            </div>
+            <h2>{isQuickRace ? "Quick Play" : "Shared board duel"}</h2>
+            <p className="levelup-label">
+              {isQuickRace ? "Fewest turns wins · time breaks ties" : completedCfg.label}
+            </p>
+            {!isQuickRace && (
             <div className="round-complete-stars" aria-label={`${completedStats?.stars ?? 0} of 3 stars`}>
               {[1, 2, 3].map((i) => (
                 <span
@@ -1246,10 +1363,15 @@ export function GameScreen({
                 </span>
               ))}
             </div>
+            )}
             <div className="levelup-perks">
               <div className="perk">
-                <span className="perk-icon">💰</span>
-                <span>{completedStats?.score.toLocaleString() ?? 0} pts · {completedStats?.hands ?? 0} moves</span>
+                <span className="perk-icon">{isQuickRace ? "🃏" : "💰"}</span>
+                <span>
+                  {isQuickRace
+                    ? `${completedStats?.hands ?? 0} turns · ${formatDurationMs(raceClockMs)}`
+                    : `${completedStats?.score.toLocaleString() ?? 0} pts · ${completedStats?.hands ?? 0} moves`}
+                </span>
               </div>
               {(() => {
                 if (!challengeResult) {
@@ -1276,16 +1398,25 @@ export function GameScreen({
                   challengeResult.you_are === "challenger"
                     ? challengeResult.opponent?.username
                     : challengeResult.challenger?.username;
+                const isQuick = (challengeResult.kind ?? challengeMatch?.kind) === "quick";
+                const formatAttempt = (a: NonNullable<typeof mine>) =>
+                  isQuick
+                    ? a.forfeited
+                      ? "Forfeit"
+                      : `${a.moves} turns · ${formatDurationMs(a.duration_ms)}`
+                    : `${a.stars}★ / ${a.moves}m / ${a.score.toLocaleString()} pts`;
                 if (!theirs) {
-                  const isQuick = (challengeResult.kind ?? challengeMatch?.kind) === "quick";
                   return (
                     <>
                       <div className="perk">
                         <span className="perk-icon">📤</span>
                         <span>
-                          Your result locked in · {mine?.stars ?? completedStats?.stars ?? 0}★ /{" "}
-                          {mine?.moves ?? completedStats?.hands ?? 0}m /{" "}
-                          {(mine?.score ?? completedStats?.score ?? 0).toLocaleString()} pts
+                          Your result locked in ·{" "}
+                          {mine
+                            ? formatAttempt(mine)
+                            : isQuick
+                              ? `${completedStats?.hands ?? 0} turns · ${formatDurationMs(raceClockMs)}`
+                              : `${completedStats?.stars ?? 0}★ / ${completedStats?.hands ?? 0}m / ${(completedStats?.score ?? 0).toLocaleString()} pts`}
                         </span>
                       </div>
                       <div className="perk">
@@ -1324,6 +1455,16 @@ export function GameScreen({
                       <span className="perk-icon">🏆</span>
                       <span>{outcome}</span>
                     </div>
+                    {isQuick && eloDeltaShown != null && (
+                      <div className="perk">
+                        <span className="perk-icon">📈</span>
+                        <span>
+                          Rating {eloDeltaShown > 0 ? "+" : ""}
+                          {eloDeltaShown}
+                          {eloDeltaShown === 0 ? " (no change)" : ""}
+                        </span>
+                      </div>
+                    )}
                     {gemNote && (
                       <div className="perk">
                         <span className="perk-icon">💎</span>
@@ -1333,9 +1474,9 @@ export function GameScreen({
                     <div className="perk">
                       <span className="perk-icon">👤</span>
                       <span>
-                        You {mine?.stars ?? 0}★ / {mine?.moves ?? 0}m / {(mine?.score ?? 0).toLocaleString()}
+                        You {mine ? formatAttempt(mine) : "—"}
                         {" · "}
-                        {opponentName ?? "Opp"} {theirs.stars}★ / {theirs.moves}m / {theirs.score.toLocaleString()}
+                        {opponentName ?? "Opp"} {formatAttempt(theirs)}
                       </span>
                     </div>
                   </>
@@ -1615,14 +1756,17 @@ export function GameScreen({
               </div>
               <h2 id="exit-forfeit-title">Exit this duel?</h2>
               <p className="scores-note spend-confirm__note">
-                If you leave now, your score will be recorded as{" "}
-                <strong>0★ / 0 moves / 0 pts</strong>.
-                {challengeMatch?.kind === "quick" ? (
+                {isQuickRace ? (
                   <>
-                    {" "}
-                    If your opponent also exits with 0, the match is a <strong>draw</strong>.
+                    If you leave now, you <strong>forfeit</strong> (counts as a loss on turns).
+                    If your opponent also forfeits, the match is a <strong>draw</strong>.
                   </>
-                ) : null}
+                ) : (
+                  <>
+                    If you leave now, your score will be recorded as{" "}
+                    <strong>0★ / 0 moves / 0 pts</strong>.
+                  </>
+                )}
               </p>
               <div className="spend-confirm__actions">
                 <button

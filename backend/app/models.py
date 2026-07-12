@@ -120,11 +120,13 @@ class Challenge(db.Model):
     challenger_stars = db.Column(db.Integer, nullable=True)
     challenger_moves = db.Column(db.Integer, nullable=True)
     challenger_score = db.Column(db.Integer, nullable=True)
+    challenger_duration_ms = db.Column(db.Integer, nullable=True)
     challenger_submitted_at = db.Column(db.DateTime, nullable=True)
 
     opponent_stars = db.Column(db.Integer, nullable=True)
     opponent_moves = db.Column(db.Integer, nullable=True)
     opponent_score = db.Column(db.Integer, nullable=True)
+    opponent_duration_ms = db.Column(db.Integer, nullable=True)
     opponent_submitted_at = db.Column(db.DateTime, nullable=True)
 
     winner_user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)

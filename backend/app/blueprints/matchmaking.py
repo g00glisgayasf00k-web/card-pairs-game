@@ -176,24 +176,18 @@ def join_quick():
             if unfinished and not already_done and not want_fresh:
                 return jsonify({"status": "matched", "challenge": _serialize_challenge(ch, me)})
             if unfinished and not already_done and want_fresh:
-                # Explicit new search — record 0 for the abandoned duel, then queue again.
+                # Explicit new search — forfeit the abandoned duel, then queue again.
                 now = _utc_now()
-                if ch.challenger_id == me:
-                    ch.challenger_stars = 0
-                    ch.challenger_moves = 0
-                    ch.challenger_score = 0
-                    ch.challenger_submitted_at = now
-                else:
-                    ch.opponent_stars = 0
-                    ch.opponent_moves = 0
-                    ch.opponent_score = 0
-                    ch.opponent_submitted_at = now
                 from app.blueprints.challenges import (
                     _arm_quick_finish_window,
                     _finish_if_both_submitted,
+                    _record_forfeit_side,
                     _release_player_ticket,
                 )
 
+                _record_forfeit_side(
+                    ch, "challenger" if ch.challenger_id == me else "opponent", now
+                )
                 _release_player_ticket(ch, me)
                 _arm_quick_finish_window(ch, now)
                 _finish_if_both_submitted(ch)

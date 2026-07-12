@@ -349,7 +349,7 @@ export function MultiplayerModal({
                 sub={`vs ${opponentName ?? "opponent"} · ${formatLevelId(matched.level)}`}
               />
               <p className="mp-kit-stage__sub" style={{ textAlign: "center", margin: 0 }}>
-                Best stars win — then fewest moves, then score. After one finishes, the other has 10 minutes or is disqualified.
+                Fewest turns wins. Equal turns → fastest time. After one finishes, the other has 10 minutes or is DQed.
               </p>
             </div>
             <div className="mp-kit__footer">
@@ -400,7 +400,7 @@ export function MultiplayerModal({
               title="Quick play"
               lead={
                 quickUnlocked
-                  ? "Same board vs a similar Rating. First to finish starts a 10-minute clock for the other — miss it and you’re DQed. Quit = 0."
+                  ? "Same board race. Fewest turns wins — time breaks ties. Quit = forfeit."
                   : `Clear Solo ${unlockLabel} in campaign to unlock.`
               }
             />

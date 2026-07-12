@@ -21,6 +21,10 @@ MAX_LEVEL = 500
 CHALLENGE_TTL_HOURS = 24
 # After the first Quick Play finish, the other player has this long to submit or is DQed.
 QUICK_FINISH_WINDOW_SECONDS = 10 * 60
+# Forfeit / DQ must lose on turns — never record 0 moves (that would beat a real finish).
+FORFEIT_MOVES = 99_999
+FORFEIT_DURATION_MS = None
+MAX_DURATION_MS = 24 * 60 * 60 * 1000
 WAGER_PRESETS = {1, 5, 25, 50, 100}
 WAGER_MIN = 1
 WAGER_MAX = 10_000
@@ -127,18 +131,12 @@ def _player_has_submitted(ch: Challenge, user_id: int) -> bool:
 
 
 def _dq_missing_side(ch: Challenge) -> None:
-    """Assign 0★ / 0 moves / 0 score to the player who never submitted, then settle."""
+    """DQ the player who never submitted with a losing sentinel, then settle."""
     now = _utc_now()
     if ch.challenger_submitted_at and not ch.opponent_submitted_at:
-        ch.opponent_stars = 0
-        ch.opponent_moves = 0
-        ch.opponent_score = 0
-        ch.opponent_submitted_at = now
+        _record_forfeit_side(ch, "opponent", now)
     elif ch.opponent_submitted_at and not ch.challenger_submitted_at:
-        ch.challenger_stars = 0
-        ch.challenger_moves = 0
-        ch.challenger_score = 0
-        ch.challenger_submitted_at = now
+        _record_forfeit_side(ch, "challenger", now)
     else:
         ch.status = "expired"
         ch.updated_at = now
@@ -146,21 +144,28 @@ def _dq_missing_side(ch: Challenge) -> None:
         _release_match_tickets(ch)
         return
 
-    ch.winner_user_id = _compare_attempts(
-        ch.challenger_stars or 0,
-        ch.challenger_moves or 0,
-        ch.challenger_score or 0,
-        ch.challenger_id,
-        ch.opponent_stars or 0,
-        ch.opponent_moves or 0,
-        ch.opponent_score or 0,
-        ch.opponent_id,
-    )
+    ch.winner_user_id = _decide_winner(ch)
     ch.status = "completed"
     ch.updated_at = now
     _settle_wager(ch)
     _apply_quick_elo(ch)
     _release_match_tickets(ch)
+
+
+def _record_forfeit_side(ch: Challenge, side: str, now: datetime) -> None:
+    """Record a loss that cannot win on turns (Quick) or stars (friend)."""
+    if side == "challenger":
+        ch.challenger_stars = 0
+        ch.challenger_moves = FORFEIT_MOVES
+        ch.challenger_score = 0
+        ch.challenger_duration_ms = FORFEIT_DURATION_MS
+        ch.challenger_submitted_at = now
+    else:
+        ch.opponent_stars = 0
+        ch.opponent_moves = FORFEIT_MOVES
+        ch.opponent_score = 0
+        ch.opponent_duration_ms = FORFEIT_DURATION_MS
+        ch.opponent_submitted_at = now
 
 
 def _finish_if_both_submitted(ch: Challenge) -> dict | None:
@@ -169,16 +174,7 @@ def _finish_if_both_submitted(ch: Challenge) -> dict | None:
         return None
     if ch.status == "completed":
         return None
-    ch.winner_user_id = _compare_attempts(
-        ch.challenger_stars or 0,
-        ch.challenger_moves or 0,
-        ch.challenger_score or 0,
-        ch.challenger_id,
-        ch.opponent_stars or 0,
-        ch.opponent_moves or 0,
-        ch.opponent_score or 0,
-        ch.opponent_id,
-    )
+    ch.winner_user_id = _decide_winner(ch)
     ch.status = "completed"
     _settle_wager(ch)
     elo = _apply_quick_elo(ch)
@@ -289,7 +285,7 @@ def _compare_attempts(
     a_stars: int, a_moves: int, a_score: int, a_id: int,
     b_stars: int, b_moves: int, b_score: int, b_id: int,
 ) -> int | None:
-    """Return winner user_id, or None on true tie."""
+    """Friend duel: more stars → fewer moves → higher score. None = tie."""
     if a_stars != b_stars:
         return a_id if a_stars > b_stars else b_id
     if a_moves != b_moves:
@@ -297,6 +293,81 @@ def _compare_attempts(
     if a_score != b_score:
         return a_id if a_score > b_score else b_id
     return None
+
+
+def _compare_quick(
+    a_moves: int,
+    a_duration_ms: int | None,
+    a_id: int,
+    b_moves: int,
+    b_duration_ms: int | None,
+    b_id: int,
+) -> int | None:
+    """Quick Play: fewer turns wins; equal turns → faster time. None = tie."""
+    if a_moves != b_moves:
+        return a_id if a_moves < b_moves else b_id
+    # Missing duration (forfeit / legacy) loses to a real clock.
+    a_d = a_duration_ms if a_duration_ms is not None else 10**12
+    b_d = b_duration_ms if b_duration_ms is not None else 10**12
+    if a_d != b_d:
+        return a_id if a_d < b_d else b_id
+    return None
+
+
+def _decide_winner(ch: Challenge) -> int | None:
+    kind = getattr(ch, "kind", None) or "friend"
+    if kind == "quick":
+        return _compare_quick(
+            ch.challenger_moves or FORFEIT_MOVES,
+            getattr(ch, "challenger_duration_ms", None),
+            ch.challenger_id,
+            ch.opponent_moves or FORFEIT_MOVES,
+            getattr(ch, "opponent_duration_ms", None),
+            ch.opponent_id,
+        )
+    return _compare_attempts(
+        ch.challenger_stars or 0,
+        ch.challenger_moves or 0,
+        ch.challenger_score or 0,
+        ch.challenger_id,
+        ch.opponent_stars or 0,
+        ch.opponent_moves or 0,
+        ch.opponent_score or 0,
+        ch.opponent_id,
+    )
+
+
+def _clamp_duration_ms(raw) -> int | None:
+    if raw is None:
+        return None
+    try:
+        ms = int(raw)
+    except (TypeError, ValueError):
+        return None
+    if ms < 1:
+        return None
+    return min(ms, MAX_DURATION_MS)
+
+
+def _attempt_payload(
+    stars: int | None,
+    moves: int | None,
+    score: int | None,
+    duration_ms: int | None,
+    submitted_at,
+) -> dict | None:
+    if not submitted_at:
+        return None
+    display_moves = int(moves or 0)
+    forfeited = display_moves >= FORFEIT_MOVES
+    return {
+        "stars": int(stars or 0),
+        "moves": 0 if forfeited else display_moves,
+        "score": int(score or 0),
+        "duration_ms": None if forfeited else duration_ms,
+        "forfeited": forfeited,
+        "submitted_at": submitted_at.isoformat(),
+    }
 
 
 def _mission_payload(ch: Challenge) -> dict | None:
@@ -350,29 +421,19 @@ def _serialize(ch: Challenge, me: int) -> dict:
         "challenger": _user_public(ch.challenger),
         "opponent": _user_public(ch.opponent),
         "you_are": "challenger" if ch.challenger_id == me else "opponent",
-        "challenger_result": (
-            {
-                "stars": ch.challenger_stars,
-                "moves": ch.challenger_moves,
-                "score": ch.challenger_score,
-                "submitted_at": ch.challenger_submitted_at.isoformat()
-                if ch.challenger_submitted_at
-                else None,
-            }
-            if ch.challenger_submitted_at
-            else None
+        "challenger_result": _attempt_payload(
+            ch.challenger_stars,
+            ch.challenger_moves,
+            ch.challenger_score,
+            getattr(ch, "challenger_duration_ms", None),
+            ch.challenger_submitted_at,
         ),
-        "opponent_result": (
-            {
-                "stars": ch.opponent_stars,
-                "moves": ch.opponent_moves,
-                "score": ch.opponent_score,
-                "submitted_at": ch.opponent_submitted_at.isoformat()
-                if ch.opponent_submitted_at
-                else None,
-            }
-            if ch.opponent_submitted_at
-            else None
+        "opponent_result": _attempt_payload(
+            ch.opponent_stars,
+            ch.opponent_moves,
+            ch.opponent_score,
+            getattr(ch, "opponent_duration_ms", None),
+            ch.opponent_submitted_at,
         ),
         "winner_user_id": ch.winner_user_id,
         "created_at": ch.created_at.isoformat(),
@@ -510,7 +571,14 @@ def get_challenge(challenge_id: int):
     payload = _serialize(ch, me)
     if ch.status != before or getattr(ch, "gems_settled", False) != settled_before:
         db.session.commit()
-    return jsonify({"challenge": payload, **_credits_payload(me)})
+    out = {"challenge": payload, **_credits_payload(me)}
+    # Sync Rating for whoever opens the settled duel (first finisher often missed submit-time Elo).
+    if ch.status == "completed" and (getattr(ch, "kind", None) or "friend") == "quick":
+        out["elo"] = {
+            "challenger_elo": get_player_elo(ch.challenger_id),
+            "opponent_elo": get_player_elo(ch.opponent_id),
+        }
+    return jsonify(out)
 
 
 @challenges_bp.post("/<int:challenge_id>/accept")
@@ -683,10 +751,11 @@ def submit_challenge(challenge_id: int):
     data = request.get_json(silent=True) or {}
     try:
         stars = max(0, min(3, int(data.get("stars", 0))))
-        moves = max(0, int(data.get("moves", 0)))
+        moves = max(0, min(FORFEIT_MOVES - 1, int(data.get("moves", 0))))
         score = max(0, int(data.get("score", 0)))
     except (TypeError, ValueError):
         return jsonify({"error": "stars, moves, and score required"}), 400
+    duration_ms = _clamp_duration_ms(data.get("duration_ms"))
 
     now = _utc_now()
     if ch.challenger_id == me:
@@ -704,6 +773,7 @@ def submit_challenge(challenge_id: int):
         ch.challenger_stars = stars
         ch.challenger_moves = moves
         ch.challenger_score = score
+        ch.challenger_duration_ms = duration_ms
         ch.challenger_submitted_at = now
     else:
         if ch.opponent_submitted_at:
@@ -720,6 +790,7 @@ def submit_challenge(challenge_id: int):
         ch.opponent_stars = stars
         ch.opponent_moves = moves
         ch.opponent_score = score
+        ch.opponent_duration_ms = duration_ms
         ch.opponent_submitted_at = now
 
     # Free this player to queue again immediately (don't wait on the opponent).
@@ -758,7 +829,7 @@ def submit_challenge(challenge_id: int):
 @challenges_bp.post("/<int:challenge_id>/forfeit")
 @jwt_required()
 def forfeit_challenge(challenge_id: int):
-    """Back out of an active duel — records 0★ / 0 moves / 0 score (a loss if opponent finished)."""
+    """Back out of an active duel — records a losing sentinel (not 0 turns)."""
     me = int(get_jwt_identity())
     ch = Challenge.query.get(challenge_id)
     if not ch or (ch.challenger_id != me and ch.opponent_id != me):
@@ -780,16 +851,7 @@ def forfeit_challenge(challenge_id: int):
         return jsonify({"challenge": _serialize(ch, me), **_credits_payload(me)})
 
     now = _utc_now()
-    if ch.challenger_id == me:
-        ch.challenger_stars = 0
-        ch.challenger_moves = 0
-        ch.challenger_score = 0
-        ch.challenger_submitted_at = now
-    else:
-        ch.opponent_stars = 0
-        ch.opponent_moves = 0
-        ch.opponent_score = 0
-        ch.opponent_submitted_at = now
+    _record_forfeit_side(ch, "challenger" if ch.challenger_id == me else "opponent", now)
 
     _arm_quick_finish_window(ch, now)
     elo_update = _finish_if_both_submitted(ch)

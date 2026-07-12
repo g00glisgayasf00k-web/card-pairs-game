@@ -360,6 +360,9 @@ export interface ChallengeAttempt {
   stars: number;
   moves: number;
   score: number;
+  /** Elapsed play time in ms (Quick Play). */
+  duration_ms?: number | null;
+  forfeited?: boolean;
   submitted_at: string | null;
 }
 
@@ -420,7 +423,16 @@ export async function createChallenge(friendUserId: number) {
 }
 
 export async function fetchChallenge(id: number) {
-  return request<{ challenge: ChallengeDto }>(`/api/challenges/${id}`);
+  return request<{
+    challenge: ChallengeDto;
+    elo?: {
+      challenger_elo: number;
+      opponent_elo: number;
+      challenger_elo_before?: number;
+      opponent_elo_before?: number;
+      elo_delta?: number;
+    };
+  }>(`/api/challenges/${id}`);
 }
 
 export async function acceptChallenge(id: number) {
@@ -466,7 +478,7 @@ export async function declineChallenge(id: number) {
 
 export async function submitChallenge(
   id: number,
-  payload: { stars: number; moves: number; score: number }
+  payload: { stars: number; moves: number; score: number; duration_ms?: number }
 ) {
   const res = await fetch(`${API_BASE}/api/challenges/${id}/submit`, {
     method: "POST",
@@ -481,9 +493,9 @@ export async function submitChallenge(
     elo?: {
       challenger_elo: number;
       opponent_elo: number;
-      challenger_elo_before: number;
-      opponent_elo_before: number;
-      elo_delta: number;
+      challenger_elo_before?: number;
+      opponent_elo_before?: number;
+      elo_delta?: number;
     };
   };
   // Already submitted / expired still include the locked-in challenge for the results UI

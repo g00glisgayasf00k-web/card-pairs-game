@@ -94,6 +94,14 @@ def ensure_schema():
                 "proposed_by_id",
                 "ALTER TABLE challenges ADD COLUMN proposed_by_id INTEGER",
             ),
+            (
+                "challenger_duration_ms",
+                "ALTER TABLE challenges ADD COLUMN challenger_duration_ms INTEGER",
+            ),
+            (
+                "opponent_duration_ms",
+                "ALTER TABLE challenges ADD COLUMN opponent_duration_ms INTEGER",
+            ),
         ):
             if col_name in ch_cols:
                 continue

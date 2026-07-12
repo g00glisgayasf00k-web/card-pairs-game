@@ -11,6 +11,7 @@ import "./index.css";
 import "./styles/home-design.css";
 import "./styles/royal-theme.css";
 import "./styles/multiplayer-kit.css";
+import "./styles/tournament-kit.css";
 import "./styles/game-mobile.css";
 import "./styles/level-select.css";
 

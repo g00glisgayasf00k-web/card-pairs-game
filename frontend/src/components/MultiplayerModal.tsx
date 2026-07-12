@@ -163,7 +163,7 @@ export function MultiplayerModal({
               <header className="play-mode-modal__header">
                 <h2 id="multiplayer-title">Multiplayer</h2>
                 <p className="play-mode-modal__lead">
-                  Free to play — each player spends 1 ⚡. Quick Play uses Elo matchmaking.
+                  Play online versus like-minded players, or challenge your friends.
                 </p>
                 <p className="play-mode-modal__hint">Your Elo: {elo}</p>
               </header>

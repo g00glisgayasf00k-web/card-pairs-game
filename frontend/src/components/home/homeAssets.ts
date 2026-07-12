@@ -17,18 +17,21 @@ export const HOME_ASSETS = {
       glow: "/assets/cards/purple/card_glow.png",
       icon: "/assets/cards/purple/icon_trophy.png",
       label: "/assets/home/label_solo.png",
+      circle: "/assets/ui/icon_circle_bg.png",
     },
     blue: {
       base: "/assets/cards/blue/card_base.png",
       glow: "/assets/cards/blue/card_glow.png",
       icon: "/assets/cards/blue/icon_vs.png",
       label: "/assets/home/label_async.png",
+      circle: "/assets/ui/icon_circle_blue.png",
     },
     green: {
       base: "/assets/cards/green/card_base.png",
       glow: "/assets/cards/green/card_glow.png",
       icon: "/assets/cards/green/icon_crown.png",
       label: "/assets/home/label_ranked.png",
+      circle: "/assets/ui/icon_circle_green.png",
     },
   },
   ui: {

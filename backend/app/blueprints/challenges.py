@@ -189,8 +189,19 @@ def _credits_payload(user_id: int) -> dict:
 def _serialize(ch: Challenge, me: int) -> dict:
     _expire_if_needed(ch)
     fee = int(getattr(ch, "fee_gems", 0) or 0)
-    if fee < 1 and int(ch.wager_gems or 0) > 0:
-        fee = challenge_fee_gems(int(ch.wager_gems))
+    wager = int(ch.wager_gems or 0)
+    if fee < 1 and wager > 0:
+        fee = challenge_fee_gems(wager)
+    proposed = getattr(ch, "proposed_wager_gems", None)
+    proposed_wager = int(proposed) if proposed is not None else None
+    proposed_by_id = getattr(ch, "proposed_by_id", None)
+    proposed_by = None
+    if proposed_wager is not None and proposed_by_id:
+        if proposed_by_id == ch.challenger_id:
+            proposed_by = "challenger"
+        elif proposed_by_id == ch.opponent_id:
+            proposed_by = "opponent"
+    proposed_fee = challenge_fee_gems(proposed_wager) if proposed_wager else None
     return {
         "id": ch.id,
         "level": ch.level,
@@ -199,6 +210,9 @@ def _serialize(ch: Challenge, me: int) -> dict:
         "kind": getattr(ch, "kind", None) or "friend",
         "wager_gems": ch.wager_gems,
         "fee_gems": fee,
+        "proposed_wager_gems": proposed_wager,
+        "proposed_fee_gems": proposed_fee,
+        "proposed_by": proposed_by,
         "expires_at": ch.expires_at.isoformat(),
         "mission": _mission_payload(ch),
         "challenger": _user_public(ch.challenger),
@@ -231,6 +245,35 @@ def _serialize(ch: Challenge, me: int) -> dict:
         "winner_user_id": ch.winner_user_id,
         "created_at": ch.created_at.isoformat(),
     }
+
+
+def _apply_wager_terms(ch: Challenge, new_wager: int) -> None:
+    """Move challenge to new_wager and adjust challenger escrow (wager + fee)."""
+    old_wager = int(ch.wager_gems or 0)
+    old_fee = int(getattr(ch, "fee_gems", 0) or 0) or challenge_fee_gems(old_wager)
+    new_fee = challenge_fee_gems(new_wager)
+    old_total = old_wager + old_fee if getattr(ch, "challenger_staked", False) else 0
+    new_total = new_wager + new_fee
+    delta = new_total - old_total
+    if delta != 0:
+        adjust_gems(ch.challenger_id, -delta)
+    ch.wager_gems = new_wager
+    ch.fee_gems = new_fee
+    ch.challenger_staked = True
+    ch.proposed_wager_gems = None
+    ch.proposed_by_id = None
+
+
+def _activate_with_opponent_stake(ch: Challenge, opponent_id: int) -> tuple[int, int]:
+    """Charge opponent the current wager and mark active. Returns credits tuple."""
+    wager = int(ch.wager_gems or 0)
+    credits, client_updated_at = adjust_gems(opponent_id, 0)
+    if wager > 0 and not getattr(ch, "opponent_staked", False):
+        credits, client_updated_at = adjust_gems(opponent_id, -wager)
+        ch.opponent_staked = True
+    ch.status = "active"
+    ch.updated_at = _utc_now()
+    return credits, client_updated_at
 
 
 @challenges_bp.get("")
@@ -370,27 +413,90 @@ def get_challenge(challenge_id: int):
 @challenges_bp.post("/<int:challenge_id>/accept")
 @jwt_required()
 def accept_challenge(challenge_id: int):
+    """Accept current terms, or accept the other player's counter-offer."""
     me = int(get_jwt_identity())
     ch = Challenge.query.get(challenge_id)
-    if not ch or ch.opponent_id != me:
+    if not ch or (ch.challenger_id != me and ch.opponent_id != me):
         return jsonify({"error": "Challenge not found"}), 404
     _expire_if_needed(ch)
     if ch.status != "pending":
         db.session.commit()
         return jsonify({"error": f"Challenge is {ch.status}"}), 409
 
-    wager = int(ch.wager_gems or 0)
-    credits = None
-    client_updated_at = None
-    if wager > 0 and not getattr(ch, "opponent_staked", False):
-        try:
-            credits, client_updated_at = adjust_gems(me, -wager)
-        except ValueError:
-            return jsonify({"error": f"Not enough gems — need {wager} to match the wager"}), 402
-        ch.opponent_staked = True
+    proposed = getattr(ch, "proposed_wager_gems", None)
+    proposed_by = getattr(ch, "proposed_by_id", None)
+    has_offer = proposed is not None and proposed_by is not None
 
-    ch.status = "active"
-    ch.updated_at = _utc_now()
+    if has_offer:
+        if proposed_by == me:
+            return jsonify({"error": "Waiting for the other player to respond to your offer"}), 409
+        new_wager = int(proposed)
+        old_wager = int(ch.wager_gems or 0)
+        old_fee = int(getattr(ch, "fee_gems", 0) or 0) or challenge_fee_gems(old_wager)
+        new_fee = challenge_fee_gems(new_wager)
+        old_total = old_wager + old_fee if getattr(ch, "challenger_staked", False) else 0
+        new_total = new_wager + new_fee
+        challenger_delta = new_total - old_total
+        opponent_charged = False
+        challenger_adjusted = False
+        try:
+            # Charge the matching stake first, then adjust creator escrow
+            if not getattr(ch, "opponent_staked", False):
+                adjust_gems(ch.opponent_id, -new_wager)
+                opponent_charged = True
+                ch.opponent_staked = True
+            if challenger_delta != 0:
+                adjust_gems(ch.challenger_id, -challenger_delta)
+                challenger_adjusted = True
+            ch.wager_gems = new_wager
+            ch.fee_gems = new_fee
+            ch.challenger_staked = True
+            ch.proposed_wager_gems = None
+            ch.proposed_by_id = None
+            ch.status = "active"
+            ch.updated_at = _utc_now()
+            credits, client_updated_at = adjust_gems(me, 0)
+        except ValueError:
+            if challenger_adjusted:
+                try:
+                    adjust_gems(ch.challenger_id, challenger_delta)
+                except ValueError:
+                    pass
+            if opponent_charged:
+                try:
+                    adjust_gems(ch.opponent_id, new_wager)
+                except ValueError:
+                    pass
+            db.session.rollback()
+            return jsonify({"error": "Not enough gems to accept these terms"}), 402
+
+        db.session.commit()
+        me_user = User.query.get(me)
+        me_name = me_user.username if me_user else "Your friend"
+        other_id = ch.opponent_id if me == ch.challenger_id else ch.challenger_id
+        _notify(
+            other_id,
+            "Terms accepted",
+            f"{me_name} accepted the {new_wager}-gem challenge",
+            {"type": "challenge", "challenge_id": str(ch.id)},
+        )
+        return jsonify(
+            {
+                "challenge": _serialize(ch, me),
+                "credits": credits,
+                "client_updated_at": client_updated_at,
+            }
+        )
+
+    if ch.opponent_id != me:
+        return jsonify({"error": "Waiting for your friend to accept or negotiate"}), 409
+
+    wager = int(ch.wager_gems or 0)
+    try:
+        credits, client_updated_at = _activate_with_opponent_stake(ch, me)
+    except ValueError:
+        return jsonify({"error": f"Not enough gems — need {wager} to match the wager"}), 402
+
     db.session.commit()
     me_user = User.query.get(me)
     me_name = me_user.username if me_user else "Your friend"
@@ -400,13 +506,92 @@ def accept_challenge(challenge_id: int):
         f"{me_name} accepted your {wager}-gem challenge",
         {"type": "challenge", "challenge_id": str(ch.id)},
     )
-    out = {"challenge": _serialize(ch, me)}
-    if credits is not None:
-        out["credits"] = credits
-        out["client_updated_at"] = client_updated_at
-    else:
-        out.update(_credits_payload(me))
-    return jsonify(out)
+    return jsonify(
+        {
+            "challenge": _serialize(ch, me),
+            "credits": credits,
+            "client_updated_at": client_updated_at,
+        }
+    )
+
+
+@challenges_bp.post("/<int:challenge_id>/negotiate")
+@jwt_required()
+def negotiate_challenge(challenge_id: int):
+    """Counter-propose a different wager (fee recalculates at 5%, min 1)."""
+    me = int(get_jwt_identity())
+    ch = Challenge.query.get(challenge_id)
+    if not ch or (ch.challenger_id != me and ch.opponent_id != me):
+        return jsonify({"error": "Challenge not found"}), 404
+    _expire_if_needed(ch)
+    if ch.status != "pending":
+        db.session.commit()
+        return jsonify({"error": f"Challenge is {ch.status}"}), 409
+
+    data = request.get_json(silent=True) or {}
+    wager = _parse_wager(data.get("wager_gems"))
+    if wager is None:
+        return jsonify({"error": f"wager_gems must be between {WAGER_MIN} and {WAGER_MAX}"}), 400
+
+    current = int(ch.wager_gems or 0)
+    existing_proposed = getattr(ch, "proposed_wager_gems", None)
+    if wager == current and existing_proposed is None:
+        return jsonify({"error": "Pick a different wager to negotiate"}), 400
+    if existing_proposed is not None and int(existing_proposed) == wager:
+        return jsonify({"error": "That offer is already on the table"}), 400
+
+    ch.proposed_wager_gems = wager
+    ch.proposed_by_id = me
+    ch.updated_at = _utc_now()
+    db.session.commit()
+
+    me_user = User.query.get(me)
+    me_name = me_user.username if me_user else "Your friend"
+    other_id = ch.opponent_id if me == ch.challenger_id else ch.challenger_id
+    fee = challenge_fee_gems(wager)
+    _notify(
+        other_id,
+        "Challenge offer",
+        f"{me_name} proposed {wager} gems (fee {fee})",
+        {"type": "challenge", "challenge_id": str(ch.id)},
+    )
+    return jsonify({"challenge": _serialize(ch, me), **_credits_payload(me)})
+
+
+@challenges_bp.post("/<int:challenge_id>/reject-offer")
+@jwt_required()
+def reject_challenge_offer(challenge_id: int):
+    """Reject a counter-offer and keep the original wager on the table."""
+    me = int(get_jwt_identity())
+    ch = Challenge.query.get(challenge_id)
+    if not ch or (ch.challenger_id != me and ch.opponent_id != me):
+        return jsonify({"error": "Challenge not found"}), 404
+    _expire_if_needed(ch)
+    if ch.status != "pending":
+        db.session.commit()
+        return jsonify({"error": f"Challenge is {ch.status}"}), 409
+
+    proposed_by = getattr(ch, "proposed_by_id", None)
+    if getattr(ch, "proposed_wager_gems", None) is None or not proposed_by:
+        return jsonify({"error": "No offer to reject"}), 409
+    if proposed_by == me:
+        return jsonify({"error": "Cannot reject your own offer — wait or change it"}), 409
+
+    ch.proposed_wager_gems = None
+    ch.proposed_by_id = None
+    ch.updated_at = _utc_now()
+    db.session.commit()
+
+    me_user = User.query.get(me)
+    me_name = me_user.username if me_user else "Your friend"
+    other_id = ch.opponent_id if me == ch.challenger_id else ch.challenger_id
+    _notify(
+        other_id,
+        "Offer rejected",
+        f"{me_name} rejected your counter-offer — original {ch.wager_gems}💎 still open",
+        {"type": "challenge", "challenge_id": str(ch.id)},
+    )
+    return jsonify({"challenge": _serialize(ch, me), **_credits_payload(me)})
 
 
 @challenges_bp.post("/<int:challenge_id>/decline")
@@ -418,9 +603,11 @@ def decline_challenge(challenge_id: int):
         return jsonify({"error": "Challenge not found"}), 404
     if ch.status not in ("pending", "active"):
         return jsonify({"error": f"Challenge is {ch.status}"}), 409
-    if ch.challenger_id == me and ch.status == "active":
+    if ch.status == "active":
         return jsonify({"error": "Cannot decline after accept — play or wait for expiry"}), 409
     ch.status = "declined"
+    ch.proposed_wager_gems = None
+    ch.proposed_by_id = None
     ch.updated_at = _utc_now()
     _refund_stakes(ch)
     db.session.commit()
@@ -455,11 +642,7 @@ def submit_challenge(challenge_id: int):
             )
         return jsonify({"error": "Challenge expired", **_credits_payload(me)}), 409
     if ch.status == "pending":
-        # Challenger may play before opponent accepts — auto-activate
-        if ch.challenger_id == me:
-            ch.status = "active"
-        else:
-            return jsonify({"error": "Accept the challenge first"}), 409
+        return jsonify({"error": "Wait until both players agree on the wager"}), 409
     if ch.status not in ("active", "completed"):
         return jsonify({"error": f"Challenge is {ch.status}"}), 409
 

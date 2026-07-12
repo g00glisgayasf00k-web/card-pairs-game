@@ -338,6 +338,10 @@ export interface ChallengeDto {
   wager_gems: number;
   /** Platform fee charged to the challenger (5% of wager, min 1). */
   fee_gems?: number;
+  /** Open counter-offer wager, if any. */
+  proposed_wager_gems?: number | null;
+  proposed_fee_gems?: number | null;
+  proposed_by?: "challenger" | "opponent" | null;
   expires_at: string;
   /** Random duel goals + move budget; omit on legacy challenges. */
   mission?: ChallengeMissionDto | null;
@@ -377,6 +381,27 @@ export async function acceptChallenge(id: number) {
     credits?: number;
     client_updated_at?: number;
   }>(`/api/challenges/${id}/accept`, {
+    method: "POST",
+  });
+}
+
+export async function negotiateChallenge(id: number, wagerGems: number) {
+  return request<{
+    challenge: ChallengeDto;
+    credits?: number;
+    client_updated_at?: number;
+  }>(`/api/challenges/${id}/negotiate`, {
+    method: "POST",
+    body: JSON.stringify({ wager_gems: wagerGems }),
+  });
+}
+
+export async function rejectChallengeOffer(id: number) {
+  return request<{
+    challenge: ChallengeDto;
+    credits?: number;
+    client_updated_at?: number;
+  }>(`/api/challenges/${id}/reject-offer`, {
     method: "POST",
   });
 }

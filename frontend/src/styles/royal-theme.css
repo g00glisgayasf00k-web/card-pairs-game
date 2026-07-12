@@ -1499,6 +1499,12 @@ button.royal-resource:active {
   opacity: 0.6;
 }
 
+.play-mode-wagers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
 .play-mode-custom-wager {
   display: flex;
   flex-direction: column;
@@ -1509,6 +1515,26 @@ button.royal-resource:active {
   letter-spacing: 0.04em;
   text-transform: uppercase;
   color: rgba(255, 255, 255, 0.72);
+}
+
+.challenge-inbox-item--stack {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.65rem;
+}
+
+.challenge-inbox-item__meta--offer {
+  display: block;
+  margin-top: 0.2rem;
+  color: #7dd3fc;
+}
+
+.challenge-negotiate {
+  width: 100%;
+  padding: 0.65rem 0.7rem;
+  border-radius: 12px;
+  border: 1px solid rgba(96, 165, 250, 0.35);
+  background: rgba(13, 71, 161, 0.22);
 }
 
 .play-mode-custom-wager input {

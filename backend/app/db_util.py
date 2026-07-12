@@ -86,6 +86,14 @@ def ensure_schema():
                 if is_sqlite
                 else "ALTER TABLE challenges ADD COLUMN gems_settled BOOLEAN DEFAULT FALSE NOT NULL",
             ),
+            (
+                "proposed_wager_gems",
+                "ALTER TABLE challenges ADD COLUMN proposed_wager_gems INTEGER",
+            ),
+            (
+                "proposed_by_id",
+                "ALTER TABLE challenges ADD COLUMN proposed_by_id INTEGER",
+            ),
         ):
             if col_name in ch_cols:
                 continue

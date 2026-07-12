@@ -534,3 +534,45 @@ export async function submitTournamentRun(
   });
 }
 
+export interface SupportTicket {
+  id: number;
+  subject: string;
+  message: string;
+  status: string;
+  admin_reply: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+  replied_at: string | null;
+  user_id?: number;
+  username?: string;
+}
+
+export async function fetchMySupportTickets() {
+  return request<{ tickets: SupportTicket[] }>("/api/support");
+}
+
+export async function createSupportTicket(subject: string, message: string) {
+  return request<{ ticket: SupportTicket }>("/api/support", {
+    method: "POST",
+    body: JSON.stringify({ subject, message }),
+  });
+}
+
+export async function fetchAdminSupport(status = "all") {
+  const q = status && status !== "all" ? `?status=${encodeURIComponent(status)}` : "";
+  return request<{ tickets: SupportTicket[]; open_count: number }>(`/api/admin/support${q}`);
+}
+
+export async function replyAdminSupport(ticketId: number, reply: string, close = false) {
+  return request<{ ticket: SupportTicket }>(`/api/admin/support/${ticketId}/reply`, {
+    method: "POST",
+    body: JSON.stringify({ reply, close }),
+  });
+}
+
+export async function closeAdminSupport(ticketId: number) {
+  return request<{ ticket: SupportTicket }>(`/api/admin/support/${ticketId}/close`, {
+    method: "POST",
+  });
+}
+

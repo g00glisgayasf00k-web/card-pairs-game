@@ -39,8 +39,10 @@ def create_app(config_class=Config):
     app.register_blueprint(notifications_bp, url_prefix="/api/notifications")
 
     from app.blueprints.tournaments import tournaments_bp
+    from app.blueprints.support import support_bp
 
     app.register_blueprint(tournaments_bp, url_prefix="/api/tournaments")
+    app.register_blueprint(support_bp, url_prefix="/api/support")
 
     @app.route("/api/health")
     def health():

@@ -8,7 +8,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 from sqlalchemy import desc, func
 
 from app.leaderboards import build_leaderboards
-from app.models import PlayerProgress, Score, User, db
+from app.models import PlayerProgress, Score, SupportTicket, User, db
 from app.password_util import generate_temp_password, hash_password
 
 admin_bp = Blueprint("admin", __name__)
@@ -484,3 +484,70 @@ def admin_reset_password(user_id: int):
             "temporary_password": temp_password,
         }
     ), 200
+
+
+def _admin_ticket_dict(ticket: SupportTicket) -> dict:
+    return {
+        "id": ticket.id,
+        "user_id": ticket.user_id,
+        "username": ticket.user.username if ticket.user else "?",
+        "subject": ticket.subject,
+        "message": ticket.message,
+        "status": ticket.status,
+        "admin_reply": ticket.admin_reply,
+        "created_at": ticket.created_at.isoformat() if ticket.created_at else None,
+        "updated_at": ticket.updated_at.isoformat() if ticket.updated_at else None,
+        "replied_at": ticket.replied_at.isoformat() if ticket.replied_at else None,
+    }
+
+
+@admin_bp.get("/support")
+@admin_required
+def admin_list_support():
+    status = (request.args.get("status") or "all").strip().lower()
+    q = SupportTicket.query.order_by(SupportTicket.created_at.desc())
+    if status in ("open", "answered", "closed"):
+        q = q.filter(SupportTicket.status == status)
+    tickets = q.limit(100).all()
+    open_count = SupportTicket.query.filter_by(status="open").count()
+    return jsonify(
+        {
+            "tickets": [_admin_ticket_dict(t) for t in tickets],
+            "open_count": open_count,
+        }
+    )
+
+
+@admin_bp.post("/support/<int:ticket_id>/reply")
+@admin_required
+def admin_reply_support(ticket_id: int):
+    ticket = db.session.get(SupportTicket, ticket_id)
+    if not ticket:
+        return jsonify({"error": "Ticket not found"}), 404
+
+    data = request.get_json(silent=True) or {}
+    reply = str(data.get("reply") or "").strip()
+    if len(reply) < 2:
+        return jsonify({"error": "Reply is too short"}), 400
+    if len(reply) > 4000:
+        return jsonify({"error": "Reply is too long"}), 400
+
+    close = bool(data.get("close"))
+    ticket.admin_reply = reply
+    ticket.replied_at = datetime.now(timezone.utc)
+    ticket.status = "closed" if close else "answered"
+    ticket.updated_at = datetime.now(timezone.utc)
+    db.session.commit()
+    return jsonify({"ticket": _admin_ticket_dict(ticket)})
+
+
+@admin_bp.post("/support/<int:ticket_id>/close")
+@admin_required
+def admin_close_support(ticket_id: int):
+    ticket = db.session.get(SupportTicket, ticket_id)
+    if not ticket:
+        return jsonify({"error": "Ticket not found"}), 404
+    ticket.status = "closed"
+    ticket.updated_at = datetime.now(timezone.utc)
+    db.session.commit()
+    return jsonify({"ticket": _admin_ticket_dict(ticket)})

@@ -1,22 +1,26 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 import {
+  closeAdminSupport,
   deleteAdminUser,
   fetchAdminLeaderboards,
   fetchAdminStats,
+  fetchAdminSupport,
   fetchAdminUserDetail,
   fetchAdminUsers,
   fetchAdminMe,
   grantAdminUserResources,
   login,
+  replyAdminSupport,
   resetAdminUser,
   resetAdminUserPassword,
   setAdminUserRole,
   type AdminUserRow,
   type LeaderboardsPayload,
+  type SupportTicket,
 } from "../lib/api";
 import { HAND_DISPLAY, HAND_SCORE_LIST, type HandLabel } from "../lib/pokerHands";
 
-type Tab = "overview" | "players" | "leaderboard";
+type Tab = "overview" | "players" | "leaderboard" | "support";
 
 const PAGE_SIZE = 25;
 
@@ -60,6 +64,12 @@ export function AdminApp() {
   const [tempPassword, setTempPassword] = useState("");
   const [issuedTempPassword, setIssuedTempPassword] = useState<string | null>(null);
 
+  const [supportTickets, setSupportTickets] = useState<SupportTicket[]>([]);
+  const [supportOpenCount, setSupportOpenCount] = useState(0);
+  const [supportFilter, setSupportFilter] = useState<"all" | "open" | "answered" | "closed">("open");
+  const [selectedTicketId, setSelectedTicketId] = useState<number | null>(null);
+  const [supportReply, setSupportReply] = useState("");
+
   const loadStats = useCallback(async () => {
     const data = await fetchAdminStats();
     setStats(data);
@@ -77,18 +87,24 @@ export function AdminApp() {
     setLeaderboards(data);
   }, []);
 
+  const loadSupport = useCallback(async (status: typeof supportFilter) => {
+    const data = await fetchAdminSupport(status);
+    setSupportTickets(data.tickets);
+    setSupportOpenCount(data.open_count);
+  }, []);
+
   const loadDashboard = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      await Promise.all([loadStats(), loadUsers(0, search), loadLeaderboards()]);
+      await Promise.all([loadStats(), loadUsers(0, search), loadLeaderboards(), loadSupport("open")]);
       setAuthed(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load admin data");
     } finally {
       setLoading(false);
     }
-  }, [loadStats, loadUsers, loadLeaderboards, search]);
+  }, [loadStats, loadUsers, loadLeaderboards, loadSupport, search]);
 
   const checkSession = useCallback(async () => {
     const token = localStorage.getItem("token");
@@ -164,6 +180,7 @@ export function AdminApp() {
       if (tab === "overview") await loadStats();
       if (tab === "players" || tab === "overview") await loadUsers(userOffset, search);
       if (tab === "leaderboard" || tab === "overview") await loadLeaderboards();
+      if (tab === "support" || tab === "overview") await loadSupport(supportFilter);
       if (selectedUserId) {
         setUserDetail(await fetchAdminUserDetail(selectedUserId));
       }
@@ -195,6 +212,43 @@ export function AdminApp() {
     setSelectedUserId(null);
     setIssuedTempPassword(null);
     setTempPassword("");
+  };
+
+  const changeSupportFilter = (next: typeof supportFilter) => {
+    setSupportFilter(next);
+    setSelectedTicketId(null);
+    setSupportReply("");
+    void loadSupport(next).catch((e) =>
+      setError(e instanceof Error ? e.message : "Failed to load support")
+    );
+  };
+
+  const handleSupportReply = async (closeAfter: boolean) => {
+    if (selectedTicketId == null) return;
+    setLoading(true);
+    setError(null);
+    try {
+      await replyAdminSupport(selectedTicketId, supportReply.trim(), closeAfter);
+      setSupportReply("");
+      await loadSupport(supportFilter);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to send reply");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleSupportClose = async (ticketId: number) => {
+    setLoading(true);
+    setError(null);
+    try {
+      await closeAdminSupport(ticketId);
+      await loadSupport(supportFilter);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to close ticket");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const runSearch = (e: FormEvent) => {
@@ -442,6 +496,19 @@ export function AdminApp() {
           >
             Leaderboard
           </button>
+          <button
+            type="button"
+            className={`admin-nav__item${tab === "support" ? " admin-nav__item--active" : ""}`}
+            onClick={() => {
+              closeUser();
+              setTab("support");
+              void loadSupport(supportFilter).catch((e) =>
+                setError(e instanceof Error ? e.message : "Failed to load support")
+              );
+            }}
+          >
+            Support{supportOpenCount > 0 ? ` (${supportOpenCount})` : ""}
+          </button>
         </nav>
         <div className="admin-sidebar__foot">
           <span className="admin-sidebar__user">{adminName}</span>
@@ -458,12 +525,14 @@ export function AdminApp() {
               {tab === "overview" && "Overview"}
               {tab === "players" && (userDetail ? userDetail.username : "Players")}
               {tab === "leaderboard" && "Leaderboard"}
+              {tab === "support" && "Support"}
             </h1>
             <p className="admin-muted">
               {tab === "overview" && "Live stats from your game database"}
               {tab === "players" && !userDetail && `${totalUsers} accounts (${Math.max(0, totalUsers - 1)} players + admin)`}
               {tab === "players" && userDetail && `Joined ${fmtDate(userDetail.created_at)}`}
               {tab === "leaderboard" && "Top scores across all players"}
+              {tab === "support" && `${supportOpenCount} open · messages from Settings → Contact support`}
             </p>
           </div>
           <button type="button" className="admin-btn admin-btn--ghost" onClick={() => void refresh()} disabled={loading}>
@@ -1126,6 +1195,136 @@ export function AdminApp() {
                     </div>
                   );
                 })}
+              </div>
+            )}
+          </section>
+        )}
+
+        {tab === "support" && (
+          <section className="admin-panel">
+            <div className="admin-leaderboard-tabs">
+              {(["open", "answered", "closed", "all"] as const).map((f) => (
+                <button
+                  key={f}
+                  type="button"
+                  className={`admin-btn admin-btn--sm${supportFilter === f ? " admin-btn--primary" : " admin-btn--ghost"}`}
+                  onClick={() => changeSupportFilter(f)}
+                >
+                  {f === "all" ? "All" : f.charAt(0).toUpperCase() + f.slice(1)}
+                </button>
+              ))}
+            </div>
+
+            {supportTickets.length === 0 ? (
+              <p className="admin-muted">No support messages in this filter.</p>
+            ) : (
+              <div className="admin-support-layout">
+                <div className="admin-table-wrap">
+                  <table className="admin-table">
+                    <thead>
+                      <tr>
+                        <th>When</th>
+                        <th>Player</th>
+                        <th>Subject</th>
+                        <th>Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {supportTickets.map((t) => (
+                        <tr
+                          key={t.id}
+                          className={selectedTicketId === t.id ? "admin-row--selected" : undefined}
+                          onClick={() => {
+                            setSelectedTicketId(t.id);
+                            setSupportReply(t.admin_reply ?? "");
+                          }}
+                          style={{ cursor: "pointer" }}
+                        >
+                          <td>{t.created_at ? fmtShortDate(t.created_at) : "—"}</td>
+                          <td>
+                            {t.user_id ? (
+                              <button
+                                type="button"
+                                className="admin-link"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  void openUser(t.user_id!);
+                                }}
+                              >
+                                {t.username ?? `#${t.user_id}`}
+                              </button>
+                            ) : (
+                              t.username ?? "—"
+                            )}
+                          </td>
+                          <td>{t.subject}</td>
+                          <td>{t.status}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                {(() => {
+                  const selected = supportTickets.find((t) => t.id === selectedTicketId);
+                  if (!selected) {
+                    return <p className="admin-muted">Select a message to reply.</p>;
+                  }
+                  return (
+                    <div className="admin-support-detail">
+                      <h3>{selected.subject}</h3>
+                      <p className="admin-muted">
+                        From {selected.username ?? "player"}
+                        {selected.created_at ? ` · ${fmtDate(selected.created_at)}` : ""}
+                        {` · ${selected.status}`}
+                      </p>
+                      <p className="admin-support-message">{selected.message}</p>
+                      {selected.admin_reply && selected.status !== "open" && (
+                        <div className="admin-support-prior-reply">
+                          <strong>Previous reply</strong>
+                          <p>{selected.admin_reply}</p>
+                        </div>
+                      )}
+                      <label className="admin-field">
+                        Reply
+                        <textarea
+                          value={supportReply}
+                          onChange={(e) => setSupportReply(e.target.value)}
+                          rows={5}
+                          placeholder="Write a reply the player will see in Settings…"
+                        />
+                      </label>
+                      <div className="admin-actions">
+                        <button
+                          type="button"
+                          className="admin-btn admin-btn--primary"
+                          disabled={loading || supportReply.trim().length < 2}
+                          onClick={() => void handleSupportReply(false)}
+                        >
+                          Send reply
+                        </button>
+                        <button
+                          type="button"
+                          className="admin-btn"
+                          disabled={loading || supportReply.trim().length < 2}
+                          onClick={() => void handleSupportReply(true)}
+                        >
+                          Reply &amp; close
+                        </button>
+                        {selected.status !== "closed" && (
+                          <button
+                            type="button"
+                            className="admin-btn admin-btn--ghost"
+                            disabled={loading}
+                            onClick={() => void handleSupportClose(selected.id)}
+                          >
+                            Close without reply
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
           </section>

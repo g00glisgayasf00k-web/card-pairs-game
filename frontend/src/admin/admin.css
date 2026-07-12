@@ -739,3 +739,70 @@ body {
   border: 1px solid rgba(255, 255, 255, 0.08);
   line-height: 1.45;
 }
+
+.admin-support-layout {
+  display: grid;
+  gap: 1.25rem;
+}
+
+@media (min-width: 960px) {
+  .admin-support-layout {
+    grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+    align-items: start;
+  }
+}
+
+.admin-row--selected {
+  background: rgba(96, 165, 250, 0.12);
+}
+
+.admin-support-detail {
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 1rem 1.1rem;
+  background: rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.admin-support-detail h3 {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.admin-support-message,
+.admin-support-prior-reply p {
+  margin: 0;
+  white-space: pre-wrap;
+  line-height: 1.45;
+  color: rgba(255, 255, 255, 0.88);
+}
+
+.admin-support-prior-reply {
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  background: rgba(96, 165, 250, 0.1);
+  border: 1px solid rgba(96, 165, 250, 0.22);
+}
+
+.admin-support-prior-reply strong {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #93c5fd;
+}
+
+.admin-support-detail .admin-field textarea {
+  width: 100%;
+  margin-top: 0.35rem;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(0, 0, 0, 0.35);
+  color: inherit;
+  font: inherit;
+  padding: 0.65rem 0.75rem;
+  resize: vertical;
+}

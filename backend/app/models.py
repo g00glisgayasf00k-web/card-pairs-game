@@ -210,3 +210,28 @@ class TournamentRun(db.Model):
     )
 
     user = db.relationship("User", foreign_keys=[user_id])
+
+
+class SupportTicket(db.Model):
+    """Player contact-support message for the admin inbox."""
+
+    __tablename__ = "support_tickets"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    subject = db.Column(db.String(120), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(16), nullable=False, default="open", index=True)
+    admin_reply = db.Column(db.Text, nullable=True)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    updated_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+    replied_at = db.Column(db.DateTime, nullable=True)
+
+    user = db.relationship("User", foreign_keys=[user_id])

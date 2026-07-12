@@ -8,6 +8,7 @@ import {
 import { countCompleted, countTotalStars } from "../lib/levelProgress";
 import { loadProgress } from "../lib/progress";
 import { ProfileAccountSection } from "./ProfileAccountSection";
+import { ContactSupportSection } from "./ContactSupportSection";
 import { HOME_ASSETS, HomeKitShell } from "./home";
 import { useEffect, useState } from "react";
 
@@ -68,6 +69,8 @@ export function ProfileModal({ username, onClose, onAccountChange, onSignOut }: 
           onAccountChange={onAccountChange}
           onSignOut={onSignOut}
         />
+
+        <ContactSupportSection />
 
         <ul className="profile-stats">
           <li>

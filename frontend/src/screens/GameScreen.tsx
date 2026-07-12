@@ -62,7 +62,8 @@ import { GameBoard, type GameBoardHandle } from "../components/GameBoard";
 import { ProfileModal } from "../components/ProfileModal";
 import { GemShopModal } from "../components/GemShopModal";
 import { OutOfEnergyModal } from "../components/OutOfEnergyModal";
-import { fetchChallenge, submitChallenge, type ChallengeDto, type ChallengeMissionDto } from "../lib/api";
+import { fetchChallenge, submitChallenge, submitTournamentRun, type ChallengeDto, type ChallengeMissionDto } from "../lib/api";
+import type { TournamentBoardPick } from "../lib/tournamentTiers";
 
 export interface ChallengeMatch {
   id: number;
@@ -81,6 +82,8 @@ interface Props {
   startLevel?: number;
   /** Async friend challenge — seeded board, no campaign unlock. */
   challengeMatch?: ChallengeMatch | null;
+  /** Cup entry — seeded random board from the cup’s Solo range. */
+  tournamentMatch?: TournamentBoardPick | null;
   onMenu: () => void;
   onSignOut?: () => void;
 }
@@ -156,20 +159,29 @@ function initRunState(startLevel?: number): RunState {
   };
 }
 
-export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSignOut }: Props) {
+export function GameScreen({
+  username,
+  startLevel,
+  challengeMatch,
+  tournamentMatch,
+  onMenu,
+  onSignOut,
+}: Props) {
   const savedSnapshot = useRef(loadProgress());
   const isChallenge = Boolean(challengeMatch);
-  /** Energy already paid at the multiplayer modal before entering. */
-  const challengeEnergyFree = isChallenge;
+  const isTournament = Boolean(tournamentMatch);
+  /** Energy already paid at the multiplayer/tournament modal before entering. */
+  const challengeEnergyFree = isChallenge || isTournament;
+  const isSpecialRun = isChallenge || isTournament;
   const isReplaySession = useRef(
-    !challengeMatch &&
+    !isSpecialRun &&
       startLevel !== undefined &&
       ((savedSnapshot.current?.completedLevels.includes(startLevel) ?? false) ||
         startLevel < (savedSnapshot.current?.highestUnlocked ?? 1))
   );
 
   const [run, setRun] = useState<RunState>(() =>
-    initRunState(challengeMatch?.level ?? startLevel)
+    initRunState(tournamentMatch?.level ?? challengeMatch?.level ?? startLevel)
   );
   const { level, levelScore, levelHands, levelHandCounts, handsCleared, bestHand, credits, bonusMoves, tutorialStep } = run;
 
@@ -182,6 +194,8 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
     handCounts: HandCounts;
   } | null>(null);
   const [challengeResult, setChallengeResult] = useState<ChallengeDto | null>(null);
+  const [tournamentPlace, setTournamentPlace] = useState<number | null>(null);
+  const [tournamentSubmitPending, setTournamentSubmitPending] = useState(false);
   const [chestReward, setChestReward] = useState<{
     level: number;
     gems: number;
@@ -224,8 +238,11 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
     if (challengeMatch?.mission) {
       return buildChallengeMissionConfig(challengeMatch.mission, challengeMatch.level);
     }
+    if (tournamentMatch) {
+      return tournamentMatch.cfg;
+    }
     return getLevelConfig(level);
-  }, [challengeMatch, level]);
+  }, [challengeMatch, tournamentMatch, level]);
   const effectiveMoveLimit = cfg.moveLimit + bonusMoves;
   const pointsMet = levelScore >= cfg.targetPoints;
   const nextCfg = getLevelConfig(level + 1);
@@ -250,7 +267,7 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
   const tutorialConfig = tutorialActive ? getTutorialStepConfig(tutorialStep) : null;
   const level1SeedBoard = level === 1 ? getLevel1SeedBoard(tutorialStep) : undefined;
   const tutorialFreePlay = level === 1 && tutorialStep >= TUTORIAL_FREE_STEP;
-  const showChallengeUi = isChallenge || level > 1 || tutorialFreePlay;
+  const showChallengeUi = isSpecialRun || level > 1 || tutorialFreePlay;
   const challengesDone = cfg.challenges.filter(
     (c) => challengeProgress(levelHandCounts, c) >= c.minCount
   ).length;
@@ -259,7 +276,9 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
   const completedCfg = completedLevel
     ? challengeMatch?.mission
       ? buildChallengeMissionConfig(challengeMatch.mission, completedLevel)
-      : getLevelConfig(completedLevel)
+      : tournamentMatch
+        ? tournamentMatch.cfg
+        : getLevelConfig(completedLevel)
     : null;
 
   const persistRun = useCallback((next: RunState) => {
@@ -469,7 +488,7 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
 
   useEffect(() => {
     if (phase !== "round_complete") return;
-    if (isChallenge) return;
+    if (isSpecialRun) return;
     if (chestReward) return;
     if (isReplaySession.current) {
       const id = window.setTimeout(onMenu, ROUND_COMPLETE_MS);
@@ -477,27 +496,50 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
     }
     const id = window.setTimeout(advanceLevel, ROUND_COMPLETE_MS);
     return () => window.clearTimeout(id);
-  }, [phase, advanceLevel, onMenu, isChallenge, chestReward]);
+  }, [phase, advanceLevel, onMenu, isSpecialRun, chestReward]);
 
   useEffect(() => {
     if (phase !== "playing") return;
-    if (isChallenge) return;
+    if (isSpecialRun) return;
     const kind = pendingBlockerIntro(cfg.blockers, cfg.fixedObstacles);
     if (kind) {
       markBlockerIntroSeen(kind);
       setBlockerIntro(kind);
     }
-  }, [level, phase, isChallenge, cfg.blockers, cfg.fixedObstacles]);
+  }, [level, phase, isSpecialRun, cfg.blockers, cfg.fixedObstacles]);
 
   const tryAdvanceLevel = useCallback(
     (score: number, handCounts: HandCounts, hands: number) => {
       if (phase !== "playing" || advancingRef.current) return false;
-      if (level === 1 && tutorialStep < TUTORIAL_FREE_STEP && !isChallenge) return false;
+      if (level === 1 && tutorialStep < TUTORIAL_FREE_STEP && !isSpecialRun) return false;
       if (!levelRequirementsMet(score, handCounts, cfg)) return false;
 
       advancingRef.current = true;
       setBoardFeedback(null);
       const stars = computeLevelStars(score, handCounts, hands, cfg);
+
+      if (isTournament && tournamentMatch) {
+        setCompletedLevel(level);
+        setCompletedStats({ score, hands, stars, handCounts: { ...handCounts } });
+        setTournamentSubmitPending(true);
+        setTournamentPlace(null);
+        setPhase("round_complete");
+        void submitTournamentRun(tournamentMatch.tierId, {
+          hands,
+          score,
+          level: tournamentMatch.level,
+          board_seed: tournamentMatch.boardSeed,
+          target_points: tournamentMatch.cfg.targetPoints,
+        })
+          .then((r) => {
+            setTournamentPlace(r.place);
+            setTournamentSubmitPending(false);
+          })
+          .catch(() => {
+            setTournamentSubmitPending(false);
+          });
+        return true;
+      }
 
       if (isChallenge && challengeMatch) {
         setCompletedLevel(level);
@@ -557,7 +599,7 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
       }
       return true;
     },
-    [cfg, level, phase, tutorialStep, isChallenge, challengeMatch]
+    [cfg, level, phase, tutorialStep, isChallenge, isTournament, isSpecialRun, challengeMatch, tournamentMatch]
   );
 
   const handleTutorialStepComplete = useCallback(() => {
@@ -785,11 +827,21 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
           <div className="game-hud__row">
             <div
               className="level-badge hud-labeled-chip"
-              title={isChallenge ? cfg.label : `Level ${level} of ${MAX_LEVEL} · ${cfg.label}`}
+              title={
+                isTournament
+                  ? tournamentMatch?.tierName ?? "Tournament"
+                  : isChallenge
+                    ? cfg.label
+                    : `Level ${level} of ${MAX_LEVEL} · ${cfg.label}`
+              }
             >
-              <span className="hud-labeled-chip__label">{isChallenge ? "Duel" : "Level"}</span>
+              <span className="hud-labeled-chip__label">
+                {isTournament ? "Cup" : isChallenge ? "Duel" : "Level"}
+              </span>
               <span className="hud-labeled-chip__body">
-                <span className="level-badge__num">{isChallenge ? "VS" : formatLevelId(level)}</span>
+                <span className="level-badge__num">
+                  {isTournament ? "★" : isChallenge ? "VS" : formatLevelId(level)}
+                </span>
               </span>
             </div>
 
@@ -940,13 +992,13 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
               key={boardKey}
               embedded
               locked={boardLocked}
-              seedBoard={isChallenge ? undefined : level1SeedBoard}
-              boardSeed={challengeMatch?.boardSeed}
-              guidedPath={isChallenge ? undefined : tutorialConfig?.guidedPath}
-              tutorialExpectedHand={isChallenge ? undefined : tutorialConfig?.expectedHand}
-              tutorialWrongSwipeHint={isChallenge ? undefined : tutorialConfig?.wrongSwipeHint}
+              seedBoard={isSpecialRun ? undefined : level1SeedBoard}
+              boardSeed={tournamentMatch?.boardSeed ?? challengeMatch?.boardSeed}
+              guidedPath={isSpecialRun ? undefined : tutorialConfig?.guidedPath}
+              tutorialExpectedHand={isSpecialRun ? undefined : tutorialConfig?.expectedHand}
+              tutorialWrongSwipeHint={isSpecialRun ? undefined : tutorialConfig?.wrongSwipeHint}
               onTutorialStepComplete={
-                !isChallenge && tutorialActive ? handleTutorialStepComplete : undefined
+                !isSpecialRun && tutorialActive ? handleTutorialStepComplete : undefined
               }
               blockerConfig={cfg.blockers}
               fixedObstacles={cfg.fixedObstacles}
@@ -1092,7 +1144,44 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
         </div>
         )}
 
-      {phase === "round_complete" && completedLevel !== null && completedCfg && !isChallenge &&
+      {phase === "round_complete" && completedLevel !== null && completedCfg && isTournament && tournamentMatch &&
+        gamePortal(
+        <div className="modal-overlay levelup-overlay round-complete-overlay">
+          <div className="modal levelup-modal round-complete-modal">
+            <div className="levelup-badge round-complete-badge">CUP CLEAR!</div>
+            <h2>{tournamentMatch.tierName}</h2>
+            <p className="levelup-label">Tournament run complete</p>
+            <div className="levelup-perks">
+              <div className="perk">
+                <span className="perk-icon">🃏</span>
+                <span>
+                  {completedStats?.hands ?? 0} hands · {(completedStats?.score ?? 0).toLocaleString()} pts
+                  {" · "}goal {tournamentMatch.cfg.targetPoints.toLocaleString()}
+                </span>
+              </div>
+              <div className="perk">
+                <span className="perk-icon">🏁</span>
+                <span>
+                  {tournamentSubmitPending
+                    ? "Submitting rank…"
+                    : tournamentPlace != null
+                      ? `Your best rank: #${tournamentPlace}`
+                      : "Result saved"}
+                </span>
+              </div>
+              <div className="perk">
+                <span className="perk-icon">★</span>
+                <span>Fewest hands wins · if tied, closest to the point goal</span>
+              </div>
+            </div>
+            <button type="button" className="btn ghost" onClick={onMenu}>
+              Back to lobby
+            </button>
+          </div>
+        </div>
+        )}
+
+      {phase === "round_complete" && completedLevel !== null && completedCfg && !isSpecialRun &&
         gamePortal(
         <div className="modal-overlay levelup-overlay round-complete-overlay">
           <div className="modal levelup-modal round-complete-modal">
@@ -1437,7 +1526,11 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
           >
             <h2 id="challenges-title">Mission goals</h2>
             <p className="scores-note">
-              {isChallenge ? cfg.label : `Level ${formatLevelId(level)} · ${cfg.label}`}
+              {isTournament
+                ? tournamentMatch?.tierName ?? "Tournament"
+                : isChallenge
+                  ? cfg.label
+                  : `Level ${formatLevelId(level)} · ${cfg.label}`}
             </p>
 
             <div className="challenges-modal__points">

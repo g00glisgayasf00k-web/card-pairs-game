@@ -492,3 +492,45 @@ export async function unregisterDeviceToken(token: string) {
   });
 }
 
+export interface TournamentStandingRow {
+  id: number;
+  tier_id: string;
+  username: string;
+  hands: number;
+  score: number;
+  target_points: number;
+  point_delta: number;
+  place?: number;
+}
+
+export async function fetchTournamentStandings(tierId: string, limit = 10) {
+  return request<{
+    tier_id: string;
+    standings: TournamentStandingRow[];
+    your_place: number | null;
+  }>(`/api/tournaments/${tierId}/standings?limit=${limit}`);
+}
+
+export async function submitTournamentRun(
+  tierId: string,
+  body: {
+    hands: number;
+    score: number;
+    level: number;
+    board_seed: number;
+    target_points: number;
+  }
+) {
+  return request<{
+    ok: boolean;
+    improved: boolean;
+    place: number | null;
+    hands: number;
+    score: number;
+    target_points: number;
+  }>(`/api/tournaments/${tierId}/submit`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+

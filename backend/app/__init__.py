@@ -38,6 +38,10 @@ def create_app(config_class=Config):
     app.register_blueprint(matchmaking_bp, url_prefix="/api/matchmaking")
     app.register_blueprint(notifications_bp, url_prefix="/api/notifications")
 
+    from app.blueprints.tournaments import tournaments_bp
+
+    app.register_blueprint(tournaments_bp, url_prefix="/api/tournaments")
+
     @app.route("/api/health")
     def health():
         uri = app.config.get("SQLALCHEMY_DATABASE_URI") or ""

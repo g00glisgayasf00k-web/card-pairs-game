@@ -1,11 +1,18 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { HOME_ASSETS } from "./home/homeAssets";
+import {
+  fetchTournamentStandings,
+  type TournamentStandingRow,
+} from "../lib/api";
+import { formatChallenge } from "../lib/levels";
 import { loadProgress, saveProgress } from "../lib/progress";
 import {
   TOURNAMENT_TIERS,
   isTournamentUnlocked,
   payoutAmounts,
+  pickTournamentBoard,
   unlockLabel,
+  type TournamentBoardPick,
   type TournamentTier,
 } from "../lib/tournamentTiers";
 
@@ -13,14 +20,21 @@ interface Props {
   onClose: () => void;
   onBalanceChange?: () => void;
   onOpenShop?: () => void;
+  onPlayTournament: (board: TournamentBoardPick) => void;
 }
 
-export function TournamentModal({ onClose, onBalanceChange, onOpenShop }: Props) {
+export function TournamentModal({
+  onClose,
+  onBalanceChange,
+  onOpenShop,
+  onPlayTournament,
+}: Props) {
   const [tick, setTick] = useState(0);
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [info, setInfo] = useState<string | null>(null);
   const [confirmTier, setConfirmTier] = useState<TournamentTier | null>(null);
+  const [briefing, setBriefing] = useState<TournamentBoardPick | null>(null);
+  const [standings, setStandings] = useState<Record<string, TournamentStandingRow[]>>({});
 
   void tick;
   const gems = loadProgress()?.credits ?? 0;
@@ -29,9 +43,30 @@ export function TournamentModal({ onClose, onBalanceChange, onOpenShop }: Props)
 
   const refresh = () => setTick((t) => t + 1);
 
+  useEffect(() => {
+    let cancelled = false;
+    void Promise.all(
+      TOURNAMENT_TIERS.map(async (tier) => {
+        try {
+          const r = await fetchTournamentStandings(tier.id, 5);
+          return [tier.id, r.standings] as const;
+        } catch {
+          return [tier.id, [] as TournamentStandingRow[]] as const;
+        }
+      })
+    ).then((pairs) => {
+      if (cancelled) return;
+      const next: Record<string, TournamentStandingRow[]> = {};
+      for (const [id, rows] of pairs) next[id] = rows;
+      setStandings(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [tick]);
+
   const enterTournament = (tier: TournamentTier) => {
     setError(null);
-    setInfo(null);
     if (!isTournamentUnlocked(tier)) {
       setError(`Clear level ${unlockLabel(tier)} in Solo to unlock.`);
       return;
@@ -51,7 +86,7 @@ export function TournamentModal({ onClose, onBalanceChange, onOpenShop }: Props)
       credits: saved.credits - tier.entryGems,
     });
     setConfirmTier(null);
-    setInfo(`Entered ${tier.name}! Top 3 share ${tier.rewardPool.toLocaleString()} gems.`);
+    setBriefing(pickTournamentBoard(tier));
     setBusyId(null);
     refresh();
     onBalanceChange?.();
@@ -92,19 +127,21 @@ export function TournamentModal({ onClose, onBalanceChange, onOpenShop }: Props)
               <img className="tn-kit__hero-chips" src={a.hero.chipsStack} alt="" />
               <div className="tn-kit__hero-copy">
                 <h2 id="tournament-title">Tournament</h2>
-                <p>Pick a cup, pay the entry, and fight for the prize pool.</p>
+                <p>Fewest hands wins. If tied, closest to the point goal.</p>
               </div>
             </div>
 
             <div className="tn-kit__body">
-              <p className="tn-kit__hint">Top 3 earn the prize pool payouts shown on each cup.</p>
+              <p className="tn-kit__hint">
+                Each cup uses a random board from its Solo range. Top 3 take the payouts shown.
+              </p>
               {error && <p className="tn-kit__error">{error}</p>}
-              {info && <p className="tn-kit__info">{info}</p>}
 
               {TOURNAMENT_TIERS.map((tier) => {
                 const unlocked = isTournamentUnlocked(tier);
                 const payouts = payoutAmounts(tier.rewardPool);
                 const canAfford = gems >= tier.entryGems;
+                const rows = standings[tier.id] ?? [];
                 return (
                   <article
                     key={tier.id}
@@ -153,6 +190,19 @@ export function TournamentModal({ onClose, onBalanceChange, onOpenShop }: Props)
                       ))}
                     </ul>
 
+                    {rows.length > 0 && (
+                      <ol className="tn-cup__standings">
+                        {rows.map((r) => (
+                          <li key={r.id}>
+                            <span>#{r.place ?? "—"} {r.username}</span>
+                            <strong>
+                              {r.hands}h · {r.score.toLocaleString()}pts
+                            </strong>
+                          </li>
+                        ))}
+                      </ol>
+                    )}
+
                     <div className="tn-cup__actions">
                       {unlocked ? (
                         <button
@@ -165,13 +215,7 @@ export function TournamentModal({ onClose, onBalanceChange, onOpenShop }: Props)
                           }}
                         >
                           Enter · {tier.entryGems}
-                          <img
-                            src={a.header.gems}
-                            alt=""
-                            width={14}
-                            height={14}
-                            style={{ marginLeft: "0.35rem", verticalAlign: "-2px" }}
-                          />
+                          <img src={a.header.gems} alt="" width={14} height={14} />
                         </button>
                       ) : (
                         <button type="button" className="tn-kit__ghost" disabled>
@@ -208,12 +252,9 @@ export function TournamentModal({ onClose, onBalanceChange, onOpenShop }: Props)
           >
             <h2 id="tournament-enter-title">Enter {confirmTier.name}?</h2>
             <p>
-              Entry fee <strong>{confirmTier.entryGems}</strong> gems. Prize pool{" "}
-              <strong>{confirmTier.rewardPool.toLocaleString()}</strong> gems — payouts{" "}
-              {payoutAmounts(confirmTier.rewardPool)
-                .map((p) => `${p.label} ${p.gems.toLocaleString()}`)
-                .join(" · ")}
-              .
+              Entry fee <strong>{confirmTier.entryGems}</strong> gems. You&apos;ll get a random
+              board from this cup&apos;s Solo range. Win with the fewest hands — if tied, closest
+              to the point goal ranks higher.
             </p>
             <div className="tn-confirm__actions">
               <button
@@ -223,10 +264,58 @@ export function TournamentModal({ onClose, onBalanceChange, onOpenShop }: Props)
                 onClick={() => enterTournament(confirmTier)}
               >
                 <img src={a.header.gems} alt="" width={14} height={14} />
-                &nbsp;Pay {confirmTier.entryGems}
+                Pay {confirmTier.entryGems}
               </button>
               <button type="button" className="tn-kit__ghost" onClick={() => setConfirmTier(null)}>
                 Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {briefing && (
+        <div className="tn-confirm-overlay" role="presentation">
+          <div
+            className="tn-confirm tn-confirm--briefing"
+            role="dialog"
+            aria-labelledby="tournament-brief-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="tournament-brief-title">{briefing.tierName}</h2>
+            <p className="tn-brief__lead">Your tournament board is ready. Hit these goals:</p>
+            <div className="tn-brief__goals">
+              <div className="tn-brief__goal">
+                <span>Point goal</span>
+                <strong>{briefing.cfg.targetPoints.toLocaleString()}</strong>
+              </div>
+              <div className="tn-brief__goal">
+                <span>Move budget</span>
+                <strong>{briefing.cfg.moveLimit}</strong>
+              </div>
+            </div>
+            {briefing.cfg.challenges.length > 0 && (
+              <ul className="tn-brief__challenges">
+                {briefing.cfg.challenges.map((c, i) => (
+                  <li key={`${c.hand}-${i}`}>{formatChallenge(c)}</li>
+                ))}
+              </ul>
+            )}
+            <p className="tn-brief__note">
+              Ranking: fewest hands first, then closest to the point goal.
+            </p>
+            <div className="tn-confirm__actions">
+              <button
+                type="button"
+                className="tn-kit__cta"
+                onClick={() => {
+                  const board = briefing;
+                  setBriefing(null);
+                  onClose();
+                  onPlayTournament(board);
+                }}
+              >
+                Play now
               </button>
             </div>
           </div>

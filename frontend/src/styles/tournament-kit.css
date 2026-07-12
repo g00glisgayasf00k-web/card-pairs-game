@@ -248,12 +248,12 @@
 .tn-cup {
   --mode-glow: #4ade80;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   display: flex;
   flex-direction: column;
   gap: 0.7rem;
   width: 100%;
-  padding: 1rem 1rem 0.95rem;
+  padding: 1rem 1rem 1.05rem;
   border-radius: 20px;
   border: 2px solid var(--mode-glow);
   background-color: #166534;
@@ -432,15 +432,20 @@
 
 .tn-cup__actions {
   display: flex;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 0.45rem;
+  width: 100%;
 }
 
 .tn-kit__cta {
-  flex: 1 1 auto;
-  min-width: 8rem;
-  min-height: 2.75rem;
-  padding: 0.75rem 1rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  width: 100%;
+  flex: 0 0 auto;
+  min-height: 3rem;
+  padding: 0.85rem 1rem;
   border-radius: 14px;
   border: 1px solid rgba(255, 215, 0, 0.45);
   background: linear-gradient(180deg, #1b5e20 0%, #0f3a13 100%);
@@ -448,7 +453,10 @@
   font-family: "Cinzel", "Crimson Pro", Georgia, serif;
   font-size: 0.9rem;
   font-weight: 800;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  white-space: nowrap;
+  box-sizing: border-box;
   cursor: pointer;
   box-shadow:
     0 0 22px rgba(27, 94, 32, 0.45),
@@ -465,8 +473,11 @@
 }
 
 .tn-kit__ghost {
-  flex: 1 1 auto;
-  min-width: 6rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  flex: 0 0 auto;
   min-height: 2.75rem;
   padding: 0.7rem 1rem;
   border-radius: 12px;
@@ -475,12 +486,102 @@
   color: #a8c8b2;
   font-size: 0.85rem;
   font-weight: 700;
+  box-sizing: border-box;
   cursor: pointer;
 }
 
 .tn-kit__ghost:disabled {
   opacity: 0.55;
   cursor: not-allowed;
+}
+
+.tn-cup__standings {
+  position: relative;
+  z-index: 2;
+  margin: 0;
+  padding: 0.45rem 0.55rem;
+  list-style: none;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.tn-cup__standings li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.72rem;
+  color: rgba(220, 245, 225, 0.88);
+}
+
+.tn-cup__standings strong {
+  color: #fff3b0;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.tn-confirm--briefing {
+  width: min(100%, 24rem);
+}
+
+.tn-brief__lead {
+  margin: 0 0 0.75rem !important;
+}
+
+.tn-brief__goals {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+  margin-bottom: 0.75rem;
+}
+
+.tn-brief__goal {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  padding: 0.55rem 0.6rem;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.tn-brief__goal span {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(220, 245, 225, 0.7);
+}
+
+.tn-brief__goal strong {
+  font-size: 1rem;
+  color: #fff3b0;
+}
+
+.tn-brief__challenges {
+  margin: 0 0 0.75rem;
+  padding: 0.55rem 0.75rem;
+  list-style: none;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+}
+
+.tn-brief__challenges li {
+  font-size: 0.8rem;
+  color: rgba(232, 255, 232, 0.92);
+}
+
+.tn-brief__note {
+  margin: 0 0 0.85rem !important;
+  font-size: 0.78rem !important;
+  color: rgba(220, 245, 225, 0.75) !important;
 }
 
 .tn-confirm-overlay {

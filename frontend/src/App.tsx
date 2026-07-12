@@ -13,6 +13,7 @@ import {
 } from "./lib/nativePush";
 import type { ChallengeDto } from "./lib/api";
 import type { ChallengeMatch } from "./screens/GameScreen";
+import type { TournamentBoardPick } from "./lib/tournamentTiers";
 
 type Screen = "onboard" | "levels" | "game";
 export type PlayTheme = "solo" | "challenge" | "compete";
@@ -32,6 +33,7 @@ export default function App() {
   const [screen, setScreen] = useState<Screen>("onboard");
   const [playLevel, setPlayLevel] = useState<number | undefined>(undefined);
   const [challengeMatch, setChallengeMatch] = useState<ChallengeMatch | null>(null);
+  const [tournamentMatch, setTournamentMatch] = useState<TournamentBoardPick | null>(null);
   const [playTheme, setPlayTheme] = useState<PlayTheme>("solo");
   const [loggedIn, setLoggedIn] = useState(() => isLoggedIn());
   const [username, setUsername] = useState<string | null>(() => getUsername());
@@ -80,6 +82,7 @@ export default function App() {
     setScreen("onboard");
     setPlayLevel(undefined);
     setChallengeMatch(null);
+    setTournamentMatch(null);
     setPlayTheme("solo");
     setOpenChallengeSheet(false);
   };
@@ -90,6 +93,7 @@ export default function App() {
       return;
     }
     setChallengeMatch(null);
+    setTournamentMatch(null);
     setPlayTheme("solo");
     setPlayLevel(globalLevel);
     setScreen("game");
@@ -99,6 +103,7 @@ export default function App() {
     if (!isLoggedIn()) return;
     setPlayTheme(challenge.kind === "quick" ? "compete" : "challenge");
     setPlayLevel(undefined);
+    setTournamentMatch(null);
     setChallengeMatch({
       id: challenge.id,
       level: challenge.level,
@@ -111,9 +116,19 @@ export default function App() {
     setScreen("game");
   };
 
+  const startTournament = (board: TournamentBoardPick) => {
+    if (!isLoggedIn()) return;
+    setPlayTheme("compete");
+    setPlayLevel(undefined);
+    setChallengeMatch(null);
+    setTournamentMatch(board);
+    setScreen("game");
+  };
+
   const goToLevels = () => {
     if (!isLoggedIn()) return;
     setChallengeMatch(null);
+    setTournamentMatch(null);
     setPlayTheme("solo");
     setScreen("levels");
   };
@@ -136,12 +151,14 @@ export default function App() {
       <div className={`app app--game app--theme-${playTheme}`} data-play-theme={playTheme}>
         <GameScreen
           username={username}
-          startLevel={challengeMatch?.level ?? playLevel}
+          startLevel={tournamentMatch?.level ?? challengeMatch?.level ?? playLevel}
           challengeMatch={challengeMatch}
+          tournamentMatch={tournamentMatch}
           onMenu={() => {
             setPlayLevel(undefined);
             setChallengeMatch(null);
-            setScreen(challengeMatch ? "onboard" : "levels");
+            setTournamentMatch(null);
+            setScreen(challengeMatch || tournamentMatch ? "onboard" : "levels");
           }}
           onSignOut={handleSignOut}
         />
@@ -172,6 +189,7 @@ export default function App() {
         }}
         onPlay={goToLevels}
         onPlayChallenge={startChallenge}
+        onPlayTournament={startTournament}
         openChallengeSheet={openChallengeSheet}
         onChallengeSheetOpened={() => setOpenChallengeSheet(false)}
       />

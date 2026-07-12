@@ -17,6 +17,7 @@ import {
 import { loadProgress } from "../lib/progress";
 import { MAX_LEVEL } from "../lib/levels";
 import type { ChallengeDto } from "../lib/api";
+import type { TournamentBoardPick } from "../lib/tournamentTiers";
 import { useNotificationSummary } from "../lib/useNotificationSummary";
 
 interface Props {
@@ -26,6 +27,7 @@ interface Props {
   onSessionChange?: () => void;
   onPlay: () => void;
   onPlayChallenge: (challenge: ChallengeDto) => void;
+  onPlayTournament: (board: TournamentBoardPick) => void;
   openChallengeSheet?: boolean;
   onChallengeSheetOpened?: () => void;
 }
@@ -40,6 +42,7 @@ export function OnboardingScreen({
   onSessionChange,
   onPlay,
   onPlayChallenge,
+  onPlayTournament,
   openChallengeSheet,
   onChallengeSheetOpened,
 }: Props) {
@@ -229,6 +232,10 @@ export function OnboardingScreen({
           onOpenShop={() => {
             setPlaySheet(null);
             setMenu("shop");
+          }}
+          onPlayTournament={(board) => {
+            setPlaySheet(null);
+            onPlayTournament(board);
           }}
         />
       )}

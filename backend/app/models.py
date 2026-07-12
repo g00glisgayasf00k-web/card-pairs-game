@@ -181,3 +181,32 @@ class MatchTicket(db.Model):
 
     user = db.relationship("User", foreign_keys=[user_id])
     challenge = db.relationship("Challenge", foreign_keys=[challenge_id])
+
+
+class TournamentRun(db.Model):
+    """Best completed tournament attempt per user per cup."""
+
+    __tablename__ = "tournament_runs"
+    __table_args__ = (
+        db.UniqueConstraint("user_id", "tier_id", name="uq_tournament_user_tier"),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    tier_id = db.Column(db.String(32), nullable=False, index=True)
+    level = db.Column(db.Integer, nullable=False)
+    board_seed = db.Column(db.BigInteger, nullable=False)
+    target_points = db.Column(db.Integer, nullable=False)
+    hands = db.Column(db.Integer, nullable=False)
+    score = db.Column(db.Integer, nullable=False)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    updated_at = db.Column(
+        db.DateTime,
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+        nullable=False,
+    )
+
+    user = db.relationship("User", foreign_keys=[user_id])

@@ -4,7 +4,7 @@ from datetime import datetime, timezone
 from app.models import PlayerProgress, db
 
 PROGRESS_VERSION = 9
-STARTING_CREDITS = 200
+STARTING_CREDITS = 100
 MAX_ENERGY = 12
 
 

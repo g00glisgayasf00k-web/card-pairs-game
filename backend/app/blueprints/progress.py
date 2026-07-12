@@ -9,7 +9,7 @@ from app.models import PlayerProgress, User, db
 
 progress_bp = Blueprint("progress", __name__)
 
-STARTING_CREDITS = 200
+STARTING_CREDITS = 100
 MAX_ENERGY = 12
 
 

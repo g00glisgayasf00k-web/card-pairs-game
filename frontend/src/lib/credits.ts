@@ -1,5 +1,5 @@
 /** Starting balance for new players. */
-export const STARTING_CREDITS = 200;
+export const STARTING_CREDITS = 100;
 
 /** Gem cost to reveal a hint. */
 export const HINT_COST = 1;

@@ -231,6 +231,8 @@ export function GameScreen({
   const [boardFeedback, setBoardFeedback] = useState<{ text: string; hint?: boolean } | null>(null);
   const [blockerIntro, setBlockerIntro] = useState<BlockerIntroKind | null>(null);
   const [confirmSpend, setConfirmSpend] = useState<"hint" | "shuffle" | "restart" | null>(null);
+  const [confirmExit, setConfirmExit] = useState(false);
+  const [exitBusy, setExitBusy] = useState(false);
   const levelScoreRef = useRef(levelScore);
   const levelHandsRef = useRef(levelHands);
   const levelHandCountsRef = useRef<HandCounts>(levelHandCounts);
@@ -722,13 +724,37 @@ export function GameScreen({
     }).catch(() => {});
   };
 
-  const handleExit = () => {
-    if (isChallenge && challengeMatch && !challengeSubmittedRef.current) {
-      void forfeitChallenge(challengeMatch.id).catch(() => undefined);
-      challengeSubmittedRef.current = true;
-    }
+  const leaveToMenu = () => {
     submitRunScore();
     onMenu();
+  };
+
+  /** Soft exit — challenges warn before recording a 0 forfeit. */
+  const handleExit = () => {
+    if (isChallenge && challengeMatch && !challengeSubmittedRef.current) {
+      setConfirmExit(true);
+      return;
+    }
+    leaveToMenu();
+  };
+
+  const confirmForfeitExit = async () => {
+    if (!challengeMatch || challengeSubmittedRef.current) {
+      setConfirmExit(false);
+      leaveToMenu();
+      return;
+    }
+    setExitBusy(true);
+    try {
+      await forfeitChallenge(challengeMatch.id);
+      challengeSubmittedRef.current = true;
+    } catch {
+      // Still leave so the player isn’t stuck; server may settle on next poll.
+    } finally {
+      setExitBusy(false);
+      setConfirmExit(false);
+    }
+    leaveToMenu();
   };
 
   const finishCampaign = () => {
@@ -836,6 +862,10 @@ export function GameScreen({
         setShowProfile(false);
         return true;
       }
+      if (confirmExit) {
+        setConfirmExit(false);
+        return true;
+      }
       if (confirmSpend) {
         setConfirmSpend(null);
         return true;
@@ -851,6 +881,7 @@ export function GameScreen({
     showGemShop,
     showOutOfEnergy,
     showProfile,
+    confirmExit,
     confirmSpend,
     phase,
     handleExit,
@@ -1527,7 +1558,7 @@ export function GameScreen({
               Restart level
             </button>
             <button type="button" className="btn ghost" onClick={handleExit}>
-              {isChallenge ? "Forfeit · back to lobby" : "Back to levels"}
+              {isChallenge ? "Exit duel…" : "Back to levels"}
             </button>
           </div>
         </div>
@@ -1559,6 +1590,57 @@ export function GameScreen({
             </button>
           </div>
         </div>
+        )}
+
+      {confirmExit &&
+        gamePortal(
+          <div
+            className="modal-overlay scores-overlay"
+            onClick={() => {
+              if (!exitBusy) setConfirmExit(false);
+            }}
+            role="presentation"
+          >
+            <div
+              className="modal scores-modal spend-confirm-modal"
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-labelledby="exit-forfeit-title"
+            >
+              <div className="spend-confirm__icon" aria-hidden>
+                🚪
+              </div>
+              <h2 id="exit-forfeit-title">Exit this duel?</h2>
+              <p className="scores-note spend-confirm__note">
+                If you leave now, your score will be recorded as{" "}
+                <strong>0★ / 0 moves / 0 pts</strong>.
+                {challengeMatch?.kind === "quick" ? (
+                  <>
+                    {" "}
+                    If your opponent also exits with 0, the match is a <strong>draw</strong>.
+                  </>
+                ) : null}
+              </p>
+              <div className="spend-confirm__actions">
+                <button
+                  type="button"
+                  className="btn ghost"
+                  disabled={exitBusy}
+                  onClick={() => setConfirmExit(false)}
+                >
+                  Stay
+                </button>
+                <button
+                  type="button"
+                  className="btn"
+                  disabled={exitBusy}
+                  onClick={() => void confirmForfeitExit()}
+                >
+                  {exitBusy ? "Leaving…" : "Exit with 0"}
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
       {confirmSpend &&

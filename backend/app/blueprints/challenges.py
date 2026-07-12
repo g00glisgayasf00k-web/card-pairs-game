@@ -787,17 +787,25 @@ def forfeit_challenge(challenge_id: int):
     me_user = User.query.get(me)
     me_name = me_user.username if me_user else "Opponent"
     if ch.status == "completed":
-        _notify(
-            other_id,
-            "Opponent forfeited",
-            f"{me_name} backed out — you win",
-            {"type": "challenge_complete", "challenge_id": str(ch.id)},
-        )
+        if ch.winner_user_id is None:
+            _notify(
+                other_id,
+                "Match drawn",
+                f"{me_name} also exited with 0 — draw",
+                {"type": "challenge_complete", "challenge_id": str(ch.id)},
+            )
+        else:
+            _notify(
+                other_id,
+                "Opponent forfeited",
+                f"{me_name} backed out — you win",
+                {"type": "challenge_complete", "challenge_id": str(ch.id)},
+            )
     else:
         _notify(
             other_id,
             "Opponent forfeited",
-            f"{me_name} backed out with 0. Finish within 10 minutes to claim the win.",
+            f"{me_name} exited with 0. Finish within 10 minutes to claim the win — or exit with 0 for a draw.",
             {"type": "challenge", "challenge_id": str(ch.id)},
         )
 

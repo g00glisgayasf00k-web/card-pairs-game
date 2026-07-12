@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ChallengeFriendModal } from "./ChallengeFriendModal";
+import { HOME_ASSETS } from "./home/homeAssets";
 import {
   joinQuickMatch,
   leaveQuickMatch,
@@ -38,8 +39,10 @@ export function MultiplayerModal({
   const [matched, setMatched] = useState<ChallengeDto | null>(null);
   const [confirmQuick, setConfirmQuick] = useState(false);
   const [showOutOfEnergy, setShowOutOfEnergy] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
   const [elo, setElo] = useState(() => loadProgress()?.elo ?? 1000);
   const pollingRef = useRef(false);
+  const blue = HOME_ASSETS.cards.blue;
 
   useEffect(() => {
     return () => {
@@ -90,6 +93,7 @@ export function MultiplayerModal({
     setBusy(true);
     setError(null);
     setMatched(null);
+    setStatus("waiting");
     try {
       const r = await joinQuickMatch();
       if (typeof (r as { elo?: number }).elo === "number") {
@@ -126,7 +130,7 @@ export function MultiplayerModal({
   };
 
   const cancelQueue = async () => {
-    setBusy(true);
+    setCancelling(true);
     try {
       await leaveQuickMatch();
     } catch {
@@ -134,6 +138,7 @@ export function MultiplayerModal({
     }
     setStatus("idle");
     setBusy(false);
+    setCancelling(false);
   };
 
   const playMatched = () => {
@@ -148,6 +153,8 @@ export function MultiplayerModal({
       : matched.you_are === "challenger"
         ? matched.opponent?.username
         : matched.challenger?.username;
+
+  const finding = status === "waiting";
 
   return (
     <>
@@ -207,9 +214,22 @@ export function MultiplayerModal({
                 </p>
               </header>
               <div className="play-mode-modal__body">
-                <div className="play-mode-sent">
+                <div className="quick-find quick-find--ready" style={{ backgroundImage: `url(${blue.base})` }}>
+                  <span
+                    className="quick-find__glow"
+                    aria-hidden
+                    style={{ backgroundImage: `url(${blue.glow})` }}
+                  />
+                  <div className="quick-find__icon-wrap" aria-hidden>
+                    <span
+                      className="quick-find__ring"
+                      style={{ backgroundImage: `url(${blue.circle})` }}
+                    />
+                    <img className="quick-find__icon" src={blue.icon} alt="" width={88} height={88} />
+                  </div>
+                  <img className="quick-find__label" src={blue.label} alt="Multiplayer" />
                   <p>Same seeded board. Best stars win — then fewest moves, then score.</p>
-                  <p className="play-mode-modal__hint">Rating updates when both results are in.</p>
+                  <p className="quick-find__sub">Rating updates when both results are in.</p>
                 </div>
                 <button type="button" className="btn-primary" onClick={playMatched}>
                   Play now
@@ -225,52 +245,99 @@ export function MultiplayerModal({
 
           {view === "quick" && status !== "matched" && (
             <>
-              <header className="play-mode-modal__header">
-                <h2 id="multiplayer-title">Quick play</h2>
-                <p className="play-mode-modal__lead">
-                  Matched vs a similar Rating. Same board — better stars / moves wins.
-                </p>
-                <p className="play-mode-modal__hint">Your Rating: {elo}</p>
-              </header>
-              <div className="play-mode-modal__body">
-                {error && <p className="play-mode-modal__error">{error}</p>}
-                {status === "waiting" ? (
-                  <>
-                    <div className="play-mode-sent">
-                      <p>Searching for a similar Rating…</p>
+              {finding ? (
+                <>
+                  <header className="play-mode-modal__header">
+                    <h2 id="multiplayer-title">Finding an opponent</h2>
+                    <p className="play-mode-modal__lead">
+                      Looking for a player near your Rating…
+                    </p>
+                  </header>
+                  <div className="play-mode-modal__body">
+                    {error && <p className="play-mode-modal__error">{error}</p>}
+                    <div
+                      className="quick-find quick-find--searching"
+                      style={{ backgroundImage: `url(${blue.base})` }}
+                    >
+                      <span
+                        className="quick-find__glow"
+                        aria-hidden
+                        style={{ backgroundImage: `url(${blue.glow})` }}
+                      />
+                      <div className="quick-find__icon-wrap quick-find__icon-wrap--pulse" aria-hidden>
+                        <span
+                          className="quick-find__ring"
+                          style={{ backgroundImage: `url(${blue.circle})` }}
+                        />
+                        <img className="quick-find__icon" src={blue.icon} alt="" width={96} height={96} />
+                      </div>
+                      <img className="quick-find__label" src={blue.label} alt="Multiplayer" />
+                      <p className="quick-find__status">Finding an opponent…</p>
+                      <p className="quick-find__sub">Your Rating: {elo}</p>
                     </div>
                     <button
                       type="button"
                       className="btn scores-close"
-                      disabled={busy}
+                      disabled={cancelling}
                       onClick={() => void cancelQueue()}
                     >
-                      Cancel
+                      {cancelling ? "Cancelling…" : "Cancel"}
                     </button>
-                  </>
-                ) : (
-                  <button
-                    type="button"
-                    className="btn-primary"
-                    disabled={busy}
-                    onClick={() => setConfirmQuick(true)}
-                  >
-                    {busy ? "Finding…" : "Find match · ⚡1"}
-                  </button>
-                )}
-              </div>
-              <footer className="play-mode-modal__footer">
-                <button
-                  type="button"
-                  className="btn scores-close"
-                  onClick={() => {
-                    void cancelQueue();
-                    setView("hub");
-                  }}
-                >
-                  Back
-                </button>
-              </footer>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <header className="play-mode-modal__header">
+                    <h2 id="multiplayer-title">Quick play</h2>
+                    <p className="play-mode-modal__lead">
+                      Matched vs a similar Rating. Same board — better stars / moves wins.
+                    </p>
+                    <p className="play-mode-modal__hint">Your Rating: {elo}</p>
+                  </header>
+                  <div className="play-mode-modal__body">
+                    {error && <p className="play-mode-modal__error">{error}</p>}
+                    <div
+                      className="quick-find quick-find--idle"
+                      style={{ backgroundImage: `url(${blue.base})` }}
+                    >
+                      <span
+                        className="quick-find__glow"
+                        aria-hidden
+                        style={{ backgroundImage: `url(${blue.glow})` }}
+                      />
+                      <div className="quick-find__icon-wrap" aria-hidden>
+                        <span
+                          className="quick-find__ring"
+                          style={{ backgroundImage: `url(${blue.circle})` }}
+                        />
+                        <img className="quick-find__icon" src={blue.icon} alt="" width={88} height={88} />
+                      </div>
+                      <img className="quick-find__label" src={blue.label} alt="Multiplayer" />
+                      <p className="quick-find__sub">Costs 1 ⚡ to enter the queue</p>
+                    </div>
+                    <button
+                      type="button"
+                      className="btn-primary"
+                      disabled={busy}
+                      onClick={() => setConfirmQuick(true)}
+                    >
+                      Find match · ⚡1
+                    </button>
+                  </div>
+                  <footer className="play-mode-modal__footer">
+                    <button
+                      type="button"
+                      className="btn scores-close"
+                      onClick={() => {
+                        void cancelQueue();
+                        setView("hub");
+                      }}
+                    >
+                      Back
+                    </button>
+                  </footer>
+                </>
+              )}
             </>
           )}
         </div>

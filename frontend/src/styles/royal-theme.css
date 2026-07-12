@@ -2183,3 +2183,112 @@ button.royal-resource:active {
   color: rgba(255, 243, 176, 0.72);
   font-weight: 500;
 }
+
+/* Quick play — blue multiplayer card assets */
+.quick-find {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.55rem;
+  margin-bottom: 0.85rem;
+  padding: 1.35rem 1.1rem 1.15rem;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 215, 0, 0.22);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  overflow: hidden;
+  text-align: center;
+  box-shadow:
+    0 0 28px rgba(13, 71, 161, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.quick-find__glow {
+  position: absolute;
+  inset: -8% -6% auto;
+  height: 70%;
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.quick-find__icon-wrap {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 7.25rem;
+  height: 7.25rem;
+}
+
+.quick-find__ring {
+  position: absolute;
+  inset: 0;
+  background-size: contain;
+  background-position: center;
+  background-repeat: no-repeat;
+}
+
+.quick-find__icon {
+  position: relative;
+  z-index: 1;
+  width: 5.5rem;
+  height: 5.5rem;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.45));
+}
+
+.quick-find__icon-wrap--pulse {
+  animation: quick-find-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes quick-find-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  50% {
+    transform: scale(1.06);
+    filter: brightness(1.12);
+  }
+}
+
+.quick-find__label {
+  position: relative;
+  z-index: 1;
+  height: 1.35rem;
+  width: auto;
+  max-width: 70%;
+  object-fit: contain;
+}
+
+.quick-find__status {
+  position: relative;
+  z-index: 1;
+  margin: 0.15rem 0 0;
+  font-family: "Cinzel", "Crimson Pro", Georgia, serif;
+  font-size: 1.05rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: #fff3b0;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+}
+
+.quick-find__sub,
+.quick-find p {
+  position: relative;
+  z-index: 1;
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: rgba(255, 243, 176, 0.82);
+}
+
+.quick-find--ready p {
+  max-width: 18rem;
+}

@@ -165,7 +165,7 @@ export function MultiplayerModal({
                 <p className="play-mode-modal__lead">
                   Play online versus like-minded players, or challenge your friends.
                 </p>
-                <p className="play-mode-modal__hint">Your Elo: {elo}</p>
+                <p className="play-mode-modal__hint">Your Rating: {elo}</p>
               </header>
               <div className="play-mode-modal__body multiplayer-hub">
                 <button
@@ -178,7 +178,7 @@ export function MultiplayerModal({
                 >
                   <span className="multiplayer-hub__tag">Quick play</span>
                   <strong>Find a match</strong>
-                  <span>Random opponent near your Elo · ⚡1</span>
+                  <span>Random opponent near your Rating · ⚡1</span>
                 </button>
                 <button
                   type="button"
@@ -209,7 +209,7 @@ export function MultiplayerModal({
               <div className="play-mode-modal__body">
                 <div className="play-mode-sent">
                   <p>Same seeded board. Best stars win — then fewest moves, then score.</p>
-                  <p className="play-mode-modal__hint">Elo updates when both results are in.</p>
+                  <p className="play-mode-modal__hint">Rating updates when both results are in.</p>
                 </div>
                 <button type="button" className="btn-primary" onClick={playMatched}>
                   Play now
@@ -228,16 +228,16 @@ export function MultiplayerModal({
               <header className="play-mode-modal__header">
                 <h2 id="multiplayer-title">Quick play</h2>
                 <p className="play-mode-modal__lead">
-                  Matched vs a similar Elo rating. Same board — better stars / moves wins.
+                  Matched vs a similar Rating. Same board — better stars / moves wins.
                 </p>
-                <p className="play-mode-modal__hint">Your Elo: {elo}</p>
+                <p className="play-mode-modal__hint">Your Rating: {elo}</p>
               </header>
               <div className="play-mode-modal__body">
                 {error && <p className="play-mode-modal__error">{error}</p>}
                 {status === "waiting" ? (
                   <>
                     <div className="play-mode-sent">
-                      <p>Searching for a similar-Elo opponent…</p>
+                      <p>Searching for a similar Rating…</p>
                     </div>
                     <button
                       type="button"
@@ -279,11 +279,10 @@ export function MultiplayerModal({
       {confirmQuick && (
         <div className="modal-overlay scores-overlay" role="presentation">
           <div className="modal scores-modal" role="dialog" aria-labelledby="mp-energy-title">
-            <h2 id="mp-energy-title">Start Quick Play?</h2>
-            <p>This costs 1 ⚡. Your opponent also spends 1 ⚡ when they join.</p>
+            <h2 id="mp-energy-title">Spend 1 energy and find match?</h2>
             <div className="play-mode-modal__actions" style={{ display: "flex", gap: "0.5rem" }}>
               <button type="button" className="btn-primary" onClick={startQuickWithEnergy}>
-                Spend ⚡1 &amp; find match
+                Find match
               </button>
               <button type="button" className="btn scores-close" onClick={() => setConfirmQuick(false)}>
                 Cancel

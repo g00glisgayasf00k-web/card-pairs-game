@@ -768,3 +768,100 @@
   gap: 0.55rem;
   margin-top: 0;
 }
+
+.tournament-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.tournament-tier {
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+  padding: 0.85rem 0.9rem;
+  border-radius: 14px;
+  border: 1px solid rgba(255, 215, 0, 0.18);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.tournament-tier--locked {
+  opacity: 0.62;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+
+.tournament-tier__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.tournament-tier__name {
+  display: block;
+  font-family: "Cinzel", "Crimson Pro", Georgia, serif;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #ffd700;
+  letter-spacing: 0.03em;
+}
+
+.tournament-tier__unlock {
+  display: block;
+  margin-top: 0.2rem;
+  font-size: 0.72rem;
+  color: #a8b5b2;
+}
+
+.tournament-tier__pool {
+  flex-shrink: 0;
+  font-size: 0.9rem;
+  font-weight: 800;
+  color: #fff3b0;
+}
+
+.tournament-tier__payouts {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tournament-tier__payouts li {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  padding: 0.45rem 0.4rem;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  text-align: center;
+}
+
+.tournament-tier__payouts span {
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #a8b5b2;
+}
+
+.tournament-tier__payouts strong {
+  font-size: 0.78rem;
+  font-weight: 800;
+  color: #fff3b0;
+}
+
+.tournament-tier__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+}
+
+.tournament-tier__actions .btn-primary,
+.tournament-tier__actions .scores-close {
+  flex: 1 1 auto;
+  min-width: 8rem;
+}

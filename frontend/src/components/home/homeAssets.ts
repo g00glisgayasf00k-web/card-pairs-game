@@ -30,7 +30,7 @@ export const HOME_ASSETS = {
       base: "/assets/cards/green/card_base.png",
       glow: "/assets/cards/green/card_glow.png",
       icon: "/assets/cards/green/icon_crown.png",
-      label: "/assets/home/label_ranked.png",
+      label: "/assets/home/label_tournament.png",
       circle: "/assets/ui/icon_circle_green.png",
     },
   },

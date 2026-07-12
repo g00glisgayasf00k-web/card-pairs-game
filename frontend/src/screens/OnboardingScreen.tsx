@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { AuthPanel } from "../components/AuthPanel";
 import { ProfileModal } from "../components/ProfileModal";
 import { MultiplayerModal } from "../components/MultiplayerModal";
+import { TournamentModal } from "../components/TournamentModal";
 import { GemShopModal } from "../components/GemShopModal";
 import { Leaderboard } from "../components/Leaderboard";
 import {
@@ -28,7 +29,7 @@ interface Props {
 }
 
 type HomeMenu = "leaderboard" | "rules" | "account" | "shop" | null;
-type PlaySheet = "challenge" | "compete" | null;
+type PlaySheet = "challenge" | "tournament" | null;
 
 export function OnboardingScreen({
   username,
@@ -123,10 +124,10 @@ export function OnboardingScreen({
               />
               <GameModeCard
                 glow="green"
-                label="Ranked"
-                title="Compete"
-                subtitle="Daily board or quick match ladder"
-                onClick={() => setPlaySheet("compete")}
+                label="Tournament"
+                title="Enter a cup"
+                subtitle="Entry fees, prize pools & top-3 payouts"
+                onClick={() => setPlaySheet("tournament")}
               />
             </div>
 
@@ -222,20 +223,13 @@ export function OnboardingScreen({
         />
       )}
 
-      {playSheet === "compete" && (
-        <MultiplayerModal
-          initialView="quick"
-          onClose={() => {
+      {playSheet === "tournament" && (
+        <TournamentModal
+          onClose={() => setPlaySheet(null)}
+          onBalanceChange={() => setWalletTick((t) => t + 1)}
+          onOpenShop={() => {
             setPlaySheet(null);
-            void refreshNotifs();
-          }}
-          friendRequestCount={summary.friend_requests}
-          challengeCount={summary.challenges}
-          onNotificationsChange={() => void refreshNotifs()}
-          onPlayChallenge={(c) => {
-            setPlaySheet(null);
-            void refreshNotifs();
-            onPlayChallenge(c);
+            setMenu("shop");
           }}
         />
       )}

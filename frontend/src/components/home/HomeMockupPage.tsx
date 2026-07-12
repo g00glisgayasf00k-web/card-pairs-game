@@ -101,7 +101,7 @@ export function HomeMockupPage({
 
       <Hit label="Enter table" onClick={onSolo} style={{ left: "4%", top: "33.5%", width: "92%", height: "12.5%" }} />
       <Hit label="Challenge a friend" onClick={onChallenge} style={{ left: "4%", top: "47.5%", width: "92%", height: "16%" }} />
-      <Hit label="Compete" onClick={onCompete} style={{ left: "4%", top: "65%", width: "92%", height: "13%" }} />
+      <Hit label="Tournament" onClick={onCompete} style={{ left: "4%", top: "65%", width: "92%", height: "13%" }} />
 
       <Overlay
         style={{

@@ -8,7 +8,7 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        // Keep WebView clear of camera cutout / gesture nav (Android 15 edge-to-edge).
-        WindowCompat.setDecorFitsSystemWindows(getWindow(), true);
+        // Edge-to-edge: WebView draws under system bars; CSS safe-area insets pad content.
+        WindowCompat.setDecorFitsSystemWindows(getWindow(), false);
     }
 }

@@ -89,6 +89,12 @@
   );
 }
 
+html.native-shell .home-screen-shell {
+  /* Parent already pads safe-area; keep spacing for bottom nav only */
+  padding-top: 0.45rem;
+  padding-bottom: 5.85rem;
+}
+
 /* Premium game-mode buttons — matched to home mockup + UI kit assets */
 .home-mode-card {
   --mode-glow: #a855f7;

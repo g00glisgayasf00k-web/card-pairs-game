@@ -14,9 +14,19 @@
   --suit-diamonds: #2962ff;
   --suit-clubs: #2ecc71;
   --suit-spades: #1b1b1b;
+  /* Extra inset beyond system safe-area so camera / nav never cover UI */
+  --safe-top: max(0.75rem, env(safe-area-inset-top, 0px));
+  --safe-bottom: max(0.9rem, env(safe-area-inset-bottom, 0px));
+  --safe-left: max(0px, env(safe-area-inset-left, 0px));
+  --safe-right: max(0px, env(safe-area-inset-right, 0px));
   font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
   color: var(--cream);
   min-height: 100dvh;
+}
+
+html.native-shell {
+  --safe-top: max(1.35rem, env(safe-area-inset-top, 0px));
+  --safe-bottom: max(1.5rem, env(safe-area-inset-bottom, 0px));
 }
 
 * {
@@ -87,6 +97,46 @@ body {
   content: "♣";
   bottom: -2rem;
   right: -1rem;
+}
+
+html.native-shell,
+html.native-shell body {
+  background-color: #0d2b22;
+}
+
+html.native-shell #root {
+  min-height: 100dvh;
+  min-height: 100svh;
+}
+
+html.native-shell .app,
+html.native-shell .bg-home-page {
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bottom);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+  box-sizing: border-box;
+}
+
+/* Full-screen sheets / overlays — clear cutout + gesture bar */
+html.native-shell .mp-kit-overlay,
+html.native-shell .tn-kit-overlay,
+html.native-shell .hk-kit-overlay,
+html.native-shell .modal-overlay,
+html.native-shell .tn-confirm-overlay,
+html.native-shell .levelup-overlay,
+html.native-shell .out-of-energy-overlay {
+  padding-top: var(--safe-top);
+  padding-bottom: var(--safe-bottom);
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
+  box-sizing: border-box;
+}
+
+html.native-shell .mp-kit,
+html.native-shell .tn-kit,
+html.native-shell .hk-kit {
+  max-height: calc(100dvh - var(--safe-top) - var(--safe-bottom));
 }
 
 .crash-screen {

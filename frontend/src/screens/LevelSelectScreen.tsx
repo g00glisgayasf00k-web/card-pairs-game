@@ -29,6 +29,7 @@ import { MAX_ENERGY, syncEnergyState } from "../lib/energy";
 import { loadProgress, PROGRESS_IMPORTED_EVENT } from "../lib/progress";
 import { GemShopModal } from "../components/GemShopModal";
 import { OutOfEnergyModal } from "../components/OutOfEnergyModal";
+import { onHardwareBack } from "../lib/nativeBack";
 import { ResourceBar } from "../components/ResourceBar";
 
 interface Props {
@@ -183,6 +184,22 @@ export function LevelSelectScreen({ onBack, onSelectLevel }: Props) {
     const id = window.setInterval(() => setWalletTick((t) => t + 1), 60_000);
     return () => window.clearInterval(id);
   }, [energy]);
+
+  useEffect(() => {
+    return onHardwareBack(() => {
+      if (showGemShop) {
+        setShowGemShop(false);
+        return true;
+      }
+      if (showOutOfEnergy) {
+        setShowOutOfEnergy(false);
+        return true;
+      }
+      onBack();
+      return true;
+    });
+  }, [showGemShop, showOutOfEnergy, onBack]);
+
   const gems = saved?.credits ?? 0;
 
   const mapPoints = buildWorldMapPoints();

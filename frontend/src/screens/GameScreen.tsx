@@ -64,6 +64,7 @@ import { GemShopModal } from "../components/GemShopModal";
 import { OutOfEnergyModal } from "../components/OutOfEnergyModal";
 import { fetchChallenge, submitChallenge, submitTournamentRun, type ChallengeDto, type ChallengeMissionDto } from "../lib/api";
 import type { TournamentBoardPick } from "../lib/tournamentTiers";
+import { onHardwareBack } from "../lib/nativeBack";
 
 export interface ChallengeMatch {
   id: number;
@@ -730,6 +731,40 @@ export function GameScreen({
       setShowOutOfEnergy(true);
     }
   }, [startLevel, refreshWallet, challengeEnergyFree]);
+
+  useEffect(() => {
+    return onHardwareBack(() => {
+      if (showGemShop) {
+        setShowGemShop(false);
+        return true;
+      }
+      if (showOutOfEnergy) {
+        setShowOutOfEnergy(false);
+        return true;
+      }
+      if (showProfile) {
+        setShowProfile(false);
+        return true;
+      }
+      if (confirmSpend) {
+        setConfirmSpend(null);
+        return true;
+      }
+      if (phase === "round_complete" || phase === "moves_failed" || phase === "campaign_complete") {
+        onMenu();
+        return true;
+      }
+      onMenu();
+      return true;
+    });
+  }, [
+    showGemShop,
+    showOutOfEnergy,
+    showProfile,
+    confirmSpend,
+    phase,
+    onMenu,
+  ]);
 
   const handleWalletChange = useCallback(() => {
     refreshWallet();

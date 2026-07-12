@@ -19,6 +19,7 @@ import { MAX_LEVEL } from "../lib/levels";
 import type { ChallengeDto } from "../lib/api";
 import type { TournamentBoardPick } from "../lib/tournamentTiers";
 import { useNotificationSummary } from "../lib/useNotificationSummary";
+import { onHardwareBack } from "../lib/nativeBack";
 
 interface Props {
   username: string | null;
@@ -58,6 +59,20 @@ export function OnboardingScreen({
     setPlaySheet("challenge");
     onChallengeSheetOpened?.();
   }, [openChallengeSheet, onChallengeSheetOpened]);
+
+  useEffect(() => {
+    return onHardwareBack(() => {
+      if (playSheet) {
+        setPlaySheet(null);
+        return true;
+      }
+      if (menu) {
+        setMenu(null);
+        return true;
+      }
+      return false;
+    });
+  }, [playSheet, menu]);
 
   const closeMenu = () => setMenu(null);
 

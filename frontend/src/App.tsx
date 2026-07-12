@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { OnboardingScreen } from "./screens/OnboardingScreen";
 import { LevelSelectScreen } from "./screens/LevelSelectScreen";
 import { GameScreen } from "./screens/GameScreen";
@@ -11,6 +11,7 @@ import {
   stopPushNotifications,
   syncPushTokenAfterLogin,
 } from "./lib/nativePush";
+import { bindHardwareBackButton } from "./lib/nativeShell";
 import type { ChallengeDto } from "./lib/api";
 import type { ChallengeMatch } from "./screens/GameScreen";
 import type { TournamentBoardPick } from "./lib/tournamentTiers";
@@ -71,6 +72,35 @@ export default function App() {
     if (!loggedIn || screen === "onboard") return;
     void pullRemoteProgress();
   }, [screen, loggedIn]);
+
+  const leaveGameToLobby = useCallback(() => {
+    const wasMatch = Boolean(challengeMatch || tournamentMatch);
+    setPlayLevel(undefined);
+    setChallengeMatch(null);
+    setTournamentMatch(null);
+    setScreen(wasMatch ? "onboard" : "levels");
+  }, [challengeMatch, tournamentMatch]);
+
+  useEffect(() => {
+    return bindHardwareBackButton(() => {
+      if (resetToken) {
+        clearResetTokenFromUrl();
+        setResetToken(null);
+        setScreen("onboard");
+        return true;
+      }
+      if (screen === "game") {
+        leaveGameToLobby();
+        return true;
+      }
+      if (screen === "levels") {
+        setScreen("onboard");
+        return true;
+      }
+      // Home: stay in app (listeners may have closed a sheet). Don't exit.
+      return true;
+    });
+  }, [screen, resetToken, leaveGameToLobby]);
 
   const handleSignOut = () => {
     stopProgressSync();
@@ -154,12 +184,7 @@ export default function App() {
           startLevel={tournamentMatch?.level ?? challengeMatch?.level ?? playLevel}
           challengeMatch={challengeMatch}
           tournamentMatch={tournamentMatch}
-          onMenu={() => {
-            setPlayLevel(undefined);
-            setChallengeMatch(null);
-            setTournamentMatch(null);
-            setScreen(challengeMatch || tournamentMatch ? "onboard" : "levels");
-          }}
+          onMenu={leaveGameToLobby}
           onSignOut={handleSignOut}
         />
       </div>

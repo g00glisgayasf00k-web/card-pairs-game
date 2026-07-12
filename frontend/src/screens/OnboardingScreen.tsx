@@ -116,10 +116,10 @@ export function OnboardingScreen({
               />
               <GameModeCard
                 glow="blue"
-                label="Async"
+                label="Friends"
                 title="Challenge a friend"
                 subtitle="Same seed — best stars / fewest moves"
-                meta="Optional gem wager"
+                meta="Wager gems · 5% fee"
                 badge={summary.total}
                 onClick={() => setPlaySheet("challenge")}
               />

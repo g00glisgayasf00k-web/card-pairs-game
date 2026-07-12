@@ -104,6 +104,8 @@ export default function App() {
       level: challenge.level,
       boardSeed: challenge.board_seed,
       mission: challenge.mission ?? null,
+      kind: challenge.kind,
+      wagerGems: challenge.wager_gems,
       youAre: challenge.you_are,
     });
     setScreen("game");

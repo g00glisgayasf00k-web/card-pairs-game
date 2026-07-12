@@ -245,6 +245,25 @@ export function applyImportedProgress(data: unknown): boolean {
   return true;
 }
 
+/** Apply server-authoritative gem balance without clobbering the cloud save. */
+export function applyServerCredits(credits: number, clientUpdatedAt?: number): void {
+  const local = loadProgress();
+  if (!local) return;
+  const updatedAt =
+    typeof clientUpdatedAt === "number" && clientUpdatedAt > 0
+      ? clientUpdatedAt
+      : Math.max(local.updatedAt, Date.now());
+  saveProgress(
+    {
+      ...local,
+      credits: Math.max(0, Math.floor(credits)),
+      updatedAt,
+    },
+    { skipSync: true }
+  );
+  notifyProgressImported();
+}
+
 /** Merge admin-granted gems/energy without clobbering newer local level progress. */
 export function mergeImportedResources(local: SavedProgress, remote: SavedProgress): boolean {
   const credits = Math.max(local.credits, remote.credits);

@@ -38,6 +38,7 @@ import {
   type BlockerIntroKind,
 } from "../lib/blockers";
 import {
+  applyServerCredits,
   clearProgress,
   defaultProgress,
   loadProgress,
@@ -68,7 +69,9 @@ export interface ChallengeMatch {
   level: number;
   boardSeed: number;
   mission?: ChallengeMissionDto | null;
-  /** Challenger pays 1 energy; opponent plays free. */
+  kind?: "friend" | "quick" | string;
+  wagerGems?: number;
+  /** Quick-match challenger pays energy; friend duels use gem wagers instead. */
   youAre: "challenger" | "opponent";
 }
 
@@ -156,8 +159,12 @@ function initRunState(startLevel?: number): RunState {
 export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSignOut }: Props) {
   const savedSnapshot = useRef(loadProgress());
   const isChallenge = Boolean(challengeMatch);
-  /** Opponent joins free; only the player who started the challenge spends energy. */
-  const challengeEnergyFree = isChallenge && challengeMatch?.youAre === "opponent";
+  /** Friend duels use gem stakes; quick-match challenger still pays 1 energy. */
+  const challengeEnergyFree =
+    isChallenge &&
+    (challengeMatch?.kind === "friend" ||
+      challengeMatch?.kind == null ||
+      challengeMatch?.youAre === "opponent");
   const isReplaySession = useRef(
     !challengeMatch &&
       startLevel !== undefined &&
@@ -501,7 +508,14 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
         setCompletedStats({ score, hands, stars, handCounts: { ...handCounts } });
         setPhase("round_complete");
         void submitChallenge(challengeMatch.id, { stars, moves: hands, score })
-          .then((r) => setChallengeResult(r.challenge))
+          .then((r) => {
+            if (typeof r.credits === "number") {
+              applyServerCredits(r.credits, r.client_updated_at);
+              refreshWallet();
+              setRun((prev) => ({ ...prev, credits: r.credits ?? prev.credits }));
+            }
+            setChallengeResult(r.challenge);
+          })
           .catch(() =>
             fetchChallenge(challengeMatch.id)
               .then((r) => setChallengeResult(r.challenge))
@@ -1025,18 +1039,34 @@ export function GameScreen({ username, startLevel, challengeMatch, onMenu, onSig
                     </>
                   );
                 }
+                const wager = challengeResult.wager_gems || 0;
+                const pot = wager * 2;
                 const outcome =
                   challengeResult.winner_user_id == null
                     ? "Tie"
                     : challengeResult.winner_user_id === myId
                       ? "You win!"
                       : "You lose";
+                const gemNote =
+                  wager < 1
+                    ? null
+                    : challengeResult.winner_user_id == null
+                      ? `Wager returned · ${wager}💎`
+                      : challengeResult.winner_user_id === myId
+                        ? `You won the pot · +${pot}💎`
+                        : `Pot lost · ${wager}💎`;
                 return (
                   <>
                     <div className="perk">
                       <span className="perk-icon">🏆</span>
                       <span>{outcome}</span>
                     </div>
+                    {gemNote && (
+                      <div className="perk">
+                        <span className="perk-icon">💎</span>
+                        <span>{gemNote}</span>
+                      </div>
+                    )}
                     <div className="perk">
                       <span className="perk-icon">👤</span>
                       <span>

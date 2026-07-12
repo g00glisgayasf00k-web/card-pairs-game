@@ -336,6 +336,8 @@ export interface ChallengeDto {
   status: string;
   kind?: "friend" | "quick" | string;
   wager_gems: number;
+  /** Platform fee charged to the challenger (5% of wager, min 1). */
+  fee_gems?: number;
   expires_at: string;
   /** Random duel goals + move budget; omit on legacy challenges. */
   mission?: ChallengeMissionDto | null;
@@ -352,10 +354,16 @@ export async function fetchChallenges() {
   return request<{ challenges: ChallengeDto[] }>("/api/challenges");
 }
 
-export async function createChallenge(friendUserId: number) {
-  return request<{ challenge: ChallengeDto }>("/api/challenges", {
+export async function createChallenge(friendUserId: number, wagerGems: number) {
+  return request<{
+    challenge: ChallengeDto;
+    credits?: number;
+    client_updated_at?: number;
+    fee_gems?: number;
+    charged_gems?: number;
+  }>("/api/challenges", {
     method: "POST",
-    body: JSON.stringify({ friend_user_id: friendUserId }),
+    body: JSON.stringify({ friend_user_id: friendUserId, wager_gems: wagerGems }),
   });
 }
 
@@ -364,13 +372,21 @@ export async function fetchChallenge(id: number) {
 }
 
 export async function acceptChallenge(id: number) {
-  return request<{ challenge: ChallengeDto }>(`/api/challenges/${id}/accept`, {
+  return request<{
+    challenge: ChallengeDto;
+    credits?: number;
+    client_updated_at?: number;
+  }>(`/api/challenges/${id}/accept`, {
     method: "POST",
   });
 }
 
 export async function declineChallenge(id: number) {
-  return request<{ challenge: ChallengeDto }>(`/api/challenges/${id}/decline`, {
+  return request<{
+    challenge: ChallengeDto;
+    credits?: number;
+    client_updated_at?: number;
+  }>(`/api/challenges/${id}/decline`, {
     method: "POST",
   });
 }
@@ -387,10 +403,16 @@ export async function submitChallenge(
   const data = (await res.json().catch(() => ({}))) as {
     error?: string;
     challenge?: ChallengeDto;
+    credits?: number;
+    client_updated_at?: number;
   };
   // Already submitted / expired still include the locked-in challenge for the results UI
   if (data.challenge && (res.ok || res.status === 409)) {
-    return { challenge: data.challenge };
+    return {
+      challenge: data.challenge,
+      credits: data.credits,
+      client_updated_at: data.client_updated_at,
+    };
   }
   if (!res.ok) throw new Error(data.error ?? res.statusText);
   throw new Error("Challenge response missing");

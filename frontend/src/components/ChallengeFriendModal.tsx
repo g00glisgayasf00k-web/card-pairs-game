@@ -15,6 +15,15 @@ import {
   countUnseenCompletedResults,
   markChallengeResultsSeen,
 } from "../lib/challengeResultSeen";
+import {
+  WAGER_MAX,
+  WAGER_MIN,
+  WAGER_PRESETS,
+  challengeFeeGems,
+  clampWager,
+} from "../lib/challengeWager";
+import { loadProgress, applyServerCredits } from "../lib/progress";
+import { flushProgressSync } from "../lib/progressSync";
 
 interface Props {
   onClose: () => void;
@@ -94,6 +103,9 @@ function ResultCard({ c }: { c: ChallengeDto }) {
         <span className="challenge-results-card__summary">
           <strong>vs {other}</strong>
           <span className="challenge-results-card__when">{when}</span>
+          {c.wager_gems > 0 && (
+            <span className="challenge-results-card__when">{c.wager_gems}💎 pot</span>
+          )}
         </span>
         <span className="challenge-results-card__side">
           {outcome ? (
@@ -137,11 +149,19 @@ export function ChallengeFriendModal({
   const [outgoing, setOutgoing] = useState<FriendshipItem[]>([]);
   const [challenges, setChallenges] = useState<ChallengeDto[]>([]);
   const [friendId, setFriendId] = useState<number | null>(null);
+  const [wagerPreset, setWagerPreset] = useState<number | "custom">(5);
+  const [customWager, setCustomWager] = useState("10");
   const [addName, setAddName] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [seenTick, setSeenTick] = useState(0);
+
+  const wagerGems =
+    wagerPreset === "custom" ? clampWager(Number(customWager) || 0) : wagerPreset;
+  const feeGems = challengeFeeGems(wagerGems);
+  const createCost = wagerGems + feeGems;
+  const gemBalance = loadProgress()?.credits ?? 0;
 
   const reload = useCallback(async () => {
     setError(null);
@@ -214,20 +234,41 @@ export function ChallengeFriendModal({
     }
   };
 
+  const applyCreditsIfPresent = (res: {
+    credits?: number;
+    client_updated_at?: number;
+  }) => {
+    if (typeof res.credits === "number") {
+      applyServerCredits(res.credits, res.client_updated_at);
+    }
+  };
+
   const sendChallenge = async () => {
     if (friendId == null) {
       setError("Pick a friend first");
+      return;
+    }
+    if (wagerGems < WAGER_MIN) {
+      setError(`Wager must be at least ${WAGER_MIN} gem`);
+      return;
+    }
+    if (gemBalance < createCost) {
+      setError(`Not enough gems — need ${createCost} (${wagerGems} wager + ${feeGems} fee)`);
       return;
     }
     setBusy(true);
     setError(null);
     setInfo(null);
     try {
-      const { challenge } = await createChallenge(friendId);
-      setInfo("Challenge sent — same board & goals for both of you");
+      await flushProgressSync();
+      const res = await createChallenge(friendId, wagerGems);
+      applyCreditsIfPresent(res);
+      setInfo(
+        `Challenge sent for ${wagerGems}💎 (fee ${feeGems}💎). Winner takes the pot.`
+      );
       await reload();
       setTab("inbox");
-      onPlayChallenge(challenge);
+      onPlayChallenge(res.challenge);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not create challenge");
     } finally {
@@ -246,9 +287,8 @@ export function ChallengeFriendModal({
         <header className="play-mode-modal__header">
           <h2 id="challenge-title">Challenge your friends</h2>
           <p className="play-mode-modal__lead">
-            Challenge your friends. Same random board, same hand goals, same point target —
-            the winner finishes in the fewest moves. Starting a challenge costs you 1 ⚡ —
-            your friend plays free.
+            Same random board and goals — wager gems, and the better run wins the pot.
+            A 5% fee (min 1💎) is charged when you create the challenge.
           </p>
         </header>
 
@@ -406,23 +446,60 @@ export function ChallengeFriendModal({
               </section>
 
               <section className="play-mode-section">
+                <h3 className="play-mode-modal__section">Wager</h3>
+                <div className="play-mode-wagers" role="group" aria-label="Wager amount">
+                  {WAGER_PRESETS.map((amount) => (
+                    <button
+                      key={amount}
+                      type="button"
+                      className={`play-mode-wager${wagerPreset === amount ? " play-mode-wager--on" : ""}`}
+                      onClick={() => setWagerPreset(amount)}
+                    >
+                      {amount}💎
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className={`play-mode-wager${wagerPreset === "custom" ? " play-mode-wager--on" : ""}`}
+                    onClick={() => setWagerPreset("custom")}
+                  >
+                    Custom
+                  </button>
+                </div>
+                {wagerPreset === "custom" && (
+                  <label className="play-mode-custom-wager">
+                    <span>Custom wager</span>
+                    <input
+                      type="number"
+                      min={WAGER_MIN}
+                      max={WAGER_MAX}
+                      value={customWager}
+                      onChange={(e) => setCustomWager(e.target.value)}
+                      inputMode="numeric"
+                    />
+                  </label>
+                )}
+                <p className="play-mode-modal__hint play-mode-modal__hint--energy">
+                  You stake {wagerGems}💎 + {feeGems}💎 fee ({createCost}💎 total). Friend matches{" "}
+                  {wagerGems}💎. Winner takes {wagerGems * 2}💎. You have {gemBalance.toLocaleString()}💎.
+                </p>
+              </section>
+
+              <section className="play-mode-section">
                 <h3 className="play-mode-modal__section">How it works</h3>
                 <p className="play-mode-modal__hint">
                   You both play the identical board and clear the same goals. Best stars win —
                   if tied, fewest moves, then highest score.
-                </p>
-                <p className="play-mode-modal__hint play-mode-modal__hint--energy">
-                  You pay 1 ⚡ to start — your opponent joins free.
                 </p>
               </section>
 
               <button
                 type="button"
                 className="btn-primary"
-                disabled={busy || friendId == null}
+                disabled={busy || friendId == null || gemBalance < createCost}
                 onClick={() => void sendChallenge()}
               >
-                Send &amp; play now · ⚡1
+                Send &amp; play · {createCost}💎
               </button>
             </div>
           )}
@@ -437,11 +514,15 @@ export function ChallengeFriendModal({
                 <ul className="challenge-inbox-list">
                   {pendingInbox.map((c) => {
                     const other = opponentName(c);
+                    const wager = c.wager_gems || 0;
                     return (
                       <li key={c.id} className="challenge-inbox-item">
                         <div>
                           <strong>vs {other}</strong>
-                          <span className="challenge-inbox-item__meta">{c.status}</span>
+                          <span className="challenge-inbox-item__meta">
+                            {c.status}
+                            {wager > 0 ? ` · ${wager}💎` : ""}
+                          </span>
                         </div>
                         <div className="challenge-inbox-item__actions">
                           {c.status === "pending" && c.you_are === "opponent" && (
@@ -450,19 +531,37 @@ export function ChallengeFriendModal({
                                 type="button"
                                 className="play-mode-wager play-mode-wager--on"
                                 disabled={busy}
-                                onClick={() =>
-                                  void acceptChallenge(c.id).then((r) => {
-                                    onPlayChallenge(r.challenge);
-                                  })
-                                }
+                                onClick={() => {
+                                  void (async () => {
+                                    setBusy(true);
+                                    setError(null);
+                                    try {
+                                      await flushProgressSync();
+                                      const r = await acceptChallenge(c.id);
+                                      applyCreditsIfPresent(r);
+                                      onPlayChallenge(r.challenge);
+                                    } catch (e) {
+                                      setError(
+                                        e instanceof Error ? e.message : "Could not accept"
+                                      );
+                                    } finally {
+                                      setBusy(false);
+                                    }
+                                  })();
+                                }}
                               >
-                                Accept &amp; play
+                                Accept · {wager || 0}💎
                               </button>
                               <button
                                 type="button"
                                 className="play-mode-wager"
                                 disabled={busy}
-                                onClick={() => void declineChallenge(c.id).then(reload)}
+                                onClick={() => {
+                                  void declineChallenge(c.id).then((r) => {
+                                    applyCreditsIfPresent(r);
+                                    return reload();
+                                  });
+                                }}
                               >
                                 Decline
                               </button>
@@ -475,7 +574,7 @@ export function ChallengeFriendModal({
                               className="play-mode-wager play-mode-wager--on"
                               onClick={() => onPlayChallenge(c)}
                             >
-                              Play{c.you_are === "challenger" ? " · ⚡1" : ""}
+                              Play{wager > 0 ? ` · ${wager}💎` : ""}
                             </button>
                           )}
                         </div>

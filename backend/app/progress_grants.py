@@ -79,3 +79,34 @@ def grant_gems(user_id: int, gems: int) -> tuple[int, int]:
     payload["updatedAt"] = now
     save_progress_payload(user_id, payload, now)
     return gems, payload["credits"]
+
+
+def adjust_gems(user_id: int, delta: int) -> tuple[int, int]:
+    """Add or spend gems. Returns (new_credits, client_updated_at). Raises ValueError if broke."""
+    if delta == 0:
+        row = PlayerProgress.query.filter_by(user_id=user_id).first()
+        payload = load_progress_payload(row)
+        current = int(payload.get("credits") or STARTING_CREDITS)
+        updated = int(payload.get("updatedAt") or _now_ms())
+        return current, updated
+
+    row = PlayerProgress.query.filter_by(user_id=user_id).first()
+    payload = load_progress_payload(row)
+    now = _now_ms()
+    current = int(payload.get("credits") or STARTING_CREDITS)
+    next_credits = current + delta
+    if next_credits < 0:
+        raise ValueError("Not enough gems")
+    payload["credits"] = next_credits
+    payload["updatedAt"] = now
+    save_progress_payload(user_id, payload, now)
+    return next_credits, now
+
+
+def challenge_fee_gems(wager: int) -> int:
+    """Platform fee: 5% of wager, minimum 1 gem."""
+    import math
+
+    if wager < 1:
+        return 0
+    return max(1, int(math.ceil(wager * 0.05)))

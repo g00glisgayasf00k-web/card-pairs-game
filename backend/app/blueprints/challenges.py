@@ -10,6 +10,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.models import Challenge, Friendship, PlayerProgress, User, db
+from app.progress_grants import adjust_gems, challenge_fee_gems
 from app.services.push import send_to_user
 from app.challenge_mission import generate_challenge_mission
 
@@ -17,6 +18,9 @@ challenges_bp = Blueprint("challenges", __name__)
 
 MAX_LEVEL = 500
 CHALLENGE_TTL_HOURS = 24
+WAGER_PRESETS = {1, 5, 25, 50, 100}
+WAGER_MIN = 1
+WAGER_MAX = 10_000
 
 
 def _utc_now():
@@ -62,15 +66,91 @@ def _highest_unlocked(user_id: int) -> int:
     return 1
 
 
+def _parse_wager(raw) -> int | None:
+    try:
+        wager = int(raw)
+    except (TypeError, ValueError):
+        return None
+    if wager < WAGER_MIN or wager > WAGER_MAX:
+        return None
+    return wager
+
+
 def _expire_if_needed(ch: Challenge) -> None:
-    if ch.status in ("pending", "active") and ch.expires_at.replace(tzinfo=timezone.utc) < _utc_now():
-        # SQLite may return naive datetimes
-        expires = ch.expires_at
-        if expires.tzinfo is None:
-            expires = expires.replace(tzinfo=timezone.utc)
-        if expires < _utc_now():
-            ch.status = "expired"
-            ch.updated_at = _utc_now()
+    if ch.status not in ("pending", "active"):
+        return
+    expires = ch.expires_at
+    if expires.tzinfo is None:
+        expires = expires.replace(tzinfo=timezone.utc)
+    if expires < _utc_now():
+        ch.status = "expired"
+        ch.updated_at = _utc_now()
+        _refund_stakes(ch)
+
+
+def _refund_stakes(ch: Challenge) -> None:
+    """Refund staked wagers (not the platform fee) when a duel ends without settlement."""
+    if getattr(ch, "gems_settled", False):
+        return
+    wager = int(ch.wager_gems or 0)
+    if wager < 1:
+        ch.gems_settled = True
+        return
+    if getattr(ch, "challenger_staked", False):
+        try:
+            adjust_gems(ch.challenger_id, wager)
+        except ValueError:
+            pass
+        ch.challenger_staked = False
+    if getattr(ch, "opponent_staked", False):
+        try:
+            adjust_gems(ch.opponent_id, wager)
+        except ValueError:
+            pass
+        ch.opponent_staked = False
+    ch.gems_settled = True
+
+
+def _settle_wager(ch: Challenge) -> None:
+    """Pay out pot (2× wager) to winner, or refund both on a tie. Fee stays with house."""
+    if getattr(ch, "gems_settled", False):
+        return
+    wager = int(ch.wager_gems or 0)
+    if wager < 1:
+        ch.gems_settled = True
+        return
+
+    pot = 0
+    if getattr(ch, "challenger_staked", False):
+        pot += wager
+        ch.challenger_staked = False
+    if getattr(ch, "opponent_staked", False):
+        pot += wager
+        ch.opponent_staked = False
+
+    if pot <= 0:
+        ch.gems_settled = True
+        return
+
+    if ch.winner_user_id:
+        try:
+            adjust_gems(ch.winner_user_id, pot)
+        except ValueError:
+            pass
+    else:
+        # Tie — return each staked share
+        half = wager if pot >= wager * 2 else pot // 2
+        if half > 0:
+            try:
+                adjust_gems(ch.challenger_id, half)
+            except ValueError:
+                pass
+            try:
+                adjust_gems(ch.opponent_id, pot - half)
+            except ValueError:
+                pass
+
+    ch.gems_settled = True
 
 
 def _compare_attempts(
@@ -98,8 +178,19 @@ def _mission_payload(ch: Challenge) -> dict | None:
     return data if isinstance(data, dict) else None
 
 
+def _credits_payload(user_id: int) -> dict:
+    try:
+        credits, updated_at = adjust_gems(user_id, 0)
+    except ValueError:
+        return {}
+    return {"credits": credits, "client_updated_at": updated_at}
+
+
 def _serialize(ch: Challenge, me: int) -> dict:
     _expire_if_needed(ch)
+    fee = int(getattr(ch, "fee_gems", 0) or 0)
+    if fee < 1 and int(ch.wager_gems or 0) > 0:
+        fee = challenge_fee_gems(int(ch.wager_gems))
     return {
         "id": ch.id,
         "level": ch.level,
@@ -107,6 +198,7 @@ def _serialize(ch: Challenge, me: int) -> dict:
         "status": ch.status,
         "kind": getattr(ch, "kind", None) or "friend",
         "wager_gems": ch.wager_gems,
+        "fee_gems": fee,
         "expires_at": ch.expires_at.isoformat(),
         "mission": _mission_payload(ch),
         "challenger": _user_public(ch.challenger),
@@ -157,13 +249,14 @@ def list_challenges():
     out = []
     for ch in rows:
         before = ch.status
+        settled_before = getattr(ch, "gems_settled", False)
         item = _serialize(ch, me)
-        if ch.status != before:
+        if ch.status != before or getattr(ch, "gems_settled", False) != settled_before:
             dirty = True
         out.append(item)
     if dirty:
         db.session.commit()
-    return jsonify({"challenges": out})
+    return jsonify({"challenges": out, **_credits_payload(me)})
 
 
 @challenges_bp.post("")
@@ -186,9 +279,29 @@ def create_challenge():
     if not opponent:
         return jsonify({"error": "Player not found"}), 404
 
+    wager = _parse_wager(data.get("wager_gems"))
+    if wager is None:
+        return jsonify({"error": f"wager_gems must be between {WAGER_MIN} and {WAGER_MAX}"}), 400
+
+    fee = challenge_fee_gems(wager)
+    total_charge = wager + fee
+
     # Display/progress band only — the duel uses a random board + mission, not campaign goals
     level = min(_highest_unlocked(me), _highest_unlocked(friend_id))
     level = max(1, min(MAX_LEVEL, level))
+
+    try:
+        credits, client_updated_at = adjust_gems(me, -total_charge)
+    except ValueError:
+        return (
+            jsonify(
+                {
+                    "error": f"Not enough gems — need {total_charge} "
+                    f"({wager} wager + {fee} fee)"
+                }
+            ),
+            402,
+        )
 
     seed = secrets.randbits(31)
     mission = generate_challenge_mission(seed)
@@ -199,21 +312,44 @@ def create_challenge():
         board_seed=seed,
         status="pending",
         kind="friend",
-        wager_gems=0,
+        wager_gems=wager,
+        fee_gems=fee,
+        challenger_staked=True,
+        opponent_staked=False,
+        gems_settled=False,
         mission_json=json.dumps(mission),
         expires_at=_utc_now() + timedelta(hours=CHALLENGE_TTL_HOURS),
     )
     db.session.add(ch)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        try:
+            adjust_gems(me, total_charge)
+        except ValueError:
+            pass
+        return jsonify({"error": "Could not create challenge"}), 500
     me_user = User.query.get(me)
     me_name = me_user.username if me_user else "A friend"
     _notify(
         friend_id,
         "New challenge",
-        f"{me_name} challenged you to a shared-board duel",
+        f"{me_name} challenged you for {wager} gems",
         {"type": "challenge", "challenge_id": str(ch.id)},
     )
-    return jsonify({"challenge": _serialize(ch, me)}), 201
+    return (
+        jsonify(
+            {
+                "challenge": _serialize(ch, me),
+                "credits": credits,
+                "client_updated_at": client_updated_at,
+                "fee_gems": fee,
+                "charged_gems": total_charge,
+            }
+        ),
+        201,
+    )
 
 
 @challenges_bp.get("/<int:challenge_id>")
@@ -224,10 +360,11 @@ def get_challenge(challenge_id: int):
     if not ch or (ch.challenger_id != me and ch.opponent_id != me):
         return jsonify({"error": "Challenge not found"}), 404
     before = ch.status
+    settled_before = getattr(ch, "gems_settled", False)
     payload = _serialize(ch, me)
-    if ch.status != before:
+    if ch.status != before or getattr(ch, "gems_settled", False) != settled_before:
         db.session.commit()
-    return jsonify({"challenge": payload})
+    return jsonify({"challenge": payload, **_credits_payload(me)})
 
 
 @challenges_bp.post("/<int:challenge_id>/accept")
@@ -239,7 +376,19 @@ def accept_challenge(challenge_id: int):
         return jsonify({"error": "Challenge not found"}), 404
     _expire_if_needed(ch)
     if ch.status != "pending":
+        db.session.commit()
         return jsonify({"error": f"Challenge is {ch.status}"}), 409
+
+    wager = int(ch.wager_gems or 0)
+    credits = None
+    client_updated_at = None
+    if wager > 0 and not getattr(ch, "opponent_staked", False):
+        try:
+            credits, client_updated_at = adjust_gems(me, -wager)
+        except ValueError:
+            return jsonify({"error": f"Not enough gems — need {wager} to match the wager"}), 402
+        ch.opponent_staked = True
+
     ch.status = "active"
     ch.updated_at = _utc_now()
     db.session.commit()
@@ -248,10 +397,16 @@ def accept_challenge(challenge_id: int):
     _notify(
         ch.challenger_id,
         "Challenge accepted",
-        f"{me_name} accepted your challenge",
+        f"{me_name} accepted your {wager}-gem challenge",
         {"type": "challenge", "challenge_id": str(ch.id)},
     )
-    return jsonify({"challenge": _serialize(ch, me)})
+    out = {"challenge": _serialize(ch, me)}
+    if credits is not None:
+        out["credits"] = credits
+        out["client_updated_at"] = client_updated_at
+    else:
+        out.update(_credits_payload(me))
+    return jsonify(out)
 
 
 @challenges_bp.post("/<int:challenge_id>/decline")
@@ -267,8 +422,9 @@ def decline_challenge(challenge_id: int):
         return jsonify({"error": "Cannot decline after accept — play or wait for expiry"}), 409
     ch.status = "declined"
     ch.updated_at = _utc_now()
+    _refund_stakes(ch)
     db.session.commit()
-    return jsonify({"challenge": _serialize(ch, me)})
+    return jsonify({"challenge": _serialize(ch, me), **_credits_payload(me)})
 
 
 @challenges_bp.post("/<int:challenge_id>/submit")
@@ -292,11 +448,12 @@ def submit_challenge(challenge_id: int):
                     {
                         "error": "Challenge expired",
                         "challenge": _serialize(ch, me),
+                        **_credits_payload(me),
                     }
                 ),
                 409,
             )
-        return jsonify({"error": "Challenge expired"}), 409
+        return jsonify({"error": "Challenge expired", **_credits_payload(me)}), 409
     if ch.status == "pending":
         # Challenger may play before opponent accepts — auto-activate
         if ch.challenger_id == me:
@@ -317,12 +474,12 @@ def submit_challenge(challenge_id: int):
     now = _utc_now()
     if ch.challenger_id == me:
         if ch.challenger_submitted_at:
-            # Idempotent: return locked-in result so the client can show it
             return (
                 jsonify(
                     {
                         "error": "Already submitted",
                         "challenge": _serialize(ch, me),
+                        **_credits_payload(me),
                     }
                 ),
                 409,
@@ -338,6 +495,7 @@ def submit_challenge(challenge_id: int):
                     {
                         "error": "Already submitted",
                         "challenge": _serialize(ch, me),
+                        **_credits_payload(me),
                     }
                 ),
                 409,
@@ -359,6 +517,7 @@ def submit_challenge(challenge_id: int):
             ch.opponent_id,
         )
         ch.status = "completed"
+        _settle_wager(ch)
 
     ch.updated_at = now
     db.session.commit()
@@ -381,4 +540,4 @@ def submit_challenge(challenge_id: int):
             {"type": "challenge", "challenge_id": str(ch.id)},
         )
 
-    return jsonify({"challenge": _serialize(ch, me)})
+    return jsonify({"challenge": _serialize(ch, me), **_credits_payload(me)})

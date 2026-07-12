@@ -65,6 +65,36 @@ def ensure_schema():
                     conn.execute(text("ALTER TABLE challenges ADD COLUMN mission_json TEXT"))
             except OperationalError:
                 pass
+            ch_cols = {c["name"] for c in inspector.get_columns("challenges")}
+        for col_name, sql in (
+            ("fee_gems", "ALTER TABLE challenges ADD COLUMN fee_gems INTEGER DEFAULT 0 NOT NULL"),
+            (
+                "challenger_staked",
+                "ALTER TABLE challenges ADD COLUMN challenger_staked BOOLEAN DEFAULT 0 NOT NULL"
+                if is_sqlite
+                else "ALTER TABLE challenges ADD COLUMN challenger_staked BOOLEAN DEFAULT FALSE NOT NULL",
+            ),
+            (
+                "opponent_staked",
+                "ALTER TABLE challenges ADD COLUMN opponent_staked BOOLEAN DEFAULT 0 NOT NULL"
+                if is_sqlite
+                else "ALTER TABLE challenges ADD COLUMN opponent_staked BOOLEAN DEFAULT FALSE NOT NULL",
+            ),
+            (
+                "gems_settled",
+                "ALTER TABLE challenges ADD COLUMN gems_settled BOOLEAN DEFAULT 0 NOT NULL"
+                if is_sqlite
+                else "ALTER TABLE challenges ADD COLUMN gems_settled BOOLEAN DEFAULT FALSE NOT NULL",
+            ),
+        ):
+            if col_name in ch_cols:
+                continue
+            try:
+                with engine.begin() as conn:
+                    conn.execute(text(sql))
+            except OperationalError:
+                pass
+            ch_cols = {c["name"] for c in inspector.get_columns("challenges")}
 
 
 def ensure_admin_user():

@@ -23,7 +23,7 @@ export const HOME_ASSETS = {
       base: "/assets/cards/blue/card_base.png",
       glow: "/assets/cards/blue/card_glow.png",
       icon: "/assets/cards/blue/icon_vs.png",
-      label: "/assets/home/label_async.png",
+      label: "/assets/home/label_friends.png",
       circle: "/assets/ui/icon_circle_blue.png",
     },
     green: {

@@ -89,7 +89,7 @@ export function OnboardingScreen({
 
   return (
     <div className="bg-home-page flex min-h-dvh justify-center text-home-text">
-      <div className="relative flex w-full max-w-[420px] flex-col gap-4 px-4 pt-3 pb-[max(5.5rem,calc(4.25rem+env(safe-area-inset-bottom)))]">
+      <div className="home-screen-shell relative flex w-full max-w-[420px] flex-col gap-4 px-4">
         <HomeHeader
           gems={gems}
           loggedIn={loggedIn}

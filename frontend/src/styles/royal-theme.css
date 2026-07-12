@@ -2017,7 +2017,9 @@ button.royal-resource:active {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 0;
-  padding: 0.55rem 0.25rem max(0.55rem, env(safe-area-inset-bottom));
+  padding:
+    0.55rem 0.25rem
+    max(0.9rem, calc(env(safe-area-inset-bottom, 0px) + 0.45rem));
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   background: #050914;
 }

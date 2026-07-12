@@ -52,6 +52,8 @@ export const HOME_ASSETS = {
   home: {
     levelBadge: "/assets/home/icon_level_badge.png",
     chest: "/assets/home/icon_chest.png",
+    friendsBadge: "/assets/home/badge-friends.png",
+    friendsLabel: "/assets/home/label_friends.png",
   },
   nav: {
     play: "/assets/nav/nav_play.png",

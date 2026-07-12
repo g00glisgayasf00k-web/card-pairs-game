@@ -296,14 +296,13 @@ export function MultiplayerModal({
                   )}
                   <span className="mp-kit-card__glow" style={{ backgroundImage: `url(${blue.glow})` }} aria-hidden />
                   <div className="mp-kit-card__body">
-                    <img className="mp-kit-card__tag" src={a.cards.blue.label} alt="" />
+                    <img className="mp-kit-card__tag" src={a.home.friendsLabel} alt="" />
                     <span className="mp-kit-card__title">Challenge a friend</span>
                     <span className="mp-kit-card__sub">Pick someone from your list</span>
                     <span className="mp-kit-card__meta">⚡ 1 each</span>
                   </div>
                   <span className="mp-kit-card__icon-wrap" aria-hidden>
-                    <span className="mp-kit-card__ring" style={{ backgroundImage: `url(${a.ui.circleBg})` }} />
-                    <img className="mp-kit-card__icon" src={a.home.chest} alt="" />
+                    <img className="mp-kit-card__icon mp-kit-card__icon--friends" src={a.home.friendsBadge} alt="" />
                   </span>
                   <img className="mp-kit-card__chev" src={a.ui.chevron} alt="" />
                 </button>

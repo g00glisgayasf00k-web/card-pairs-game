@@ -63,7 +63,7 @@ import { GameBoard, type GameBoardHandle } from "../components/GameBoard";
 import { ProfileModal } from "../components/ProfileModal";
 import { GemShopModal } from "../components/GemShopModal";
 import { OutOfEnergyModal } from "../components/OutOfEnergyModal";
-import { fetchChallenge, submitChallenge, submitTournamentRun, type ChallengeDto, type ChallengeMissionDto } from "../lib/api";
+import { fetchChallenge, forfeitChallenge, submitChallenge, submitTournamentRun, type ChallengeDto, type ChallengeMissionDto } from "../lib/api";
 import type { TournamentBoardPick } from "../lib/tournamentTiers";
 import { onHardwareBack } from "../lib/nativeBack";
 
@@ -76,6 +76,8 @@ export interface ChallengeMatch {
   wagerGems?: number;
   /** Quick-match challenger pays energy; friend duels use gem wagers instead. */
   youAre: "challenger" | "opponent";
+  /** When the other player already finished — ISO deadline to submit or DQ. */
+  finishDeadlineAt?: string | null;
 }
 
 interface Props {
@@ -107,6 +109,16 @@ interface RunState {
 }
 
 const ROUND_COMPLETE_MS = 2200;
+
+function formatFinishCountdown(deadlineIso: string, nowMs: number): string {
+  const end = Date.parse(deadlineIso);
+  if (!Number.isFinite(end)) return "";
+  const ms = Math.max(0, end - nowMs);
+  const totalSec = Math.ceil(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${m}:${s.toString().padStart(2, "0")}`;
+}
 
 function gamePortal(node: ReactNode) {
   if (typeof document === "undefined") return null;
@@ -196,6 +208,7 @@ export function GameScreen({
     handCounts: HandCounts;
   } | null>(null);
   const [challengeResult, setChallengeResult] = useState<ChallengeDto | null>(null);
+  const [finishClockMs, setFinishClockMs] = useState(() => Date.now());
   const [tournamentPlace, setTournamentPlace] = useState<number | null>(null);
   const [tournamentSubmitPending, setTournamentSubmitPending] = useState(false);
   const [chestReward, setChestReward] = useState<{
@@ -225,6 +238,11 @@ export function GameScreen({
   const bestHandRef = useRef(bestHand);
   const levelRef = useRef(level);
   const advancingRef = useRef(false);
+  const challengeSubmittedRef = useRef(false);
+  const playDeadlineRef = useRef<string | null>(challengeMatch?.finishDeadlineAt ?? null);
+  const [playDeadlineAt, setPlayDeadlineAt] = useState<string | null>(
+    challengeMatch?.finishDeadlineAt ?? null
+  );
 
   const boardRef = useRef<GameBoardHandle>(null);
   const boardFeedbackTimer = useRef<number | null>(null);
@@ -552,6 +570,7 @@ export function GameScreen({
         setCompletedLevel(level);
         setCompletedStats({ score, hands, stars, handCounts: { ...handCounts } });
         setPhase("round_complete");
+        challengeSubmittedRef.current = true;
         void submitChallenge(challengeMatch.id, { stars, moves: hands, score })
           .then((r) => {
             if (typeof r.credits === "number") {
@@ -704,6 +723,10 @@ export function GameScreen({
   };
 
   const handleExit = () => {
+    if (isChallenge && challengeMatch && !challengeSubmittedRef.current) {
+      void forfeitChallenge(challengeMatch.id).catch(() => undefined);
+      challengeSubmittedRef.current = true;
+    }
     submitRunScore();
     onMenu();
   };
@@ -719,6 +742,67 @@ export function GameScreen({
   const energyState = syncEnergyState();
   const energy = energyState.energy;
   void walletTick;
+
+  const waitDeadlineAt =
+    challengeResult?.finish_deadline_at ??
+    (challengeResult?.status === "active" ? playDeadlineAt : null) ??
+    null;
+  const activePlayDeadline =
+    phase === "playing" && !challengeSubmittedRef.current ? playDeadlineAt : null;
+  const countdownDeadline = waitDeadlineAt || activePlayDeadline;
+  const countdownLabel = countdownDeadline
+    ? formatFinishCountdown(countdownDeadline, finishClockMs)
+    : "";
+
+  useEffect(() => {
+    if (!countdownDeadline) return;
+    setFinishClockMs(Date.now());
+    const id = window.setInterval(() => setFinishClockMs(Date.now()), 1000);
+    return () => window.clearInterval(id);
+  }, [countdownDeadline]);
+
+  // While waiting for the other player, poll so DQ / completion updates the results screen.
+  useEffect(() => {
+    if (!isChallenge || !challengeMatch || phase !== "round_complete") return;
+    if (challengeResult?.status === "completed") return;
+    const pull = () => {
+      void fetchChallenge(challengeMatch.id)
+        .then((r) => {
+          setChallengeResult(r.challenge);
+          if (r.challenge.finish_deadline_at) {
+            playDeadlineRef.current = r.challenge.finish_deadline_at;
+            setPlayDeadlineAt(r.challenge.finish_deadline_at);
+          }
+        })
+        .catch(() => undefined);
+    };
+    pull();
+    const id = window.setInterval(pull, 4000);
+    return () => window.clearInterval(id);
+  }, [isChallenge, challengeMatch, phase, challengeResult?.status]);
+
+  // During Quick Play, learn if the opponent finished first (10-minute clock).
+  useEffect(() => {
+    if (!isChallenge || !challengeMatch || phase !== "playing") return;
+    if (challengeMatch.kind !== "quick") return;
+    const pull = () => {
+      void fetchChallenge(challengeMatch.id)
+        .then((r) => {
+          const deadline = r.challenge.finish_deadline_at ?? null;
+          if (deadline && deadline !== playDeadlineRef.current) {
+            playDeadlineRef.current = deadline;
+            setPlayDeadlineAt(deadline);
+          }
+          if (r.challenge.status === "completed" || r.challenge.status === "expired") {
+            setChallengeResult(r.challenge);
+          }
+        })
+        .catch(() => undefined);
+    };
+    pull();
+    const id = window.setInterval(pull, 8000);
+    return () => window.clearInterval(id);
+  }, [isChallenge, challengeMatch, phase]);
 
   useEffect(() => {
     if (energy >= MAX_ENERGY) return;
@@ -757,10 +841,10 @@ export function GameScreen({
         return true;
       }
       if (phase === "round_complete" || phase === "moves_failed" || phase === "campaign_complete") {
-        onMenu();
+        handleExit();
         return true;
       }
-      onMenu();
+      handleExit();
       return true;
     });
   }, [
@@ -769,7 +853,7 @@ export function GameScreen({
     showProfile,
     confirmSpend,
     phase,
-    onMenu,
+    handleExit,
   ]);
 
   const handleWalletChange = useCallback(() => {
@@ -914,6 +998,16 @@ export function GameScreen({
 
           </div>
         </header>
+
+        {activePlayDeadline && countdownLabel && (
+          <div className="game-goalbar" role="status" aria-live="polite">
+            <div className="game-goalbar__goals">
+              <span className="tutorial-goal-chip">
+                Opponent finished · {countdownLabel} left or DQ
+              </span>
+            </div>
+          </div>
+        )}
 
         {showChallengeUi && cfg.challenges.length > 0 && (
           <div className="game-goalbar" aria-label="Level goals">
@@ -1149,6 +1243,7 @@ export function GameScreen({
                     ? challengeResult.opponent?.username
                     : challengeResult.challenger?.username;
                 if (!theirs) {
+                  const isQuick = (challengeResult.kind ?? challengeMatch?.kind) === "quick";
                   return (
                     <>
                       <div className="perk">
@@ -1161,7 +1256,14 @@ export function GameScreen({
                       </div>
                       <div className="perk">
                         <span className="perk-icon">⏳</span>
-                        <span>Waiting for {opponentName ?? "opponent"}…</span>
+                        <span>
+                          Waiting for {opponentName ?? "opponent"}
+                          {isQuick && countdownLabel
+                            ? ` · ${countdownLabel} left or DQ`
+                            : isQuick
+                              ? " · they have 10 minutes"
+                              : "…"}
+                        </span>
                       </div>
                     </>
                   );
@@ -1424,8 +1526,8 @@ export function GameScreen({
             <button type="button" className="btn btn-restart-level" onClick={retryLevel}>
               Restart level
             </button>
-            <button type="button" className="btn ghost" onClick={onMenu}>
-              Back to levels
+            <button type="button" className="btn ghost" onClick={handleExit}>
+              {isChallenge ? "Forfeit · back to lobby" : "Back to levels"}
             </button>
           </div>
         </div>

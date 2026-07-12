@@ -387,6 +387,8 @@ export interface ChallengeDto {
   opponent_result: ChallengeAttempt | null;
   winner_user_id: number | null;
   created_at: string;
+  /** Quick Play: ISO deadline after the first player finishes (other has 10 min). */
+  finish_deadline_at?: string | null;
 }
 
 export async function fetchChallenges() {
@@ -484,7 +486,23 @@ export async function submitChallenge(
   throw new Error("Challenge response missing");
 }
 
-export type MatchmakingStatus = "idle" | "waiting" | "matched";
+export async function forfeitChallenge(id: number) {
+  return request<{
+    challenge: ChallengeDto;
+    forfeited?: boolean;
+    credits?: number;
+    client_updated_at?: number;
+    elo?: {
+      challenger_elo: number;
+      opponent_elo: number;
+      challenger_elo_before: number;
+      opponent_elo_before: number;
+      elo_delta: number;
+    };
+  }>(`/api/challenges/${id}/forfeit`, { method: "POST" });
+}
+
+export type MatchmakingStatus = "idle" | "waiting" | "matched" | "settled";
 
 export async function joinQuickMatch() {
   return request<{ status: MatchmakingStatus; ticket_id?: number; challenge?: ChallengeDto }>(

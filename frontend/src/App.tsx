@@ -142,6 +142,7 @@ export default function App() {
       kind: challenge.kind,
       wagerGems: challenge.wager_gems,
       youAre: challenge.you_are,
+      finishDeadlineAt: challenge.finish_deadline_at ?? null,
     });
     setScreen("game");
   };

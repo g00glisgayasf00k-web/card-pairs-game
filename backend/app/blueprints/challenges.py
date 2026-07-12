@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
-from app.models import Challenge, Friendship, PlayerProgress, User, db
+from app.models import Challenge, Friendship, MatchTicket, PlayerProgress, User, db
 from app.progress_grants import adjust_gems, challenge_fee_gems, get_player_elo, set_player_elo
 from app.elo import apply_elo_result
 from app.services.push import send_to_user
@@ -19,6 +19,8 @@ challenges_bp = Blueprint("challenges", __name__)
 
 MAX_LEVEL = 500
 CHALLENGE_TTL_HOURS = 24
+# After the first Quick Play finish, the other player has this long to submit or is DQed.
+QUICK_FINISH_WINDOW_SECONDS = 10 * 60
 WAGER_PRESETS = {1, 5, 25, 50, 100}
 WAGER_MIN = 1
 WAGER_MAX = 10_000
@@ -83,10 +85,101 @@ def _expire_if_needed(ch: Challenge) -> None:
     expires = ch.expires_at
     if expires.tzinfo is None:
         expires = expires.replace(tzinfo=timezone.utc)
-    if expires < _utc_now():
+    if expires >= _utc_now():
+        return
+
+    kind = getattr(ch, "kind", None) or "friend"
+    # Quick Play: one finished, other timed out → DQ missing side with 0 and settle.
+    if (
+        kind == "quick"
+        and ch.status == "active"
+        and bool(ch.challenger_submitted_at) != bool(ch.opponent_submitted_at)
+    ):
+        _dq_missing_side(ch)
+        return
+
+    ch.status = "expired"
+    ch.updated_at = _utc_now()
+    _refund_stakes(ch)
+    _release_match_tickets(ch)
+
+
+def _release_match_tickets(ch: Challenge) -> None:
+    """Free both players to queue for a new Quick Play match."""
+    MatchTicket.query.filter_by(challenge_id=ch.id).update(
+        {"status": "cancelled"}, synchronize_session=False
+    )
+
+
+def _dq_missing_side(ch: Challenge) -> None:
+    """Assign 0★ / 0 moves / 0 score to the player who never submitted, then settle."""
+    now = _utc_now()
+    if ch.challenger_submitted_at and not ch.opponent_submitted_at:
+        ch.opponent_stars = 0
+        ch.opponent_moves = 0
+        ch.opponent_score = 0
+        ch.opponent_submitted_at = now
+    elif ch.opponent_submitted_at and not ch.challenger_submitted_at:
+        ch.challenger_stars = 0
+        ch.challenger_moves = 0
+        ch.challenger_score = 0
+        ch.challenger_submitted_at = now
+    else:
         ch.status = "expired"
-        ch.updated_at = _utc_now()
+        ch.updated_at = now
         _refund_stakes(ch)
+        _release_match_tickets(ch)
+        return
+
+    ch.winner_user_id = _compare_attempts(
+        ch.challenger_stars or 0,
+        ch.challenger_moves or 0,
+        ch.challenger_score or 0,
+        ch.challenger_id,
+        ch.opponent_stars or 0,
+        ch.opponent_moves or 0,
+        ch.opponent_score or 0,
+        ch.opponent_id,
+    )
+    ch.status = "completed"
+    ch.updated_at = now
+    _settle_wager(ch)
+    _apply_quick_elo(ch)
+    _release_match_tickets(ch)
+
+
+def _finish_if_both_submitted(ch: Challenge) -> dict | None:
+    """Complete the duel when both sides have results. Returns Elo payload if any."""
+    if not (ch.challenger_submitted_at and ch.opponent_submitted_at):
+        return None
+    if ch.status == "completed":
+        return None
+    ch.winner_user_id = _compare_attempts(
+        ch.challenger_stars or 0,
+        ch.challenger_moves or 0,
+        ch.challenger_score or 0,
+        ch.challenger_id,
+        ch.opponent_stars or 0,
+        ch.opponent_moves or 0,
+        ch.opponent_score or 0,
+        ch.opponent_id,
+    )
+    ch.status = "completed"
+    _settle_wager(ch)
+    elo = _apply_quick_elo(ch)
+    _release_match_tickets(ch)
+    return elo
+
+
+def _arm_quick_finish_window(ch: Challenge, now: datetime) -> None:
+    """First finisher starts the opponent's 10-minute clock."""
+    if (getattr(ch, "kind", None) or "friend") != "quick":
+        return
+    if ch.challenger_submitted_at and ch.opponent_submitted_at:
+        return
+    if not (ch.challenger_submitted_at or ch.opponent_submitted_at):
+        return
+    ch.expires_at = now + timedelta(seconds=QUICK_FINISH_WINDOW_SECONDS)
 
 
 def _refund_stakes(ch: Challenge) -> None:
@@ -268,6 +361,15 @@ def _serialize(ch: Challenge, me: int) -> dict:
         ),
         "winner_user_id": ch.winner_user_id,
         "created_at": ch.created_at.isoformat(),
+        "finish_deadline_at": (
+            ch.expires_at.isoformat()
+            if (
+                ch.status == "active"
+                and (getattr(ch, "kind", None) or "friend") == "quick"
+                and bool(ch.challenger_submitted_at) != bool(ch.opponent_submitted_at)
+            )
+            else None
+        ),
     }
 
 
@@ -558,7 +660,9 @@ def submit_challenge(challenge_id: int):
         return jsonify({"error": "Challenge expired", **_credits_payload(me)}), 409
     if ch.status == "pending":
         return jsonify({"error": "Wait until your opponent accepts the challenge"}), 409
-    if ch.status not in ("active", "completed"):
+    if ch.status == "completed":
+        return jsonify({"challenge": _serialize(ch, me), **_credits_payload(me)})
+    if ch.status != "active":
         return jsonify({"error": f"Challenge is {ch.status}"}), 409
 
     data = request.get_json(silent=True) or {}
@@ -603,21 +707,8 @@ def submit_challenge(challenge_id: int):
         ch.opponent_score = score
         ch.opponent_submitted_at = now
 
-    elo_update = None
-    if ch.challenger_submitted_at and ch.opponent_submitted_at:
-        ch.winner_user_id = _compare_attempts(
-            ch.challenger_stars or 0,
-            ch.challenger_moves or 0,
-            ch.challenger_score or 0,
-            ch.challenger_id,
-            ch.opponent_stars or 0,
-            ch.opponent_moves or 0,
-            ch.opponent_score or 0,
-            ch.opponent_id,
-        )
-        ch.status = "completed"
-        _settle_wager(ch)
-        elo_update = _apply_quick_elo(ch)
+    _arm_quick_finish_window(ch, now)
+    elo_update = _finish_if_both_submitted(ch)
 
     ch.updated_at = now
     db.session.commit()
@@ -633,14 +724,84 @@ def submit_challenge(challenge_id: int):
             {"type": "challenge_complete", "challenge_id": str(ch.id)},
         )
     else:
+        mins = QUICK_FINISH_WINDOW_SECONDS // 60
         _notify(
             other_id,
-            "Your turn",
-            f"{me_name} submitted their challenge score",
+            "Your turn — 10 minutes",
+            f"{me_name} finished. Submit within {mins} minutes or you forfeit.",
             {"type": "challenge", "challenge_id": str(ch.id)},
         )
 
     out = {"challenge": _serialize(ch, me), **_credits_payload(me)}
+    if elo_update:
+        out["elo"] = elo_update
+    return jsonify(out)
+
+
+@challenges_bp.post("/<int:challenge_id>/forfeit")
+@jwt_required()
+def forfeit_challenge(challenge_id: int):
+    """Back out of an active duel — records 0★ / 0 moves / 0 score (a loss if opponent finished)."""
+    me = int(get_jwt_identity())
+    ch = Challenge.query.get(challenge_id)
+    if not ch or (ch.challenger_id != me and ch.opponent_id != me):
+        return jsonify({"error": "Challenge not found"}), 404
+
+    _expire_if_needed(ch)
+    if ch.status == "completed":
+        db.session.commit()
+        return jsonify({"challenge": _serialize(ch, me), **_credits_payload(me)})
+    if ch.status != "active":
+        db.session.commit()
+        return jsonify({"error": f"Challenge is {ch.status}"}), 409
+
+    already = (
+        (ch.challenger_id == me and ch.challenger_submitted_at)
+        or (ch.opponent_id == me and ch.opponent_submitted_at)
+    )
+    if already:
+        return jsonify({"challenge": _serialize(ch, me), **_credits_payload(me)})
+
+    now = _utc_now()
+    if ch.challenger_id == me:
+        ch.challenger_stars = 0
+        ch.challenger_moves = 0
+        ch.challenger_score = 0
+        ch.challenger_submitted_at = now
+    else:
+        ch.opponent_stars = 0
+        ch.opponent_moves = 0
+        ch.opponent_score = 0
+        ch.opponent_submitted_at = now
+
+    _arm_quick_finish_window(ch, now)
+    elo_update = _finish_if_both_submitted(ch)
+    # Free the quitting player to queue again even if the opponent still has time left.
+    MatchTicket.query.filter_by(user_id=me, challenge_id=ch.id).update(
+        {"status": "cancelled"}, synchronize_session=False
+    )
+    ch.updated_at = now
+    db.session.commit()
+
+    other_id = ch.opponent_id if me == ch.challenger_id else ch.challenger_id
+    me_user = User.query.get(me)
+    me_name = me_user.username if me_user else "Opponent"
+    if ch.status == "completed":
+        _notify(
+            other_id,
+            "Opponent forfeited",
+            f"{me_name} backed out — you win",
+            {"type": "challenge_complete", "challenge_id": str(ch.id)},
+        )
+    else:
+        _notify(
+            other_id,
+            "Opponent forfeited",
+            f"{me_name} backed out with 0. Finish within 10 minutes to claim the win.",
+            {"type": "challenge", "challenge_id": str(ch.id)},
+        )
+
+    out = {"challenge": _serialize(ch, me), "forfeited": True, **_credits_payload(me)}
     if elo_update:
         out["elo"] = elo_update
     return jsonify(out)

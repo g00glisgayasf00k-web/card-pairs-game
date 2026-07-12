@@ -146,11 +146,22 @@ def join_quick():
         )
     _expire_stale_tickets()
 
+    from app.blueprints.challenges import _expire_if_needed
+
     existing = _active_ticket(me)
     if existing and existing.status == "matched" and existing.challenge_id:
         ch = Challenge.query.get(existing.challenge_id)
         if ch:
-            return jsonify({"status": "matched", "challenge": _serialize_challenge(ch, me)})
+            _expire_if_needed(ch)
+            db.session.commit()
+            # Only reopen an unfinished duel — completed/expired free the player to rematch.
+            if ch.status == "active":
+                return jsonify({"status": "matched", "challenge": _serialize_challenge(ch, me)})
+            existing.status = "cancelled"
+            db.session.commit()
+        else:
+            existing.status = "cancelled"
+            db.session.commit()
     if existing and existing.status == "waiting" and _as_utc(existing.expires_at) >= _utc_now():
         return jsonify(
             {
@@ -235,15 +246,31 @@ def poll_quick():
     if not ticket:
         return jsonify({"status": "idle"})
     if ticket.status == "matched" and ticket.challenge_id:
+        from app.blueprints.challenges import _expire_if_needed
+
         ch = Challenge.query.get(ticket.challenge_id)
         if ch:
+            _expire_if_needed(ch)
+            db.session.commit()
+            if ch.status == "active":
+                return jsonify(
+                    {
+                        "status": "matched",
+                        "challenge": _serialize_challenge(ch, me),
+                        "elo": get_player_elo(me),
+                    }
+                )
+            ticket.status = "cancelled"
+            db.session.commit()
             return jsonify(
                 {
-                    "status": "matched",
+                    "status": "settled",
                     "challenge": _serialize_challenge(ch, me),
                     "elo": get_player_elo(me),
                 }
             )
+        ticket.status = "cancelled"
+        db.session.commit()
     if ticket.status == "waiting":
         if _as_utc(ticket.expires_at) < _utc_now():
             ticket.status = "cancelled"

@@ -77,9 +77,36 @@ export interface LeaderboardLevelRow {
   user_id: number;
   username: string;
   level: number;
-  highest_unlocked: number;
-  completed: number;
+  highest_unlocked?: number;
+  completed?: number;
   stars_total: number;
+}
+
+export interface LeaderboardRatingRow {
+  user_id: number;
+  username: string;
+  rating: number;
+  level: number;
+  stars_total: number;
+}
+
+export interface LeaderboardFriendRow extends LeaderboardLevelRow {
+  rating?: number;
+  is_you?: boolean;
+}
+
+export interface TournamentWinnerCup {
+  tier_id: string;
+  name: string;
+  winners: {
+    place: number;
+    user_id: number;
+    username: string;
+    hands: number;
+    score: number;
+    target_points: number;
+    point_delta: number;
+  }[];
 }
 
 export interface LeaderboardHandRow {
@@ -92,11 +119,19 @@ export interface LeaderboardsPayload {
   top_scores: LeaderboardScoreRow[];
   highest_level: LeaderboardLevelRow[];
   most_stars?: LeaderboardLevelRow[];
+  top_quick_play?: LeaderboardRatingRow[];
+  tournament_winners?: TournamentWinnerCup[];
   hand_leaders: Record<string, LeaderboardHandRow[]>;
 }
 
 export async function fetchLeaderboards(limit = 10) {
   return request<LeaderboardsPayload>(`/api/scores/leaderboards?limit=${limit}`);
+}
+
+export async function fetchFriendsBoard(limit = 20) {
+  return request<{ friends: LeaderboardFriendRow[] }>(
+    `/api/scores/friends-board?limit=${limit}`
+  );
 }
 
 export async function submitScore(payload: {

@@ -565,6 +565,22 @@
   gap: 0.75rem;
 }
 
+.hk-kit .leaderboard-tabs {
+  margin-top: 0.15rem;
+}
+
+.hk-kit .leaderboard-tabs__btn {
+  border-color: rgba(255, 215, 0, 0.22);
+  background: rgba(0, 0, 0, 0.28);
+  color: #d8c9a0;
+}
+
+.hk-kit .leaderboard-tabs__btn--active {
+  background: linear-gradient(180deg, rgba(34, 160, 88, 0.95), rgba(20, 90, 56, 0.95));
+  border-color: rgba(125, 255, 186, 0.35);
+  color: #fff;
+}
+
 .hk-kit .royal-frame {
   border-radius: 14px;
   border: 1px solid rgba(255, 215, 0, 0.22);

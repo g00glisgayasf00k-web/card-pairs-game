@@ -166,8 +166,8 @@ export function OnboardingScreen({
       {menu === "leaderboard" && (
         <HomeKitShell
           tone="scores"
-          title="Scores"
-          lead="Campaign stars earned across all levels."
+          title="Top Scores"
+          lead="Stars, Quick Play Rating, friends, and cup winners."
           brandIcon={HOME_ASSETS.nav.scores}
           onClose={closeMenu}
         >

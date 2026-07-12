@@ -2,8 +2,9 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from sqlalchemy import desc
 
-from app.leaderboards import build_leaderboards
+from app.leaderboards import build_friends_board, build_leaderboards
 from app.models import Score, User, db
+
 scores_bp = Blueprint("scores", __name__)
 
 
@@ -32,6 +33,14 @@ def leaderboard():
 def leaderboards():
     limit = min(int(request.args.get("limit", 10)), 50)
     return jsonify(build_leaderboards(limit))
+
+
+@scores_bp.get("/friends-board")
+@jwt_required()
+def friends_board():
+    user_id = int(get_jwt_identity())
+    limit = min(int(request.args.get("limit", 20)), 50)
+    return jsonify({"friends": build_friends_board(user_id, limit)})
 
 
 @scores_bp.get("/me")

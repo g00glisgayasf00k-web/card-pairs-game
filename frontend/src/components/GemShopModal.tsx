@@ -24,6 +24,7 @@ import {
 } from "../lib/treasuryAds";
 import { ResourceBar } from "./ResourceBar";
 import { SquareCheckoutModal } from "./SquareCheckoutModal";
+import { HOME_ASSETS, HomeKitShell } from "./home";
 
 interface Props {
   onClose: () => void;
@@ -381,45 +382,42 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
     : [freeRewardsSection, energySection, gemsSection];
 
   return (
-    <div className="modal-overlay scores-overlay" onClick={onClose} role="presentation">
-      <div
-        className="modal scores-modal gem-shop-modal royal-shop"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-labelledby="gem-shop-title"
+    <>
+      <HomeKitShell
+        tone="shop"
+        title="Shop"
+        lead="Gems & energy for the table."
+        brandIcon={HOME_ASSETS.nav.shop}
+        chip={
+          <span className="hk-kit__chip">
+            <img src={HOME_ASSETS.header.gems} alt="" />
+            {gems.toLocaleString()}
+          </span>
+        }
+        onClose={onClose}
+        hideHero={false}
       >
-        <div className="royal-shop__header">
-          <div className="royal-frame royal-frame--compact">
-            <span className="royal-frame__crown" aria-hidden>
-              👑
-            </span>
-            <h2 id="gem-shop-title" className="royal-frame__title">
-              Royal treasury
-            </h2>
-            <p className="royal-frame__sub">Gems & energy for the table</p>
+        <div className="royal-shop gem-shop-modal" style={{ margin: 0, maxHeight: "none", overflow: "visible" }}>
+          <div className="royal-shop__header">
+            <ResourceBar gems={gems} energy={energy} maxEnergy={MAX_ENERGY} />
           </div>
-          <ResourceBar gems={gems} energy={energy} maxEnergy={MAX_ENERGY} />
+
+          {emphasizeEnergy && (
+            <p className="royal-shop-alert" role="status">
+              You&apos;re out of energy — watch a free video below to keep playing.
+            </p>
+          )}
+
+          <div className="royal-shop__body">
+            {purchaseBanner}
+            {sections}
+          </div>
+
+          {adKind && (
+            <VideoAdOverlay kind={adKind} progress={adProgress} onCancel={cancelAd} />
+          )}
         </div>
-
-        {emphasizeEnergy && (
-          <p className="royal-shop-alert" role="status">
-            You&apos;re out of energy — watch a free video below to keep playing.
-          </p>
-        )}
-
-        <div className="royal-shop__body">
-          {purchaseBanner}
-          {sections}
-        </div>
-
-        <button type="button" className="btn scores-close royal-shop-close" onClick={onClose}>
-          Close
-        </button>
-
-        {adKind && (
-          <VideoAdOverlay kind={adKind} progress={adProgress} onCancel={cancelAd} />
-        )}
-      </div>
+      </HomeKitShell>
 
       {checkoutPack && paymentConfig && (
         <SquareCheckoutModal
@@ -429,6 +427,6 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
           onSuccess={(credits) => handlePurchaseSuccess(credits)}
         />
       )}
-    </div>
+    </>
   );
 }

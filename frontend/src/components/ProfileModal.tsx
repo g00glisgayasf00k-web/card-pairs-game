@@ -8,6 +8,7 @@ import {
 import { countCompleted, countTotalStars } from "../lib/levelProgress";
 import { loadProgress } from "../lib/progress";
 import { ProfileAccountSection } from "./ProfileAccountSection";
+import { HOME_ASSETS, HomeKitShell } from "./home";
 import { useEffect, useState } from "react";
 
 interface Props {
@@ -34,19 +35,28 @@ export function ProfileModal({ username, onClose, onAccountChange, onSignOut }: 
     energy >= MAX_ENERGY ? null : formatTimeUntilNextEnergy(energyRegenAt);
 
   return (
-    <div className="modal-overlay scores-overlay" onClick={onClose} role="presentation">
-      <div
-        className="modal scores-modal profile-modal"
-        onClick={(e) => e.stopPropagation()}
-        role="dialog"
-        aria-labelledby="profile-title"
-      >
-        <h2 id="profile-title">Your profile</h2>
-
+    <HomeKitShell
+      tone="settings"
+      title="Settings"
+      lead="Account, energy, gems, and campaign progress."
+      brandIcon={HOME_ASSETS.nav.settings}
+      chip={
+        <span className="hk-kit__chip">
+          <img src={HOME_ASSETS.header.profile} alt="" />
+          {username ?? "Guest"}
+        </span>
+      }
+      onClose={onClose}
+    >
+      <div className="profile-modal hk-kit__panel" style={{ padding: 0, border: "none", background: "transparent" }}>
         <div className="profile-modal__hero">
-          <span className="profile-modal__avatar" aria-hidden>
-            👤
-          </span>
+          <img
+            src={HOME_ASSETS.header.profile}
+            alt=""
+            width={48}
+            height={48}
+            style={{ borderRadius: "999px" }}
+          />
           <div>
             <p className="profile-modal__name">{username ?? "Guest player"}</p>
             <p className="profile-modal__sub">Royal Poker Match</p>
@@ -63,7 +73,9 @@ export function ProfileModal({ username, onClose, onAccountChange, onSignOut }: 
           <li>
             <span className="profile-stats__icon">⚡</span>
             <span>
-              <strong>{energy} / {MAX_ENERGY} energy</strong>
+              <strong>
+                {energy} / {MAX_ENERGY} energy
+              </strong>
               <span className="profile-stats__hint">
                 {nextEnergyIn
                   ? `+1 every 2 hours · next in ${nextEnergyIn}`
@@ -72,16 +84,22 @@ export function ProfileModal({ username, onClose, onAccountChange, onSignOut }: 
             </span>
           </li>
           <li>
-            <span className="profile-stats__icon">💎</span>
+            <span className="profile-stats__icon">
+              <img src={HOME_ASSETS.header.gems} alt="" width={16} height={16} />
+            </span>
             <span>
               <strong>{saved?.credits ?? 0} gems</strong>
-              <span className="profile-stats__hint">Tap gems in-game to buy more</span>
+              <span className="profile-stats__hint">Tap gems on home to open the shop</span>
             </span>
           </li>
           <li>
-            <span className="profile-stats__icon">🗺️</span>
+            <span className="profile-stats__icon">
+              <img src={HOME_ASSETS.home.levelBadge} alt="" width={16} height={16} />
+            </span>
             <span>
-              <strong>{completed} / {MAX_LEVEL} levels cleared</strong>
+              <strong>
+                {completed} / {MAX_LEVEL} levels cleared
+              </strong>
             </span>
           </li>
           <li>
@@ -101,12 +119,8 @@ export function ProfileModal({ username, onClose, onAccountChange, onSignOut }: 
           </li>
         </ul>
 
-        <button type="button" className="btn scores-close" onClick={onClose}>
-          Close
-        </button>
-
         <p className="profile-modal__version">Version {__APP_VERSION__}</p>
       </div>
-    </div>
+    </HomeKitShell>
   );
 }

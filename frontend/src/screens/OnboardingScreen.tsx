@@ -10,6 +10,8 @@ import {
   HomeBottomNav,
   HomeHeader,
   HomeHeroBanner,
+  HomeKitShell,
+  HOME_ASSETS,
   type HomeNavTab,
 } from "../components/home";
 import { loadProgress } from "../lib/progress";
@@ -144,45 +146,42 @@ export function OnboardingScreen({
       </div>
 
       {menu === "leaderboard" && (
-        <div className="modal-overlay scores-overlay home-menu-overlay" onClick={closeMenu} role="presentation">
-          <div
-            className="modal scores-modal home-menu-modal home-menu-modal--wide"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-labelledby="home-leaderboard-title"
-          >
-            <h2 id="home-leaderboard-title">Leaderboard</h2>
-            <Leaderboard />
-            <button type="button" className="btn scores-close" onClick={closeMenu}>
-              Close
-            </button>
-          </div>
-        </div>
+        <HomeKitShell
+          tone="scores"
+          title="Scores"
+          lead="Campaign stars earned across all levels."
+          brandIcon={HOME_ASSETS.nav.scores}
+          onClose={closeMenu}
+        >
+          <Leaderboard />
+        </HomeKitShell>
       )}
 
       {menu === "rules" && (
-        <div className="modal-overlay scores-overlay home-menu-overlay" onClick={closeMenu} role="presentation">
-          <div
-            className="modal scores-modal home-menu-modal"
-            onClick={(e) => e.stopPropagation()}
-            role="dialog"
-            aria-labelledby="home-rules-title"
-          >
-            <h2 id="home-rules-title">How to play</h2>
-            <ul className="home-rules-list home-rules-list--modal">
-              <li>
+        <HomeKitShell
+          tone="rules"
+          title="Rules"
+          lead="Swipe five cards. Make poker hands. Beat the goal."
+          brandIcon={HOME_ASSETS.nav.rules}
+          onClose={closeMenu}
+        >
+          <ol className="hk-kit__rules">
+            {[
+              <>
                 <strong>Swipe</strong> exactly five adjacent cards.
+              </>,
+              <>Make poker hands to clear cards and score points.</>,
+              <>Reach the point goal before moves run out.</>,
+              <>Earn up to 3★ per level for speed and challenges.</>,
+              <>Use gems for extra moves; energy refills +1 every 2 hours (max 12).</>,
+            ].map((text, i) => (
+              <li key={i}>
+                <span className="hk-kit__rules-num">{i + 1}</span>
+                <span>{text}</span>
               </li>
-              <li>Make poker hands to clear cards and score points.</li>
-              <li>Reach the point goal before moves run out.</li>
-              <li>Earn up to 3★ per level for speed and challenges.</li>
-              <li>Use gems for extra moves; energy refills +1 every 2 hours (max 12).</li>
-            </ul>
-            <button type="button" className="btn scores-close" onClick={closeMenu}>
-              Close
-            </button>
-          </div>
-        </div>
+            ))}
+          </ol>
+        </HomeKitShell>
       )}
 
       {menu === "account" && (

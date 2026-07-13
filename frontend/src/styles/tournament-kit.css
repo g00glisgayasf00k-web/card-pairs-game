@@ -300,9 +300,71 @@
 
 .tn-cup__row,
 .tn-cup__payouts,
-.tn-cup__actions {
+.tn-cup__actions,
+.tn-cup__tabs,
+.tn-cup__standings,
+.tn-cup__history,
+.tn-cup__empty {
   position: relative;
   z-index: 2;
+}
+
+.tn-cup__tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.35rem;
+  margin-top: 0.15rem;
+}
+
+.tn-cup__tab {
+  appearance: none;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 999px;
+  padding: 0.38rem 0.55rem;
+  background: rgba(0, 0, 0, 0.28);
+  color: rgba(220, 245, 225, 0.78);
+  font-size: 0.72rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.tn-cup__tab--on {
+  background: rgba(255, 215, 0, 0.18);
+  border-color: rgba(255, 215, 0, 0.45);
+  color: #fff3b0;
+}
+
+.tn-cup__empty {
+  margin: 0;
+  padding: 0.55rem 0.6rem;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.22);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 0.72rem;
+  color: rgba(220, 245, 225, 0.72);
+}
+
+.tn-cup__history {
+  display: flex;
+  flex-direction: column;
+  gap: 0.55rem;
+  max-height: 11.5rem;
+  overflow-y: auto;
+  padding-right: 0.15rem;
+}
+
+.tn-cup__history-block {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.tn-cup__history-label {
+  font-size: 0.68rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  color: #fff3b0;
+  opacity: 0.9;
 }
 
 .tn-cup__row {

@@ -191,6 +191,37 @@ export function tournamentResetLabel(reset: TournamentReset): string {
   return "Monthly · resets 1st UK midnight";
 }
 
+/** Human label for a stored period_key. */
+export function formatTournamentPeriodLabel(
+  periodKey: string,
+  reset: TournamentReset
+): string {
+  const key = periodKey.trim();
+  if (!key || key === "legacy") return "Earlier results";
+  if (reset === "weekly" || /^(\d{4})-W(\d{2})$/.test(key)) {
+    const m = key.match(/^(\d{4})-W(\d{2})$/);
+    if (m) return `Week ${Number(m[2])} · ${m[1]}`;
+  }
+  if (reset === "monthly" || /^\d{4}-\d{2}$/.test(key)) {
+    const m = key.match(/^(\d{4})-(\d{2})$/);
+    if (m) {
+      const d = new Date(Date.UTC(Number(m[1]), Number(m[2]) - 1, 1));
+      return d.toLocaleDateString("en-GB", { month: "long", year: "numeric", timeZone: "UTC" });
+    }
+  }
+  if (/^\d{4}-\d{2}-\d{2}$/.test(key)) {
+    const [y, mo, da] = key.split("-").map(Number);
+    const d = new Date(Date.UTC(y!, mo! - 1, da!));
+    return d.toLocaleDateString("en-GB", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+      timeZone: "UTC",
+    });
+  }
+  return key;
+}
+
 /** Top-3 split of the prize pool. */
 export const TOURNAMENT_PAYOUT = [
   { place: 1, share: 0.5, label: "1st" },

@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { HOME_ASSETS } from "./home/homeAssets";
 import {
+  fetchTournamentHistory,
   fetchTournamentStandings,
+  type TournamentPastPeriod,
   type TournamentStandingRow,
 } from "../lib/api";
 import { formatChallenge } from "../lib/levels";
@@ -16,6 +18,7 @@ import {
 } from "../lib/tournamentAds";
 import {
   TOURNAMENT_TIERS,
+  formatTournamentPeriodLabel,
   formatTournamentResetCountdown,
   isTournamentUnlocked,
   payoutAmounts,
@@ -35,6 +38,8 @@ interface Props {
   onPlayTournament: (board: TournamentBoardPick) => void;
 }
 
+type CupBoardTab = "live" | "past";
+
 export function TournamentModal({
   onClose,
   onBalanceChange,
@@ -50,6 +55,9 @@ export function TournamentModal({
   const [standings, setStandings] = useState<Record<string, TournamentStandingRow[]>>({});
   const [periodEnds, setPeriodEnds] = useState<Record<string, string>>({});
   const [periodKeys, setPeriodKeys] = useState<Record<string, string>>({});
+  const [cupTab, setCupTab] = useState<Record<string, CupBoardTab>>({});
+  const [history, setHistory] = useState<Record<string, TournamentPastPeriod[]>>({});
+  const [historyLoading, setHistoryLoading] = useState<Record<string, boolean>>({});
   const [webAdTier, setWebAdTier] = useState<TournamentTier | null>(null);
   const [webAdProgress, setWebAdProgress] = useState(0);
 
@@ -100,6 +108,26 @@ export function TournamentModal({
 
   const freeAdsLeft = (tier: TournamentTier) =>
     tournamentFreeAdsRemaining(tier.id, periodKeyFor(tier));
+
+  const loadHistory = async (tierId: string) => {
+    if (historyLoading[tierId]) return;
+    setHistoryLoading((prev) => ({ ...prev, [tierId]: true }));
+    try {
+      const r = await fetchTournamentHistory(tierId, 8, 3);
+      setHistory((prev) => ({ ...prev, [tierId]: r.periods }));
+    } catch {
+      setHistory((prev) => ({ ...prev, [tierId]: prev[tierId] ?? [] }));
+    } finally {
+      setHistoryLoading((prev) => ({ ...prev, [tierId]: false }));
+    }
+  };
+
+  const setBoardTab = (tierId: string, tab: CupBoardTab) => {
+    setCupTab((prev) => ({ ...prev, [tierId]: tab }));
+    if (tab === "past" && history[tierId] === undefined) {
+      void loadHistory(tierId);
+    }
+  };
 
   const resetCountdown = (tier: TournamentTier) => {
     const fromApi = periodEnds[tier.id];
@@ -308,17 +336,67 @@ export function TournamentModal({
                       ))}
                     </ul>
 
-                    {rows.length > 0 && (
-                      <ol className="tn-cup__standings">
-                        {rows.map((r) => (
-                          <li key={r.id}>
-                            <span>#{r.place ?? "—"} {r.username}</span>
-                            <strong>
-                              {r.hands}h · {r.score.toLocaleString()}pts
-                            </strong>
-                          </li>
+                    <div className="tn-cup__tabs" role="tablist" aria-label={`${tier.name} board`}>
+                      {(["live", "past"] as const).map((tab) => {
+                        const active = (cupTab[tier.id] ?? "live") === tab;
+                        return (
+                          <button
+                            key={tab}
+                            type="button"
+                            role="tab"
+                            aria-selected={active}
+                            className={`tn-cup__tab${active ? " tn-cup__tab--on" : ""}`}
+                            onClick={() => setBoardTab(tier.id, tab)}
+                          >
+                            {tab === "live" ? "Live" : "Past results"}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    {(cupTab[tier.id] ?? "live") === "live" ? (
+                      rows.length > 0 ? (
+                        <ol className="tn-cup__standings">
+                          {rows.map((r) => (
+                            <li key={r.id}>
+                              <span>
+                                #{r.place ?? "—"} {r.username}
+                              </span>
+                              <strong>
+                                {r.hands}h · {r.score.toLocaleString()}pts
+                              </strong>
+                            </li>
+                          ))}
+                        </ol>
+                      ) : (
+                        <p className="tn-cup__empty">No scores yet this period.</p>
+                      )
+                    ) : historyLoading[tier.id] ? (
+                      <p className="tn-cup__empty">Loading past results…</p>
+                    ) : (history[tier.id] ?? []).length === 0 ? (
+                      <p className="tn-cup__empty">No past periods yet — check back after the next reset.</p>
+                    ) : (
+                      <div className="tn-cup__history">
+                        {(history[tier.id] ?? []).map((period) => (
+                          <div key={period.period_key} className="tn-cup__history-block">
+                            <span className="tn-cup__history-label">
+                              {formatTournamentPeriodLabel(period.period_key, tier.reset)}
+                            </span>
+                            <ol className="tn-cup__standings">
+                              {period.standings.map((r) => (
+                                <li key={`${period.period_key}-${r.id}`}>
+                                  <span>
+                                    #{r.place ?? "—"} {r.username}
+                                  </span>
+                                  <strong>
+                                    {r.hands}h · {r.score.toLocaleString()}pts
+                                  </strong>
+                                </li>
+                              ))}
+                            </ol>
+                          </div>
                         ))}
-                      </ol>
+                      </div>
                     )}
 
                     <div className="tn-cup__actions">

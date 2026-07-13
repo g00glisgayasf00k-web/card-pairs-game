@@ -79,3 +79,11 @@ def period_meta(tier_id: str, now: datetime | None = None) -> dict:
         "period_key": period_key(tier, now),
         "period_ends_at": ends.isoformat().replace("+00:00", "Z"),
     }
+
+
+def period_sort_key(pk: str) -> tuple:
+    """Sort period keys newest-first (legacy last)."""
+    key = (pk or "").strip()
+    if not key or key == "legacy":
+        return (0, "")
+    return (1, key)

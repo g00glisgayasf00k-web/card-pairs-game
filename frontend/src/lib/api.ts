@@ -598,6 +598,21 @@ export async function fetchTournamentStandings(tierId: string, limit = 10) {
   }>(`/api/tournaments/${tierId}/standings?limit=${limit}`);
 }
 
+export interface TournamentPastPeriod {
+  period_key: string;
+  standings: TournamentStandingRow[];
+}
+
+export async function fetchTournamentHistory(tierId: string, periods = 8, limit = 3) {
+  return request<{
+    tier_id: string;
+    reset: "daily" | "weekly" | "monthly";
+    period_key: string;
+    period_ends_at: string;
+    periods: TournamentPastPeriod[];
+  }>(`/api/tournaments/${tierId}/history?periods=${periods}&limit=${limit}`);
+}
+
 export async function submitTournamentRun(
   tierId: string,
   body: {

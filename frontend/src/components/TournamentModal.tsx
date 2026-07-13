@@ -8,9 +8,12 @@ import { formatChallenge } from "../lib/levels";
 import { loadProgress, saveProgress } from "../lib/progress";
 import {
   TOURNAMENT_TIERS,
+  formatTournamentResetCountdown,
   isTournamentUnlocked,
   payoutAmounts,
   pickTournamentBoard,
+  tournamentPeriodEndsAt,
+  tournamentResetLabel,
   unlockLabel,
   type TournamentBoardPick,
   type TournamentTier,
@@ -30,11 +33,13 @@ export function TournamentModal({
   onPlayTournament,
 }: Props) {
   const [tick, setTick] = useState(0);
+  const [nowMs, setNowMs] = useState(() => Date.now());
   const [busyId, setBusyId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmTier, setConfirmTier] = useState<TournamentTier | null>(null);
   const [briefing, setBriefing] = useState<TournamentBoardPick | null>(null);
   const [standings, setStandings] = useState<Record<string, TournamentStandingRow[]>>({});
+  const [periodEnds, setPeriodEnds] = useState<Record<string, string>>({});
 
   void tick;
   const gems = loadProgress()?.credits ?? 0;
@@ -44,26 +49,44 @@ export function TournamentModal({
   const refresh = () => setTick((t) => t + 1);
 
   useEffect(() => {
+    const id = window.setInterval(() => setNowMs(Date.now()), 30_000);
+    return () => window.clearInterval(id);
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
     void Promise.all(
       TOURNAMENT_TIERS.map(async (tier) => {
         try {
           const r = await fetchTournamentStandings(tier.id, 5);
-          return [tier.id, r.standings] as const;
+          return [tier.id, r.standings, r.period_ends_at] as const;
         } catch {
-          return [tier.id, [] as TournamentStandingRow[]] as const;
+          return [tier.id, [] as TournamentStandingRow[], ""] as const;
         }
       })
     ).then((pairs) => {
       if (cancelled) return;
       const next: Record<string, TournamentStandingRow[]> = {};
-      for (const [id, rows] of pairs) next[id] = rows;
+      const ends: Record<string, string> = {};
+      for (const [id, rows, endAt] of pairs) {
+        next[id] = rows;
+        if (endAt) ends[id] = endAt;
+      }
       setStandings(next);
+      setPeriodEnds(ends);
     });
     return () => {
       cancelled = true;
     };
   }, [tick]);
+
+  const resetCountdown = (tier: TournamentTier) => {
+    const fromApi = periodEnds[tier.id];
+    const endsAt = fromApi
+      ? new Date(fromApi)
+      : tournamentPeriodEndsAt(tier.reset, new Date(nowMs));
+    return formatTournamentResetCountdown(endsAt, new Date(nowMs));
+  };
 
   const enterTournament = (tier: TournamentTier) => {
     setError(null);
@@ -133,7 +156,8 @@ export function TournamentModal({
 
             <div className="tn-kit__body">
               <p className="tn-kit__hint">
-                Each cup uses a random board from its Solo range. Top 3 take the payouts shown.
+                Bronze resets daily, Silver weekly, Gold monthly — all at UK midnight. Top 3 take
+                the payouts shown.
               </p>
               {error && <p className="tn-kit__error">{error}</p>}
 
@@ -167,6 +191,9 @@ export function TournamentModal({
                           {unlocked
                             ? "Unlocked"
                             : `Locked · clear Solo ${unlockLabel(tier)}`}
+                        </span>
+                        <span className="tn-cup__reset">
+                          {tournamentResetLabel(tier.reset)} · resets in {resetCountdown(tier)}
                         </span>
                       </div>
                       <div className="tn-cup__pool">

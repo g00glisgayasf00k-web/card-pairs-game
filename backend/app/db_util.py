@@ -125,6 +125,117 @@ def ensure_schema():
             except OperationalError:
                 pass
 
+    _migrate_tournament_period_key(engine, inspector, is_sqlite)
+
+
+def _migrate_tournament_period_key(engine, inspector, is_sqlite: bool) -> None:
+    """Add period_key and switch uniqueness to (user_id, tier_id, period_key)."""
+    inspector = inspect(engine)
+    tables = inspector.get_table_names()
+    if "tournament_runs" not in tables:
+        return
+
+    cols = {c["name"] for c in inspector.get_columns("tournament_runs")}
+    if "period_key" in cols:
+        return
+
+    if is_sqlite:
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    """
+                    CREATE TABLE tournament_runs_new (
+                        id INTEGER NOT NULL PRIMARY KEY,
+                        user_id INTEGER NOT NULL,
+                        tier_id VARCHAR(32) NOT NULL,
+                        period_key VARCHAR(32) NOT NULL,
+                        level INTEGER NOT NULL,
+                        board_seed BIGINT NOT NULL,
+                        target_points INTEGER NOT NULL,
+                        hands INTEGER NOT NULL,
+                        score INTEGER NOT NULL,
+                        created_at DATETIME NOT NULL,
+                        updated_at DATETIME NOT NULL,
+                        CONSTRAINT uq_tournament_user_tier_period
+                            UNIQUE (user_id, tier_id, period_key),
+                        FOREIGN KEY(user_id) REFERENCES users (id)
+                    )
+                    """
+                )
+            )
+            conn.execute(
+                text(
+                    """
+                    INSERT INTO tournament_runs_new (
+                        id, user_id, tier_id, period_key, level, board_seed,
+                        target_points, hands, score, created_at, updated_at
+                    )
+                    SELECT
+                        id, user_id, tier_id, 'legacy', level, board_seed,
+                        target_points, hands, score, created_at, updated_at
+                    FROM tournament_runs
+                    """
+                )
+            )
+            conn.execute(text("DROP TABLE tournament_runs"))
+            conn.execute(text("ALTER TABLE tournament_runs_new RENAME TO tournament_runs"))
+            conn.execute(
+                text("CREATE INDEX IF NOT EXISTS ix_tournament_runs_user_id ON tournament_runs (user_id)")
+            )
+            conn.execute(
+                text("CREATE INDEX IF NOT EXISTS ix_tournament_runs_tier_id ON tournament_runs (tier_id)")
+            )
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_tournament_runs_period_key ON tournament_runs (period_key)"
+                )
+            )
+        return
+
+    with engine.begin() as conn:
+        conn.execute(
+            text(
+                "ALTER TABLE tournament_runs "
+                "ADD COLUMN period_key VARCHAR(32) DEFAULT 'legacy' NOT NULL"
+            )
+        )
+        conn.execute(
+            text(
+                "UPDATE tournament_runs SET period_key = 'legacy' "
+                "WHERE period_key IS NULL OR period_key = ''"
+            )
+        )
+
+    for constraint_name in ("uq_tournament_user_tier", "tournament_runs_user_id_tier_id_key"):
+        try:
+            with engine.begin() as conn:
+                conn.execute(text(f"ALTER TABLE tournament_runs DROP CONSTRAINT {constraint_name}"))
+        except Exception:
+            pass
+
+    try:
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    "ALTER TABLE tournament_runs "
+                    "ADD CONSTRAINT uq_tournament_user_tier_period "
+                    "UNIQUE (user_id, tier_id, period_key)"
+                )
+            )
+    except Exception:
+        pass
+
+    try:
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    "CREATE INDEX IF NOT EXISTS ix_tournament_runs_period_key "
+                    "ON tournament_runs (period_key)"
+                )
+            )
+    except Exception:
+        pass
+
 
 def ensure_admin_user():
     username = (os.environ.get("ADMIN_USERNAME") or "").strip()

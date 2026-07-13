@@ -3,6 +3,8 @@ import { getLevelConfig, type LevelConfig } from "./levels";
 import { loadProgress } from "./progress";
 
 /** UI world ids are 0-based (0-10 = first world’s final stage). */
+export type TournamentReset = "daily" | "weekly" | "monthly";
+
 export interface TournamentTier {
   id: string;
   name: string;
@@ -16,6 +18,8 @@ export interface TournamentTier {
   boardDisplayWorld: number;
   boardStageFrom: number;
   boardStageTo: number;
+  /** Scoring window — resets at UK midnight. */
+  reset: TournamentReset;
 }
 
 export const TOURNAMENT_TIERS: TournamentTier[] = [
@@ -29,6 +33,7 @@ export const TOURNAMENT_TIERS: TournamentTier[] = [
     boardDisplayWorld: 0,
     boardStageFrom: 1,
     boardStageTo: 10,
+    reset: "daily",
   },
   {
     id: "silver",
@@ -40,6 +45,7 @@ export const TOURNAMENT_TIERS: TournamentTier[] = [
     boardDisplayWorld: 2,
     boardStageFrom: 1,
     boardStageTo: 10,
+    reset: "weekly",
   },
   {
     id: "gold",
@@ -51,8 +57,121 @@ export const TOURNAMENT_TIERS: TournamentTier[] = [
     boardDisplayWorld: 4,
     boardStageFrom: 1,
     boardStageTo: 10,
+    reset: "monthly",
   },
 ];
+
+const LONDON_TZ = "Europe/London";
+
+/** London calendar parts for period math (matches backend tournament_periods). */
+function londonParts(date = new Date()): {
+  year: number;
+  month: number;
+  day: number;
+  weekday: number;
+} {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: LONDON_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    weekday: "short",
+  }).formatToParts(date);
+  const get = (type: string) => parts.find((p) => p.type === type)?.value ?? "";
+  const weekdayMap: Record<string, number> = {
+    Mon: 0,
+    Tue: 1,
+    Wed: 2,
+    Thu: 3,
+    Fri: 4,
+    Sat: 5,
+    Sun: 6,
+  };
+  return {
+    year: Number(get("year")),
+    month: Number(get("month")),
+    day: Number(get("day")),
+    weekday: weekdayMap[get("weekday")] ?? 0,
+  };
+}
+
+/** Instant of a London wall-clock YYYY-MM-DD 00:00. */
+function londonMidnightUtcMs(year: number, month: number, day: number): number {
+  // Approximate via iterative format — enough for countdown UI.
+  const guess = Date.UTC(year, month - 1, day, 0, 0, 0);
+  const fmt = new Intl.DateTimeFormat("en-CA", {
+    timeZone: LONDON_TZ,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  });
+  let t = guess;
+  for (let i = 0; i < 6; i++) {
+    const bits = fmt.formatToParts(new Date(t));
+    const g = (type: string) => Number(bits.find((p) => p.type === type)?.value ?? 0);
+    const y = g("year");
+    const m = g("month");
+    const d = g("day");
+    const h = g("hour");
+    const mi = g("minute");
+    const target = Date.UTC(year, month - 1, day);
+    const have = Date.UTC(y, m - 1, d);
+    const dayDeltaMs = target - have;
+    const clockDeltaMs = (h * 60 + mi) * 60_000;
+    const next = t + dayDeltaMs - clockDeltaMs;
+    if (Math.abs(next - t) < 1000) return next;
+    t = next;
+  }
+  return t;
+}
+
+export function tournamentPeriodEndsAt(reset: TournamentReset, now = new Date()): Date {
+  const { year, month, day, weekday } = londonParts(now);
+  if (reset === "daily") {
+    const tomorrow = new Date(Date.UTC(year, month - 1, day + 1));
+    return new Date(
+      londonMidnightUtcMs(tomorrow.getUTCFullYear(), tomorrow.getUTCMonth() + 1, tomorrow.getUTCDate())
+    );
+  }
+  if (reset === "weekly") {
+    const daysUntilNextMonday = 7 - weekday; // Mon→7 … Sun→1
+    const next = new Date(Date.UTC(year, month - 1, day + daysUntilNextMonday));
+    let ends = new Date(
+      londonMidnightUtcMs(next.getUTCFullYear(), next.getUTCMonth() + 1, next.getUTCDate())
+    );
+    if (ends.getTime() <= now.getTime()) {
+      const later = new Date(Date.UTC(year, month - 1, day + daysUntilNextMonday + 7));
+      ends = new Date(
+        londonMidnightUtcMs(later.getUTCFullYear(), later.getUTCMonth() + 1, later.getUTCDate())
+      );
+    }
+    return ends;
+  }
+  const nextMonth = month === 12 ? 1 : month + 1;
+  const nextYear = month === 12 ? year + 1 : year;
+  return new Date(londonMidnightUtcMs(nextYear, nextMonth, 1));
+}
+
+export function formatTournamentResetCountdown(endsAt: Date, now = new Date()): string {
+  const ms = Math.max(0, endsAt.getTime() - now.getTime());
+  if (ms <= 0) return "soon";
+  const totalMin = Math.floor(ms / 60_000);
+  const days = Math.floor(totalMin / (60 * 24));
+  const hours = Math.floor((totalMin % (60 * 24)) / 60);
+  const mins = totalMin % 60;
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${mins}m`;
+  return `${Math.max(1, mins)}m`;
+}
+
+export function tournamentResetLabel(reset: TournamentReset): string {
+  if (reset === "daily") return "Daily · resets UK midnight";
+  if (reset === "weekly") return "Weekly · resets Monday UK midnight";
+  return "Monthly · resets 1st UK midnight";
+}
 
 /** Top-3 split of the prize pool. */
 export const TOURNAMENT_PAYOUT = [

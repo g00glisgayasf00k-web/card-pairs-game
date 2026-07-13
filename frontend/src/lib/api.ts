@@ -590,6 +590,9 @@ export interface TournamentStandingRow {
 export async function fetchTournamentStandings(tierId: string, limit = 10) {
   return request<{
     tier_id: string;
+    reset: "daily" | "weekly" | "monthly";
+    period_key: string;
+    period_ends_at: string;
     standings: TournamentStandingRow[];
     your_place: number | null;
   }>(`/api/tournaments/${tierId}/standings?limit=${limit}`);

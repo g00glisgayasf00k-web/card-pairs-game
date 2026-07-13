@@ -344,6 +344,13 @@
   gap: 0.15rem;
 }
 
+.tn-cup__reset {
+  font-size: 0.68rem;
+  line-height: 1.25;
+  opacity: 0.78;
+  margin-top: 0.1rem;
+}
+
 .tn-cup__name {
   font-family: "Cinzel", "Crimson Pro", Georgia, serif;
   font-size: 1.02rem;

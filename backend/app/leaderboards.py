@@ -3,6 +3,7 @@ import json
 from sqlalchemy import desc
 
 from app.models import Friendship, PlayerProgress, Score, TournamentRun, User, db
+from app.tournament_periods import period_key, period_meta
 
 HAND_LABELS = [
     "pair",
@@ -75,7 +76,9 @@ def build_tournament_winners(limit_per_cup: int = 5) -> list[dict]:
     limit_per_cup = max(1, min(limit_per_cup, 20))
     cups: list[dict] = []
     for tier_id, name in TOURNAMENT_CUP_NAMES.items():
-        runs = TournamentRun.query.filter_by(tier_id=tier_id).all()
+        pk = period_key(tier_id)
+        meta = period_meta(tier_id)
+        runs = TournamentRun.query.filter_by(tier_id=tier_id, period_key=pk).all()
         runs.sort(key=lambda r: _rank_tournament(r.hands, r.score, r.target_points))
         user_ids = [r.user_id for r in runs[:limit_per_cup]]
         users = (
@@ -96,7 +99,16 @@ def build_tournament_winners(limit_per_cup: int = 5) -> list[dict]:
                     "point_delta": abs(run.score - run.target_points),
                 }
             )
-        cups.append({"tier_id": tier_id, "name": name, "winners": winners})
+        cups.append(
+            {
+                "tier_id": tier_id,
+                "name": name,
+                "winners": winners,
+                "reset": meta["reset"],
+                "period_key": meta["period_key"],
+                "period_ends_at": meta["period_ends_at"],
+            }
+        )
     return cups
 
 

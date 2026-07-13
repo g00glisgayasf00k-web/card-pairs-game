@@ -6,6 +6,7 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
 from app.models import TournamentRun, User, db
+from app.tournament_periods import period_key, period_meta
 
 tournaments_bp = Blueprint("tournaments", __name__)
 
@@ -24,6 +25,7 @@ def _row_dict(run: TournamentRun, username: str, place: int | None = None) -> di
     out = {
         "id": run.id,
         "tier_id": run.tier_id,
+        "period_key": run.period_key,
         "username": username,
         "hands": run.hands,
         "score": run.score,
@@ -42,10 +44,16 @@ def standings(tier_id: str):
     if tier not in VALID_TIERS:
         return jsonify({"error": "Unknown cup"}), 404
 
-    runs = TournamentRun.query.filter_by(tier_id=tier).all()
+    meta = period_meta(tier)
+    pk = meta["period_key"]
+    runs = TournamentRun.query.filter_by(tier_id=tier, period_key=pk).all()
     runs.sort(key=lambda r: _rank_key(r.hands, r.score, r.target_points))
     limit = min(50, max(1, int(request.args.get("limit", 20))))
-    users = {u.id: u.username for u in User.query.filter(User.id.in_([r.user_id for r in runs])).all()} if runs else {}
+    users = (
+        {u.id: u.username for u in User.query.filter(User.id.in_([r.user_id for r in runs])).all()}
+        if runs
+        else {}
+    )
 
     me = int(get_jwt_identity())
     rows = []
@@ -61,7 +69,7 @@ def standings(tier_id: str):
                 rows.append(_row_dict(run, users.get(run.user_id, "?"), i))
                 break
 
-    return jsonify({"tier_id": tier, "standings": rows, "your_place": my_place})
+    return jsonify({**meta, "standings": rows, "your_place": my_place})
 
 
 @tournaments_bp.post("/<tier_id>/submit")
@@ -85,12 +93,14 @@ def submit(tier_id: str):
         return jsonify({"error": "Invalid result values"}), 400
 
     me = int(get_jwt_identity())
-    existing = TournamentRun.query.filter_by(user_id=me, tier_id=tier).first()
+    pk = period_key(tier)
+    existing = TournamentRun.query.filter_by(user_id=me, tier_id=tier, period_key=pk).first()
     improved = False
     if existing is None:
         existing = TournamentRun(
             user_id=me,
             tier_id=tier,
+            period_key=pk,
             level=level,
             board_seed=board_seed,
             target_points=target_points,
@@ -109,7 +119,7 @@ def submit(tier_id: str):
 
     db.session.commit()
 
-    runs = TournamentRun.query.filter_by(tier_id=tier).all()
+    runs = TournamentRun.query.filter_by(tier_id=tier, period_key=pk).all()
     runs.sort(key=lambda r: _rank_key(r.hands, r.score, r.target_points))
     place = next((i for i, r in enumerate(runs, start=1) if r.user_id == me), None)
 
@@ -121,5 +131,6 @@ def submit(tier_id: str):
             "hands": existing.hands,
             "score": existing.score,
             "target_points": existing.target_points,
+            **period_meta(tier),
         }
     )

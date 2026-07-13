@@ -186,16 +186,20 @@ class MatchTicket(db.Model):
 
 
 class TournamentRun(db.Model):
-    """Best completed tournament attempt per user per cup."""
+    """Best completed tournament attempt per user per cup per period."""
 
     __tablename__ = "tournament_runs"
     __table_args__ = (
-        db.UniqueConstraint("user_id", "tier_id", name="uq_tournament_user_tier"),
+        db.UniqueConstraint(
+            "user_id", "tier_id", "period_key", name="uq_tournament_user_tier_period"
+        ),
     )
 
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
     tier_id = db.Column(db.String(32), nullable=False, index=True)
+    # London calendar window: daily YYYY-MM-DD, weekly YYYY-Www, monthly YYYY-MM
+    period_key = db.Column(db.String(32), nullable=False, default="legacy", index=True)
     level = db.Column(db.Integer, nullable=False)
     board_seed = db.Column(db.BigInteger, nullable=False)
     target_points = db.Column(db.Integer, nullable=False)

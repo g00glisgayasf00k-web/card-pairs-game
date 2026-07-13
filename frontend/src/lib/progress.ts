@@ -185,6 +185,11 @@ function parseProgress(raw: string | null): SavedProgress | null {
       (n) => n >= 10 && n % 10 === 0
     );
 
+    let elo: number | undefined;
+    if (typeof data.elo === "number" && Number.isFinite(data.elo)) {
+      elo = Math.max(100, Math.floor(data.elo));
+    }
+
     return {
       v: VERSION,
       highestUnlocked,
@@ -198,6 +203,7 @@ function parseProgress(raw: string | null): SavedProgress | null {
       handsCleared: Math.floor(data.handsCleared),
       bestHand: data.bestHand,
       credits,
+      ...(elo !== undefined ? { elo } : {}),
       energy,
       energyRegenAt: syncedRegenAt,
       energyPaidLevel,

@@ -609,8 +609,12 @@ export function GameScreen({
     (score: number, handCounts: HandCounts, hands: number) => {
       if (phase !== "playing" || advancingRef.current) return false;
       if (level === 1 && tutorialStep < TUTORIAL_FREE_STEP && !isSpecialRun) return false;
-      const scoreRaceDone = isScoreRace && hands >= cfg.moveLimit;
-      if (!scoreRaceDone && !levelRequirementsMet(score, handCounts, cfg)) return false;
+      // Score races always run the full hand budget — goals only add +5% boosts.
+      if (isScoreRace) {
+        if (hands < cfg.moveLimit) return false;
+      } else if (!levelRequirementsMet(score, handCounts, cfg)) {
+        return false;
+      }
 
       advancingRef.current = true;
       setBoardFeedback(null);

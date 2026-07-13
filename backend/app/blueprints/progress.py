@@ -59,6 +59,15 @@ def sync_progress():
             }
         ), 200
 
+    # Elo is written by ranked Quick Play settles — never let a client sync wipe it.
+    if row and row.payload:
+        try:
+            existing = json.loads(row.payload)
+        except json.JSONDecodeError:
+            existing = None
+        if isinstance(existing, dict) and "elo" in existing:
+            progress["elo"] = existing["elo"]
+
     payload_text = json.dumps(progress)
     if not row:
         row = PlayerProgress(

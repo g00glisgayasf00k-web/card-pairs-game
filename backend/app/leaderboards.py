@@ -241,8 +241,22 @@ def build_leaderboards(limit: int = 10) -> dict:
         reverse=True,
     )[:limit]
 
+    # Only players who have finished at least one Quick Play (avoids a wall of default 1000s).
+    from app.models import Challenge
+
+    played_ids = {
+        uid
+        for (uid,) in db.session.query(Challenge.challenger_id)
+        .filter(Challenge.kind == "quick", Challenge.status == "completed")
+        .distinct()
+    } | {
+        uid
+        for (uid,) in db.session.query(Challenge.opponent_id)
+        .filter(Challenge.kind == "quick", Challenge.status == "completed")
+        .distinct()
+    }
     top_quick_play = sorted(
-        rating_rows,
+        [row for row in rating_rows if row["user_id"] in played_ids],
         key=lambda row: (row["rating"], row["stars_total"], row["level"]),
         reverse=True,
     )[:limit]

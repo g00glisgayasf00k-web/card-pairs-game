@@ -15,6 +15,7 @@ import {
 import { hasEnergy, syncEnergyState, trySpendEnergyOnce } from "../lib/energy";
 import { loadProgress } from "../lib/progress";
 import { isQuickPlayUnlocked, quickPlayUnlockLabel } from "../lib/quickPlayUnlock";
+import { ModeInfoButton } from "./ModeInfoButton";
 import { OutOfEnergyModal } from "./OutOfEnergyModal";
 
 type View = "hub" | "quick" | "friends";
@@ -526,13 +527,11 @@ export function MultiplayerModal({
               </button>
             </div>
             <header className="play-mode-modal__header">
-              <h2 id="multiplayer-title">Quick play</h2>
-              <p className="play-mode-modal__lead">
-                Highest score wins — time breaks ties. Quit = forfeit.{" "}
-                <button type="button" className="play-mode-modal__rules-link" onClick={() => setShowRules(true)}>
-                  How it works
-                </button>
-              </p>
+              <div className="play-mode-modal__title-row">
+                <h2 id="multiplayer-title">Quick play</h2>
+                <ModeInfoButton onClick={() => setShowRules(true)} label="Quick Play rules" />
+              </div>
+              <p className="play-mode-modal__lead">Rated 1v1 · 20 hands · highest score wins</p>
             </header>
             <div className="play-mode-tabs" role="tablist">
               {(["play", "results"] as QuickTab[]).map((t) => (
@@ -587,17 +586,8 @@ export function MultiplayerModal({
                     }
                   />
                   <p className="mp-kit-stage__sub" style={{ textAlign: "center", margin: 0 }}>
-                    Play 20 hands. Clear goals for +5% score boosts. Highest score wins — time breaks
-                    ties. After one finishes, the other has 10 minutes or is DQed.
+                    Opponent has 10 minutes after you finish · quit = forfeit
                   </p>
-                  <button
-                    type="button"
-                    className="mp-kit__ghost"
-                    style={{ alignSelf: "center" }}
-                    onClick={() => setShowRules(true)}
-                  >
-                    How it works
-                  </button>
                 </>
               )}
 
@@ -692,24 +682,24 @@ export function MultiplayerModal({
       {showRules && (
         <div className="tn-confirm-overlay" role="presentation" onClick={() => setShowRules(false)}>
           <div
-            className="tn-confirm"
+            className="tn-confirm tn-confirm--rules"
             role="dialog"
             aria-labelledby="qp-rules-title"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 id="qp-rules-title">How Quick Play works</h2>
+            <h2 id="qp-rules-title">Quick Play rules</h2>
             <p>
               <strong>Play exactly 20 hands.</strong> Your score is the points from every hand you
               clear.
             </p>
             <p>
-              Along the way you&apos;ll see <strong>3–5 goals</strong>. Each time you finish a goal,
-              your <strong>total score jumps by 5%</strong>. Clear goals early so later hands ride a
-              bigger total.
+              You get <strong>3–5 goals</strong>. Each time you finish one, your{" "}
+              <strong>total score jumps by 5%</strong>. Clear goals early so later hands ride a bigger
+              total.
             </p>
             <p>
-              <strong>Highest score wins.</strong> If scores are tied, the faster run wins. Quiting
-              counts as a forfeit.
+              <strong>Highest score wins.</strong> Tied scores? Faster time wins. Quit = forfeit.
+              After one player finishes, the other has <strong>10 minutes</strong> or is DQed.
             </p>
             <div className="tn-confirm__actions">
               <button type="button" className="mp-kit__cta" onClick={() => setShowRules(false)}>

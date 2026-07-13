@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { ModeInfoButton } from "./ModeInfoButton";
 import { HOME_ASSETS } from "./home/homeAssets";
 import {
   fetchTournamentHistory,
@@ -61,6 +62,7 @@ export function TournamentModal({
   const [historyLoading, setHistoryLoading] = useState<Record<string, boolean>>({});
   const [webAdTier, setWebAdTier] = useState<TournamentTier | null>(null);
   const [webAdProgress, setWebAdProgress] = useState(0);
+  const [showRules, setShowRules] = useState(false);
 
   void tick;
   const gems = loadProgress()?.credits ?? 0;
@@ -241,6 +243,11 @@ export function TournamentModal({
             <div className="tn-kit__top">
               <div className="tn-kit__brand">
                 <img className="tn-kit__brand-label" src={green.label} alt="Tournament" />
+                <ModeInfoButton
+                  className="mode-info-btn--on-dark"
+                  onClick={() => setShowRules(true)}
+                  label="Tournament rules"
+                />
                 <span className="tn-kit__gems">
                   <img src={a.header.gems} alt="" />
                   {gems.toLocaleString()}
@@ -261,15 +268,11 @@ export function TournamentModal({
               <img className="tn-kit__hero-chips" src={a.hero.chipsStack} alt="" />
               <div className="tn-kit__hero-copy">
                 <h2 id="tournament-title">Tournament</h2>
-                <p>Highest score wins · goals add +5% · hands vary by cup.</p>
+                <p>Pick a cup · race for the highest score</p>
               </div>
             </div>
 
             <div className="tn-kit__body">
-              <p className="tn-kit__hint">
-                Bronze 20 hands · Silver 30 · Gold 50. Resets at UK midnight. Watch an ad for a free
-                entry, or pay gems. Top 3 take the payouts shown.
-              </p>
               {error && <p className="tn-kit__error">{error}</p>}
 
               {TOURNAMENT_TIERS.map((tier) => {
@@ -565,6 +568,37 @@ export function TournamentModal({
                 }}
               >
                 Play now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showRules && (
+        <div className="tn-confirm-overlay" role="presentation" onClick={() => setShowRules(false)}>
+          <div
+            className="tn-confirm tn-confirm--rules"
+            role="dialog"
+            aria-labelledby="tn-rules-title"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 id="tn-rules-title">Tournament rules</h2>
+            <p>
+              <strong>Score race.</strong> Play a fixed number of hands — Bronze{" "}
+              <strong>20</strong>, Silver <strong>30</strong>, Gold <strong>50</strong>. Highest score
+              wins; time breaks ties.
+            </p>
+            <p>
+              Each board has <strong>3–5 goals</strong>. Clear a goal and your{" "}
+              <strong>total score jumps by 5%</strong>.
+            </p>
+            <p>
+              Enter with gems or a free video (limits reset with each cup). Cups reset at{" "}
+              <strong>UK midnight</strong> — top 3 split the prize pool shown on each card.
+            </p>
+            <div className="tn-confirm__actions">
+              <button type="button" className="tn-kit__cta" onClick={() => setShowRules(false)}>
+                Got it
               </button>
             </div>
           </div>

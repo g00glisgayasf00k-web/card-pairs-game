@@ -68,8 +68,9 @@ def _player_rating(payload: dict) -> int:
         return DEFAULT_ELO
 
 
-def _rank_tournament(hands: int, score: int, target: int) -> tuple[int, int]:
-    return (int(hands), abs(int(score) - int(target)))
+def _rank_tournament(score: int, duration_ms: int | None) -> tuple[int, int]:
+    d = int(duration_ms) if duration_ms is not None and duration_ms > 0 else 10**12
+    return (-int(score), d)
 
 
 def build_tournament_winners(limit_per_cup: int = 5) -> list[dict]:
@@ -79,7 +80,7 @@ def build_tournament_winners(limit_per_cup: int = 5) -> list[dict]:
         pk = period_key(tier_id)
         meta = period_meta(tier_id)
         runs = TournamentRun.query.filter_by(tier_id=tier_id, period_key=pk).all()
-        runs.sort(key=lambda r: _rank_tournament(r.hands, r.score, r.target_points))
+        runs.sort(key=lambda r: _rank_tournament(r.score, getattr(r, "duration_ms", None)))
         user_ids = [r.user_id for r in runs[:limit_per_cup]]
         users = (
             {u.id: u.username for u in User.query.filter(User.id.in_(user_ids)).all()}
@@ -97,6 +98,7 @@ def build_tournament_winners(limit_per_cup: int = 5) -> list[dict]:
                     "score": run.score,
                     "target_points": run.target_points,
                     "point_delta": abs(run.score - run.target_points),
+                    "duration_ms": getattr(run, "duration_ms", None),
                 }
             )
         cups.append(

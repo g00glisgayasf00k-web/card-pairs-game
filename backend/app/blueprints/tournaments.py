@@ -1,4 +1,4 @@
-"""Tournament cup runs — ranked by fewest hands, then closest to point target."""
+"""Tournament cup runs — ranked by highest score, then fastest time."""
 
 from __future__ import annotations
 
@@ -14,12 +14,14 @@ tournaments_bp = Blueprint("tournaments", __name__)
 VALID_TIERS = {"bronze", "silver", "gold"}
 
 
-def _rank_key(hands: int, score: int, target: int) -> tuple[int, int]:
-    return (int(hands), abs(int(score) - int(target)))
+def _rank_key(score: int, duration_ms: int | None) -> tuple[int, int]:
+    """Higher score first; then lower duration. Missing duration sorts last."""
+    d = int(duration_ms) if duration_ms is not None and duration_ms > 0 else 10**12
+    return (-int(score), d)
 
 
-def _is_better(new_hands: int, new_score: int, target: int, old: TournamentRun) -> bool:
-    return _rank_key(new_hands, new_score, target) < _rank_key(old.hands, old.score, old.target_points)
+def _is_better(new_score: int, new_duration: int | None, old: TournamentRun) -> bool:
+    return _rank_key(new_score, new_duration) < _rank_key(old.score, getattr(old, "duration_ms", None))
 
 
 def _row_dict(run: TournamentRun, username: str, place: int | None = None) -> dict:
@@ -32,6 +34,7 @@ def _row_dict(run: TournamentRun, username: str, place: int | None = None) -> di
         "score": run.score,
         "target_points": run.target_points,
         "point_delta": abs(run.score - run.target_points),
+        "duration_ms": getattr(run, "duration_ms", None),
     }
     if place is not None:
         out["place"] = place
@@ -42,7 +45,7 @@ def _standings_for_period(
     tier: str, pk: str, limit: int, me: int | None = None
 ) -> tuple[list[dict], int | None]:
     runs = TournamentRun.query.filter_by(tier_id=tier, period_key=pk).all()
-    runs.sort(key=lambda r: _rank_key(r.hands, r.score, r.target_points))
+    runs.sort(key=lambda r: _rank_key(r.score, getattr(r, "duration_ms", None)))
     users = (
         {u.id: u.username for u in User.query.filter(User.id.in_([r.user_id for r in runs])).all()}
         if runs
@@ -129,6 +132,14 @@ def submit(tier_id: str):
     except (TypeError, ValueError):
         return jsonify({"error": "Invalid result payload"}), 400
 
+    duration_ms = None
+    raw_dur = body.get("duration_ms")
+    if raw_dur is not None:
+        try:
+            duration_ms = max(1, min(24 * 60 * 60 * 1000, int(raw_dur)))
+        except (TypeError, ValueError):
+            duration_ms = None
+
     if hands < 1 or score < 0 or level < 1 or target_points < 1:
         return jsonify({"error": "Invalid result values"}), 400
 
@@ -146,21 +157,23 @@ def submit(tier_id: str):
             target_points=target_points,
             hands=hands,
             score=score,
+            duration_ms=duration_ms,
         )
         db.session.add(existing)
         improved = True
-    elif _is_better(hands, score, target_points, existing):
+    elif _is_better(score, duration_ms, existing):
         existing.level = level
         existing.board_seed = board_seed
         existing.target_points = target_points
         existing.hands = hands
         existing.score = score
+        existing.duration_ms = duration_ms
         improved = True
 
     db.session.commit()
 
     runs = TournamentRun.query.filter_by(tier_id=tier, period_key=pk).all()
-    runs.sort(key=lambda r: _rank_key(r.hands, r.score, r.target_points))
+    runs.sort(key=lambda r: _rank_key(r.score, getattr(r, "duration_ms", None)))
     place = next((i for i, r in enumerate(runs, start=1) if r.user_id == me), None)
 
     return jsonify(
@@ -171,6 +184,7 @@ def submit(tier_id: str):
             "hands": existing.hands,
             "score": existing.score,
             "target_points": existing.target_points,
+            "duration_ms": getattr(existing, "duration_ms", None),
             **period_meta(tier),
         }
     )

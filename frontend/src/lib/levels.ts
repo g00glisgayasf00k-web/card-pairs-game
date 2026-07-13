@@ -578,6 +578,10 @@ export interface ChallengeMissionPayload {
   move_limit: number;
   challenge_points?: number;
   challenge_hands?: number;
+  /** Quick Play / Tournament: fixed hand race. */
+  mode?: string;
+  hand_limit?: number;
+  goal_bonus_pct?: number;
 }
 
 /** Shared-board duel config from API mission (no campaign blockers). */
@@ -615,18 +619,24 @@ export function buildChallengeMissionConfig(
     three: Math.max(1, mission.star_move_limits?.three ?? 8),
   };
   const targetPoints = Math.max(100, Math.floor(Number(mission.target_points) || 600));
+  const isRace = mission.mode === "score_race" || typeof mission.hand_limit === "number";
+  const handLimit = isRace
+    ? Math.max(1, Math.floor(mission.hand_limit ?? mission.move_limit ?? 20))
+    : Math.max(starMoveLimits.one, mission.move_limit ?? starMoveLimits.one);
 
   return {
     level: Math.max(1, displayLevel),
-    tier: "Challenge",
-    label: "Shared board duel",
-    targetPoints,
+    tier: isRace ? "Race" : "Challenge",
+    label: isRace ? "Score race" : "Shared board duel",
+    targetPoints: isRace ? Math.max(1, targetPoints) : targetPoints,
     challenges,
     challengePoints,
     challengeHands,
-    starMoveLimits,
-    estimatedMoves: starMoveLimits.three,
-    moveLimit: Math.max(starMoveLimits.one, mission.move_limit ?? starMoveLimits.one),
+    starMoveLimits: isRace
+      ? { one: handLimit, two: handLimit, three: handLimit }
+      : starMoveLimits,
+    estimatedMoves: isRace ? handLimit : starMoveLimits.three,
+    moveLimit: handLimit,
     blockers: null,
     fixedObstacles: [],
   };

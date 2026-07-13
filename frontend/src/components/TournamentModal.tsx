@@ -260,7 +260,7 @@ export function TournamentModal({
               <img className="tn-kit__hero-chips" src={a.hero.chipsStack} alt="" />
               <div className="tn-kit__hero-copy">
                 <h2 id="tournament-title">Tournament</h2>
-                <p>Fewest hands wins. If tied, closest to the point goal.</p>
+                <p>20 hands · highest score wins · goals add +5%.</p>
               </div>
             </div>
 
@@ -359,12 +359,10 @@ export function TournamentModal({
                         <ol className="tn-cup__standings">
                           {rows.map((r) => (
                             <li key={r.id}>
-                              <span>
-                                #{r.place ?? "—"} {r.username}
-                              </span>
-                              <strong>
-                                {r.hands}h · {r.score.toLocaleString()}pts
-                              </strong>
+                            <span>
+                              #{r.place ?? "—"} {r.username}
+                            </span>
+                            <strong>{r.score.toLocaleString()} pts</strong>
                             </li>
                           ))}
                         </ol>
@@ -385,12 +383,10 @@ export function TournamentModal({
                             <ol className="tn-cup__standings">
                               {period.standings.map((r) => (
                                 <li key={`${period.period_key}-${r.id}`}>
-                                  <span>
-                                    #{r.place ?? "—"} {r.username}
-                                  </span>
-                                  <strong>
-                                    {r.hands}h · {r.score.toLocaleString()}pts
-                                  </strong>
+                            <span>
+                              #{r.place ?? "—"} {r.username}
+                            </span>
+                            <strong>{r.score.toLocaleString()} pts</strong>
                                 </li>
                               ))}
                             </ol>
@@ -531,15 +527,18 @@ export function TournamentModal({
             onClick={(e) => e.stopPropagation()}
           >
             <h2 id="tournament-brief-title">{briefing.tierName}</h2>
-            <p className="tn-brief__lead">Your tournament board is ready. Hit these goals:</p>
+            <p className="tn-brief__lead">
+              Play <strong>20 hands</strong>. Clear goals for a <strong>+5%</strong> total score
+              boost each. Highest score wins — time breaks ties.
+            </p>
             <div className="tn-brief__goals">
               <div className="tn-brief__goal">
-                <span>Point goal</span>
-                <strong>{briefing.cfg.targetPoints.toLocaleString()}</strong>
+                <span>Hands</span>
+                <strong>20</strong>
               </div>
               <div className="tn-brief__goal">
-                <span>Move budget</span>
-                <strong>{briefing.cfg.moveLimit}</strong>
+                <span>Goals</span>
+                <strong>{briefing.cfg.challenges.length}</strong>
               </div>
             </div>
             {briefing.cfg.challenges.length > 0 && (
@@ -550,7 +549,7 @@ export function TournamentModal({
               </ul>
             )}
             <p className="tn-brief__note">
-              Ranking: fewest hands first, then closest to the point goal.
+              Finish goals early so more of your run benefits from the +5% boosts.
             </p>
             <div className="tn-confirm__actions">
               <button

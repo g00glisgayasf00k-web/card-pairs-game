@@ -1,6 +1,7 @@
 import { toGlobalLevel } from "./levelMap";
-import { getLevelConfig, type LevelConfig } from "./levels";
+import type { LevelConfig } from "./levels";
 import { loadProgress } from "./progress";
+import { generateScoreRaceMission, scoreRaceLevelConfig } from "./scoreRaceMission";
 
 /** UI world ids are 0-based (0-10 = first world’s final stage). */
 export type TournamentReset = "daily" | "weekly" | "monthly";
@@ -272,12 +273,17 @@ export function tierBoardGlobalLevels(tier: TournamentTier): number[] {
   return levels;
 }
 
-/** Pick a random campaign board from the cup’s range (goals come from that level). */
+/** Pick a score-race board for the cup (20 hands, 3–5 goals, +5% per goal). */
 export function pickTournamentBoard(tier: TournamentTier): TournamentBoardPick {
   const levels = tierBoardGlobalLevels(tier);
   const level = levels[Math.floor(Math.random() * levels.length)] ?? levels[0]!;
   const boardSeed = (Math.floor(Math.random() * 0xffffffff) >>> 0) || 1;
-  const base = getLevelConfig(level);
+  const mission = generateScoreRaceMission(boardSeed);
+  const cfg = scoreRaceLevelConfig(mission, {
+    tier: tier.name,
+    label: "Tournament",
+    level,
+  });
   return {
     tierId: tier.id,
     tierName: tier.name,
@@ -285,26 +291,25 @@ export function pickTournamentBoard(tier: TournamentTier): TournamentBoardPick {
     boardSeed,
     entryGems: tier.entryGems,
     rewardPool: tier.rewardPool,
-    cfg: {
-      ...base,
-      tier: tier.name,
-      label: "Tournament",
-    },
+    cfg,
   };
 }
 
-/** Rank key: fewer hands wins; if tied, closer to the point target wins. */
-export function tournamentRankKey(hands: number, score: number, targetPoints: number): [number, number] {
-  return [hands, Math.abs(score - targetPoints)];
+/** Rank key: higher score wins; if tied, faster duration wins. */
+export function tournamentRankKey(
+  score: number,
+  durationMs: number | null | undefined
+): [number, number] {
+  const d = durationMs != null && durationMs > 0 ? durationMs : 10 ** 12;
+  return [-Math.floor(score), d];
 }
 
 export function compareTournamentResults(
-  a: { hands: number; score: number },
-  b: { hands: number; score: number },
-  targetPoints: number
+  a: { score: number; durationMs?: number | null },
+  b: { score: number; durationMs?: number | null }
 ): number {
-  const [ah, ap] = tournamentRankKey(a.hands, a.score, targetPoints);
-  const [bh, bp] = tournamentRankKey(b.hands, b.score, targetPoints);
-  if (ah !== bh) return ah - bh;
-  return ap - bp;
+  const [as, ad] = tournamentRankKey(a.score, a.durationMs);
+  const [bs, bd] = tournamentRankKey(b.score, b.durationMs);
+  if (as !== bs) return as - bs;
+  return ad - bd;
 }

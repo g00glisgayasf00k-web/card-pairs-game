@@ -9,7 +9,7 @@ from datetime import datetime, timedelta, timezone
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 
-from app.challenge_mission import generate_challenge_mission
+from app.challenge_mission import generate_score_race_mission
 from app.elo import ELO_MATCH_BAND, ELO_MATCH_BAND_WIDE
 from app.models import Challenge, MatchTicket, PlayerProgress, db
 from app.progress_grants import get_player_elo, load_progress_payload
@@ -228,7 +228,7 @@ def join_quick():
         partner_elo = _ticket_elo(partner)
         level = max(1, min(MAX_LEVEL, min(unlocked, partner.unlocked_level)))
         seed = secrets.randbits(31)
-        mission = generate_challenge_mission(seed)
+        mission = generate_score_race_mission(seed)
         ch = Challenge(
             challenger_id=partner.user_id,
             opponent_id=me,

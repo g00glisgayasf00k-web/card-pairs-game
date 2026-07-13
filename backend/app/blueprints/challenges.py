@@ -296,16 +296,16 @@ def _compare_attempts(
 
 
 def _compare_quick(
-    a_moves: int,
+    a_score: int,
     a_duration_ms: int | None,
     a_id: int,
-    b_moves: int,
+    b_score: int,
     b_duration_ms: int | None,
     b_id: int,
 ) -> int | None:
-    """Quick Play: fewer turns wins; equal turns → faster time. None = tie."""
-    if a_moves != b_moves:
-        return a_id if a_moves < b_moves else b_id
+    """Quick Play: higher score wins; equal score → faster time. None = tie."""
+    if a_score != b_score:
+        return a_id if a_score > b_score else b_id
     # Missing duration (forfeit / legacy) loses to a real clock.
     a_d = a_duration_ms if a_duration_ms is not None else 10**12
     b_d = b_duration_ms if b_duration_ms is not None else 10**12
@@ -318,10 +318,10 @@ def _decide_winner(ch: Challenge) -> int | None:
     kind = getattr(ch, "kind", None) or "friend"
     if kind == "quick":
         return _compare_quick(
-            ch.challenger_moves or FORFEIT_MOVES,
+            ch.challenger_score or 0,
             getattr(ch, "challenger_duration_ms", None),
             ch.challenger_id,
-            ch.opponent_moves or FORFEIT_MOVES,
+            ch.opponent_score or 0,
             getattr(ch, "opponent_duration_ms", None),
             ch.opponent_id,
         )

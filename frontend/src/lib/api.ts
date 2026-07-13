@@ -380,6 +380,9 @@ export interface ChallengeMissionDto {
   move_limit: number;
   challenge_points?: number;
   challenge_hands?: number;
+  mode?: string;
+  hand_limit?: number;
+  goal_bonus_pct?: number;
 }
 
 export interface ChallengeDto {
@@ -584,6 +587,7 @@ export interface TournamentStandingRow {
   score: number;
   target_points: number;
   point_delta: number;
+  duration_ms?: number | null;
   place?: number;
 }
 
@@ -621,6 +625,7 @@ export async function submitTournamentRun(
     level: number;
     board_seed: number;
     target_points: number;
+    duration_ms?: number;
   }
 ) {
   return request<{

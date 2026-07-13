@@ -205,6 +205,7 @@ class TournamentRun(db.Model):
     target_points = db.Column(db.Integer, nullable=False)
     hands = db.Column(db.Integer, nullable=False)
     score = db.Column(db.Integer, nullable=False)
+    duration_ms = db.Column(db.Integer, nullable=True)
     created_at = db.Column(
         db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )

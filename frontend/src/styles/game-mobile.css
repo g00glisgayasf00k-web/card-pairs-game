@@ -488,6 +488,28 @@ html.native-shell .app.app--levels {
   scrollbar-width: none;
 }
 
+.game-goalbar__bonus {
+  flex-shrink: 0;
+  margin: 0;
+  padding: 0.15rem 0.45rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  color: #fff3b0;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.45);
+  animation: goal-bonus-pop 0.35s ease-out;
+}
+
+@keyframes goal-bonus-pop {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
 .game-goalbar__goals .tutorial-goal-chip {
   white-space: nowrap;
 }

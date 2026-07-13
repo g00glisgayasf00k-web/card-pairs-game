@@ -151,7 +151,7 @@ function TournamentBoard({ cups }: { cups: TournamentWinnerCup[] }) {
                 <li key={`${cup.tier_id}-${row.user_id}-${row.place}`}>
                   <span className="rank-num">{row.place}</span>
                   <span className="name">{displayName(row.username)}</span>
-                  <span className="pts">{row.hands} hands</span>
+                  <span className="pts">{row.score.toLocaleString()} pts</span>
                 </li>
               ))}
             </ol>

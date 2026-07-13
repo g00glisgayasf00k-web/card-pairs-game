@@ -105,8 +105,8 @@ def _star_limits(target_points: int, challenge_hands: int) -> dict[str, int]:
 
 def generate_challenge_mission(seed: int | None = None) -> dict[str, Any]:
     """
-    Build a compact duel mission: random board is separate (board_seed).
-    2 goals, mixed difficulty, specific hands often, ~12–20 move budget.
+    Build a compact friend-duel mission: random board is separate (board_seed).
+    2–3 goals, mixed difficulty, specific hands often, ~12–20 move budget.
     """
     rng = random.Random(seed) if seed is not None else random.SystemRandom()
 
@@ -142,6 +142,52 @@ def generate_challenge_mission(seed: int | None = None) -> dict[str, Any]:
         "target_points": target_points,
         "star_move_limits": limits,
         "move_limit": limits["one"],
+        "challenge_points": challenge_points,
+        "challenge_hands": challenge_hands,
+    }
+
+
+SCORE_RACE_HAND_LIMIT = 20
+SCORE_RACE_GOAL_BONUS_PCT = 5
+
+
+def generate_score_race_mission(seed: int | None = None) -> dict[str, Any]:
+    """
+    Quick Play / Tournament race: exactly 20 hands, 3–5 goals.
+    Completing a goal boosts total score by +5% (client applies).
+    """
+    rng = random.Random(seed) if seed is not None else random.SystemRandom()
+
+    goal_count = rng.randint(3, 5)
+    goals: list[dict[str, Any]] = []
+    used: set[str] = set()
+    for _ in range(goal_count):
+        hand = _pick_weighted(rng, used)
+        used.add(hand)
+        if hand in ("pair", "two_pair") and rng.random() < 0.4:
+            min_count = 2
+        else:
+            min_count = 1
+        goals.append(_specify(hand, min_count, rng))
+
+    challenge_points = sum(HAND_SCORES[g["hand"]] * int(g["minCount"]) for g in goals)
+    challenge_hands = sum(int(g["minCount"]) for g in goals)
+    # Decorative target for UI parity; race ends at hand_limit, not points.
+    target_points = max(500, challenge_points + rng.randint(300, 700))
+    limits = {
+        "one": SCORE_RACE_HAND_LIMIT,
+        "two": SCORE_RACE_HAND_LIMIT,
+        "three": SCORE_RACE_HAND_LIMIT,
+    }
+
+    return {
+        "mode": "score_race",
+        "goals": goals,
+        "target_points": target_points,
+        "star_move_limits": limits,
+        "move_limit": SCORE_RACE_HAND_LIMIT,
+        "hand_limit": SCORE_RACE_HAND_LIMIT,
+        "goal_bonus_pct": SCORE_RACE_GOAL_BONUS_PCT,
         "challenge_points": challenge_points,
         "challenge_hands": challenge_hands,
     }

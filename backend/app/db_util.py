@@ -126,6 +126,21 @@ def ensure_schema():
                 pass
 
     _migrate_tournament_period_key(engine, inspector, is_sqlite)
+    _migrate_tournament_duration_ms(engine, inspector)
+
+
+def _migrate_tournament_duration_ms(engine, inspector) -> None:
+    inspector = inspect(engine)
+    if "tournament_runs" not in inspector.get_table_names():
+        return
+    cols = {c["name"] for c in inspector.get_columns("tournament_runs")}
+    if "duration_ms" in cols:
+        return
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("ALTER TABLE tournament_runs ADD COLUMN duration_ms INTEGER"))
+    except OperationalError:
+        pass
 
 
 def _migrate_tournament_period_key(engine, inspector, is_sqlite: bool) -> None:

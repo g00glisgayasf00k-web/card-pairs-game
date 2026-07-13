@@ -1,19 +1,23 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { ChallengeFriendModal } from "./ChallengeFriendModal";
 import { HOME_ASSETS } from "./home/homeAssets";
 import {
+  fetchChallenges,
   joinQuickMatch,
   leaveQuickMatch,
   pollQuickMatch,
   type ChallengeDto,
 } from "../lib/api";
-import { formatLevelId } from "../lib/levelMap";
+import {
+  countUnseenCompletedResults,
+  markChallengeResultsSeen,
+} from "../lib/challengeResultSeen";
 import { hasEnergy, syncEnergyState, trySpendEnergyOnce } from "../lib/energy";
 import { loadProgress } from "../lib/progress";
 import { isQuickPlayUnlocked, quickPlayUnlockLabel } from "../lib/quickPlayUnlock";
 import { OutOfEnergyModal } from "./OutOfEnergyModal";
 
-type View = "hub" | "quick" | "friends";
+type View = "hub" | "quick" | "results" | "friends";
 
 interface Props {
   onClose: () => void;
@@ -125,6 +129,115 @@ function MpStage({
   );
 }
 
+function myAttempt(c: ChallengeDto) {
+  return c.you_are === "challenger" ? c.challenger_result : c.opponent_result;
+}
+
+function theirAttempt(c: ChallengeDto) {
+  return c.you_are === "challenger" ? c.opponent_result : c.challenger_result;
+}
+
+function opponentName(c: ChallengeDto): string {
+  return (c.you_are === "challenger" ? c.opponent?.username : c.challenger?.username) ?? "?";
+}
+
+function opponentRating(c: ChallengeDto): number | null {
+  const elo = c.you_are === "challenger" ? c.opponent?.elo : c.challenger?.elo;
+  return typeof elo === "number" ? elo : null;
+}
+
+function challengeOutcome(c: ChallengeDto): string | null {
+  if (c.status !== "completed") return null;
+  const mine = myAttempt(c);
+  const theirs = theirAttempt(c);
+  if (!mine || !theirs) return null;
+  const myId = c.you_are === "challenger" ? c.challenger?.id : c.opponent?.id;
+  if (c.winner_user_id == null) return "Tie";
+  return c.winner_user_id === myId ? "You win" : "You lose";
+}
+
+function formatDurationMs(ms: number | null | undefined): string {
+  if (ms == null || !Number.isFinite(ms) || ms < 0) return "—";
+  const totalSec = Math.floor(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  if (m <= 0) return `${s}s`;
+  return `${m}m ${s.toString().padStart(2, "0")}s`;
+}
+
+function formatResultWhen(iso: string): string {
+  try {
+    return new Date(iso).toLocaleString(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+    });
+  } catch {
+    return iso;
+  }
+}
+
+function formatRaceAttempt(
+  a: NonNullable<ReturnType<typeof myAttempt>>
+): string {
+  if (a.forfeited) return "Forfeit";
+  return `${a.moves} turns · ${formatDurationMs(a.duration_ms)}`;
+}
+
+function QuickResultCard({ c }: { c: ChallengeDto }) {
+  const [open, setOpen] = useState(false);
+  const mine = myAttempt(c);
+  const theirs = theirAttempt(c);
+  const other = opponentName(c);
+  const otherRating = opponentRating(c);
+  const outcome = challengeOutcome(c);
+  const when = formatResultWhen(c.created_at);
+
+  return (
+    <li
+      className={`challenge-results-card challenge-results-card--list${open ? " challenge-results-card--open" : ""}`}
+    >
+      <button
+        type="button"
+        className="challenge-results-card__toggle"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <span className="challenge-results-card__summary">
+          <strong>vs {other}</strong>
+          <span className="challenge-results-card__when">
+            {otherRating != null ? `Rating ${otherRating} · ` : ""}
+            {when}
+          </span>
+        </span>
+        <span className="challenge-results-card__side">
+          {outcome ? (
+            <span className="challenge-results-card__outcome">{outcome}</span>
+          ) : (
+            <span className="challenge-inbox-item__meta">Waiting</span>
+          )}
+          <span className="challenge-results-card__chevron" aria-hidden>
+            {open ? "▴" : "▾"}
+          </span>
+        </span>
+      </button>
+      {open && (
+        <div className="challenge-results-card__body">
+          <p>You {mine ? formatRaceAttempt(mine) : "—"}</p>
+          {theirs ? (
+            <p>
+              {other} {formatRaceAttempt(theirs)}
+            </p>
+          ) : (
+            <p className="play-mode-modal__hint">Waiting for {other}…</p>
+          )}
+        </div>
+      )}
+    </li>
+  );
+}
+
 export function MultiplayerModal({
   onClose,
   onPlayChallenge,
@@ -138,15 +251,44 @@ export function MultiplayerModal({
   const [status, setStatus] = useState<"idle" | "waiting" | "matched">("idle");
   const [error, setError] = useState<string | null>(null);
   const [matched, setMatched] = useState<ChallengeDto | null>(null);
+  const [opponentElo, setOpponentElo] = useState<number | null>(null);
+  const [quickResults, setQuickResults] = useState<ChallengeDto[]>([]);
+  const [resultsLoading, setResultsLoading] = useState(false);
   const [showOutOfEnergy, setShowOutOfEnergy] = useState(false);
   const [cancelling, setCancelling] = useState(false);
   const [elo, setElo] = useState(() => loadProgress()?.elo ?? 1000);
+  const [resultsBadge, setResultsBadge] = useState(0);
   const pollingRef = useRef(false);
   const a = HOME_ASSETS;
   const blue = a.cards.blue;
   const friendBadge = friendRequestCount + challengeCount;
   const quickUnlocked = isQuickPlayUnlocked();
   const unlockLabel = quickPlayUnlockLabel();
+
+  const loadQuickResults = useCallback(async () => {
+    setResultsLoading(true);
+    try {
+      const r = await fetchChallenges();
+      const quick = r.challenges.filter((c) => (c.kind ?? "friend") === "quick");
+      const list = quick
+        .filter((c) => {
+          const mine = myAttempt(c);
+          if (!mine) return false;
+          return c.status === "completed" || c.status === "active" || c.status === "expired";
+        })
+        .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      setQuickResults(list);
+      setResultsBadge(countUnseenCompletedResults(quick, "quick"));
+    } catch {
+      /* ignore */
+    } finally {
+      setResultsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadQuickResults();
+  }, [loadQuickResults]);
 
   useEffect(() => {
     return () => {
@@ -164,6 +306,11 @@ export function MultiplayerModal({
           if (!pollingRef.current) return;
           if (r.status === "matched" && r.challenge) {
             setMatched(r.challenge);
+            const oe =
+              typeof (r as { opponent_elo?: number }).opponent_elo === "number"
+                ? (r as { opponent_elo: number }).opponent_elo
+                : opponentRating(r.challenge);
+            setOpponentElo(oe);
             setStatus("matched");
             setBusy(false);
           } else if (r.status === "idle") {
@@ -179,6 +326,15 @@ export function MultiplayerModal({
       pollingRef.current = false;
     };
   }, [status]);
+
+  useEffect(() => {
+    if (view !== "results" || quickResults.length === 0) return;
+    const ids = quickResults.map((c) => c.id);
+    const before = countUnseenCompletedResults(quickResults, "quick");
+    markChallengeResultsSeen(ids);
+    setResultsBadge(0);
+    if (before > 0) onNotificationsChange?.();
+  }, [view, quickResults, onNotificationsChange]);
 
   if (view === "friends") {
     return (
@@ -198,9 +354,9 @@ export function MultiplayerModal({
     setBusy(true);
     setError(null);
     setMatched(null);
+    setOpponentElo(null);
     setStatus("waiting");
     try {
-      // Cancel any leftover queue/ticket from a finished duel, then search fresh.
       await leaveQuickMatch().catch(() => undefined);
       const r = await joinQuickMatch({ fresh: true });
       if (typeof (r as { elo?: number }).elo === "number") {
@@ -208,6 +364,11 @@ export function MultiplayerModal({
       }
       if (r.status === "matched" && r.challenge) {
         setMatched(r.challenge);
+        const oe =
+          typeof (r as { opponent_elo?: number }).opponent_elo === "number"
+            ? (r as { opponent_elo: number }).opponent_elo
+            : opponentRating(r.challenge);
+        setOpponentElo(oe);
         setStatus("matched");
       } else {
         setStatus("waiting");
@@ -251,12 +412,15 @@ export function MultiplayerModal({
     onPlayChallenge(matched);
   };
 
-  const opponentName =
+  const matchedOpponentName =
     matched == null
       ? null
       : matched.you_are === "challenger"
         ? matched.opponent?.username
         : matched.challenger?.username;
+
+  const matchedOpponentRating =
+    opponentElo ?? (matched ? opponentRating(matched) : null);
 
   const finding = status === "waiting";
 
@@ -309,6 +473,34 @@ export function MultiplayerModal({
                   type="button"
                   className="mp-kit-card"
                   style={{ backgroundImage: `url(${blue.base})` }}
+                  onClick={() => {
+                    setView("results");
+                    void loadQuickResults();
+                  }}
+                >
+                  {resultsBadge > 0 && (
+                    <span className="mp-kit-card__badge">
+                      {resultsBadge > 99 ? "99+" : resultsBadge}
+                    </span>
+                  )}
+                  <span className="mp-kit-card__glow" style={{ backgroundImage: `url(${blue.glow})` }} aria-hidden />
+                  <div className="mp-kit-card__body">
+                    <img className="mp-kit-card__tag" src={blue.label} alt="" />
+                    <span className="mp-kit-card__title">Match results</span>
+                    <span className="mp-kit-card__sub">Your Quick Play history</span>
+                    <span className="mp-kit-card__meta">Turns · time</span>
+                  </div>
+                  <span className="mp-kit-card__icon-wrap" aria-hidden>
+                    <span className="mp-kit-card__ring" style={{ backgroundImage: `url(${blue.circle})` }} />
+                    <img className="mp-kit-card__icon" src={blue.icon} alt="" />
+                  </span>
+                  <img className="mp-kit-card__chev" src={a.ui.chevron} alt="" />
+                </button>
+
+                <button
+                  type="button"
+                  className="mp-kit-card"
+                  style={{ backgroundImage: `url(${blue.base})` }}
                   onClick={() => setView("friends")}
                 >
                   {friendBadge > 0 && (
@@ -336,6 +528,42 @@ export function MultiplayerModal({
           </>
         )}
 
+        {view === "results" && (
+          <>
+            <div className="mp-kit__back-row">
+              <button type="button" className="mp-kit__back" onClick={() => setView("hub")}>
+                <img src={a.ui.chevron} alt="" /> Back
+              </button>
+            </div>
+            <MpHero title="Match results" lead="Quick Play outcomes — fewest turns, then fastest time." />
+            <div className="mp-kit__body">
+              {resultsLoading && quickResults.length === 0 ? (
+                <p className="mp-kit-stage__sub" style={{ textAlign: "center" }}>
+                  Loading…
+                </p>
+              ) : quickResults.length === 0 ? (
+                <p className="mp-kit-stage__sub" style={{ textAlign: "center" }}>
+                  No Quick Play results yet. Finish a match to see it here.
+                </p>
+              ) : (
+                <ul className="challenge-results-list" style={{ margin: 0, padding: 0, listStyle: "none" }}>
+                  {quickResults.map((c) => (
+                    <QuickResultCard key={c.id} c={c} />
+                  ))}
+                </ul>
+              )}
+            </div>
+            <div className="mp-kit__footer">
+              <button type="button" className="mp-kit__ghost" onClick={() => setView("hub")}>
+                Back
+              </button>
+              <button type="button" className="mp-kit__ghost" onClick={onClose}>
+                Close
+              </button>
+            </div>
+          </>
+        )}
+
         {view === "quick" && status === "matched" && matched && (
           <>
             <div className="mp-kit__back-row">
@@ -346,7 +574,11 @@ export function MultiplayerModal({
             <div className="mp-kit__body">
               <MpStage
                 title="Match ready"
-                sub={`vs ${opponentName ?? "opponent"} · ${formatLevelId(matched.level)}`}
+                sub={
+                  matchedOpponentRating != null
+                    ? `vs ${matchedOpponentName ?? "opponent"} · Rating ${matchedOpponentRating}`
+                    : `vs ${matchedOpponentName ?? "opponent"}`
+                }
               />
               <p className="mp-kit-stage__sub" style={{ textAlign: "center", margin: 0 }}>
                 Fewest turns wins. Equal turns → fastest time. After one finishes, the other has 10 minutes or is DQed.

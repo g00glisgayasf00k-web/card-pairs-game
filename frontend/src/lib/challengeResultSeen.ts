@@ -36,21 +36,27 @@ export function markChallengeResultsSeen(ids: number[]): void {
   }
 }
 
-/** Completed friend challenges the player has scored on but not opened in Results yet. */
-export function countUnseenCompletedResults(challenges: ChallengeDto[]): number {
+/** Completed challenges the player has scored on but not opened in Results yet. */
+export function countUnseenCompletedResults(
+  challenges: ChallengeDto[],
+  kind: "friend" | "quick" | "any" = "friend"
+): number {
   const seen = readSeenChallengeResultIds();
   return challenges.filter((c) => {
-    if ((c.kind ?? "friend") !== "friend") return false;
+    if (kind !== "any" && (c.kind ?? "friend") !== kind) return false;
     if (c.status !== "completed") return false;
     if (!myAttempt(c)) return false;
     return !seen.has(c.id);
   }).length;
 }
 
-export function resultIdsToMarkSeen(challenges: ChallengeDto[]): number[] {
+export function resultIdsToMarkSeen(
+  challenges: ChallengeDto[],
+  kind: "friend" | "quick" | "any" = "friend"
+): number[] {
   return challenges
     .filter((c) => {
-      if ((c.kind ?? "friend") !== "friend") return false;
+      if (kind !== "any" && (c.kind ?? "friend") !== kind) return false;
       if (!myAttempt(c)) return false;
       return c.status === "completed" || c.status === "active" || c.status === "expired";
     })

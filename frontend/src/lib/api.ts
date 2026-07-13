@@ -307,6 +307,8 @@ export async function resetAdminUserPassword(userId: number, password?: string) 
 export interface FriendUser {
   id: number;
   username: string;
+  /** Current Rating (Quick Play / challenge payloads). */
+  elo?: number;
 }
 
 export interface FriendshipItem {

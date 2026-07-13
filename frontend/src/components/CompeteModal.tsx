@@ -5,7 +5,6 @@ import {
   pollQuickMatch,
   type ChallengeDto,
 } from "../lib/api";
-import { formatLevelId } from "../lib/levelMap";
 import { isQuickPlayUnlocked, quickPlayUnlockLabel } from "../lib/quickPlayUnlock";
 
 type Ladder = "daily" | "quick";
@@ -124,7 +123,17 @@ export function CompeteModal({ onClose, onPlaySolo, onPlayChallenge }: Props) {
             <header className="play-mode-modal__header">
               <h2 id="compete-title">Match ready</h2>
               <p className="play-mode-modal__lead">
-                vs {opponentName ?? "opponent"} · {formatLevelId(matched.level)}
+                vs {opponentName ?? "opponent"}
+                {matched &&
+                (matched.you_are === "challenger"
+                  ? matched.opponent?.elo
+                  : matched.challenger?.elo) != null
+                  ? ` · Rating ${
+                      matched.you_are === "challenger"
+                        ? matched.opponent?.elo
+                        : matched.challenger?.elo
+                    }`
+                  : ""}
               </p>
             </header>
             <div className="play-mode-modal__body">

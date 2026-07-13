@@ -44,7 +44,7 @@ def _notify(user_id: int, title: str, body: str, data: dict[str, str]) -> None:
 def _user_public(u: User | None) -> dict | None:
     if not u:
         return None
-    return {"id": u.id, "username": u.username}
+    return {"id": u.id, "username": u.username, "elo": get_player_elo(u.id)}
 
 
 def _are_friends(a: int, b: int) -> bool:

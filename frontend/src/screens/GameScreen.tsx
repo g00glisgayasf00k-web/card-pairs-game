@@ -328,6 +328,18 @@ export function GameScreen({
     (c) => challengeProgress(levelHandCounts, c) >= c.minCount
   );
 
+  const preferJokerGoals = useMemo(
+    () =>
+      cfg.challenges
+        .filter((c) => challengeProgress(levelHandCounts, c) < c.minCount)
+        .map((c) => ({
+          hand: c.hand,
+          ranks: c.ranks,
+          suit: c.suit,
+        })),
+    [cfg.challenges, levelHandCounts]
+  );
+
   const tutorialActive = isLevel1TutorialActive(level, tutorialStep);
   const tutorialConfig = tutorialActive ? getTutorialStepConfig(tutorialStep) : null;
   const level1SeedBoard = level === 1 ? getLevel1SeedBoard(tutorialStep) : undefined;
@@ -1311,6 +1323,7 @@ export function GameScreen({
               }
               blockerConfig={cfg.blockers}
               fixedObstacles={cfg.fixedObstacles}
+              preferJokerGoals={preferJokerGoals}
               onHand={handleHand}
               onActivation={handleActivation}
               onFeedback={handleBoardFeedback}

@@ -21,6 +21,7 @@ import {
   type Card,
   type FullHandResult,
   type HandLabel,
+  type JokerGoalPrefer,
   type SpecialType,
   type Suit,
 } from "../lib/pokerHands";
@@ -138,6 +139,8 @@ interface Props {
   blockerConfig?: BlockerSpawnConfig | null;
   /** Permanent pillars (level 101+) — cannot move or be destroyed. */
   fixedObstacles?: FixedObstacle[];
+  /** Unmet goals — jokers prefer substitutions that credit these. */
+  preferJokerGoals?: JokerGoalPrefer[];
   /** Parent HUD feedback — avoids board overlay flash in embedded mode */
   onFeedback?: (message: string | null, hint?: boolean) => void;
 }
@@ -282,6 +285,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
       onTutorialStepComplete,
       blockerConfig,
       fixedObstacles = [],
+      preferJokerGoals,
       onFeedback,
     },
     ref
@@ -795,10 +799,14 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
         return;
       }
 
-      const resolved = resolveHandFromPath(swipePath, (p) => {
-        if (isBlocked(blockers[p.row]?.[p.col])) return undefined;
-        return board[p.row]?.[p.col] ?? undefined;
-      });
+      const resolved = resolveHandFromPath(
+        swipePath,
+        (p) => {
+          if (isBlocked(blockers[p.row]?.[p.col])) return undefined;
+          return board[p.row]?.[p.col] ?? undefined;
+        },
+        preferJokerGoals
+      );
       if (!resolved) {
         if (!pathIsAdjacent(swipePath)) {
           if (embedded) showFeedback("Cards must be touching", true);
@@ -894,6 +902,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
       busy, board, blockers, clear, locked, pathRef,
       onHand, activateBomb, activateArrow, activateRainbow,
       guidedPath, tutorialExpectedHand, tutorialWrongSwipeHint, onTutorialStepComplete, embedded, showFeedback,
+      preferJokerGoals,
     ]);
 
     const handlePointerUp = () => {

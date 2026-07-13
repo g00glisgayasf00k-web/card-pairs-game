@@ -386,7 +386,86 @@ export function evaluateHand(
 
 // ── Wild (joker) substitution ─────────────────────────────────────────────────
 
-function evaluateHandWithWilds(cards: Card[]): HandAnalysis | null {
+/** Unmet level goals — jokers prefer substitutions that credit these. */
+export interface JokerGoalPrefer {
+  hand: HandLabel;
+  ranks?: Rank[];
+  suit?: Suit;
+}
+
+function analysisMatchesGoal(result: HandAnalysis, g: JokerGoalPrefer): boolean {
+  const broadway =
+    g.ranks?.length === 5 &&
+    g.ranks[0] === "10" &&
+    g.ranks[1] === "J" &&
+    g.ranks[2] === "Q" &&
+    g.ranks[3] === "K" &&
+    g.ranks[4] === "A";
+
+  if (g.hand === "straight_flush" && broadway) {
+    if (result.hand !== "royal_flush") return false;
+    if (g.suit && result.flushSuit !== g.suit) return false;
+    return true;
+  }
+
+  if (result.hand !== g.hand) return false;
+  const specific = (g.ranks != null && g.ranks.length > 0) || g.suit != null;
+  if (!specific) return true;
+
+  if (g.hand === "pair" || g.hand === "three_of_a_kind" || g.hand === "four_of_a_kind") {
+    return result.keyRanks[0] === g.ranks?.[0];
+  }
+  if (g.hand === "two_pair") {
+    if (!g.ranks || g.ranks.length < 2 || result.keyRanks.length < 2) return false;
+    const need = new Set(g.ranks.slice(0, 2));
+    return result.keyRanks.slice(0, 2).every((r) => need.has(r)) && need.size === 2;
+  }
+  if (g.hand === "full_house") {
+    return result.keyRanks[0] === g.ranks?.[0] && result.keyRanks[1] === g.ranks?.[1];
+  }
+  if (g.hand === "straight") {
+    if (!g.ranks || g.ranks.length !== 5 || result.keyRanks.length !== 5) return false;
+    return g.ranks.every((r, i) => result.keyRanks[i] === r);
+  }
+  if (g.hand === "straight_flush") {
+    if (!g.ranks || g.ranks.length !== 5 || result.keyRanks.length !== 5) return false;
+    if (g.suit && result.flushSuit !== g.suit) return false;
+    return g.ranks.every((r, i) => result.keyRanks[i] === r);
+  }
+  if (g.hand === "flush") {
+    return g.suit != null && result.flushSuit === g.suit;
+  }
+  return true;
+}
+
+/** Higher = better for unmet goals (specific ranks/suits beat generic hand goals). */
+function jokerGoalScore(result: HandAnalysis, goals: JokerGoalPrefer[] | undefined): number {
+  if (!goals?.length) return 0;
+  let score = 0;
+  for (const g of goals) {
+    if (!analysisMatchesGoal(result, g)) continue;
+    const specific = (g.ranks != null && g.ranks.length > 0) || g.suit != null;
+    score += specific ? 100_000 : 10_000;
+  }
+  return score;
+}
+
+function preferWildResult(
+  candidate: HandAnalysis,
+  best: HandAnalysis | null,
+  goals: JokerGoalPrefer[] | undefined
+): boolean {
+  if (!best) return true;
+  const cg = jokerGoalScore(candidate, goals);
+  const bg = jokerGoalScore(best, goals);
+  if (cg !== bg) return cg > bg;
+  return candidate.points > best.points;
+}
+
+function evaluateHandWithWilds(
+  cards: Card[],
+  goals?: JokerGoalPrefer[]
+): HandAnalysis | null {
   const wilds = cards.filter((c) => c.special === "joker");
   const normals = cards.filter((c) => c.special !== "joker");
   const wc = wilds.length;
@@ -413,7 +492,7 @@ function evaluateHandWithWilds(cards: Card[]): HandAnalysis | null {
           : { rank: c.rank, suit: c.suit }
       );
       const result = evaluateHand(filled);
-      if (result && (!best || result.points > best.points)) {
+      if (result && preferWildResult(result, best, goals)) {
         best = result;
       }
     }
@@ -434,7 +513,7 @@ function evaluateHandWithWilds(cards: Card[]): HandAnalysis | null {
           return { rank: c.rank, suit: c.suit };
         });
         const result = evaluateHand(filled);
-        if (result && (!best || result.points > best.points)) {
+        if (result && preferWildResult(result, best, goals)) {
           best = result;
         }
       }
@@ -461,9 +540,12 @@ export interface FullHandResult {
   flushSuit?: Suit;
 }
 
-export function evaluateHandFull(cards: Card[]): FullHandResult | null {
+export function evaluateHandFull(
+  cards: Card[],
+  goals?: JokerGoalPrefer[]
+): FullHandResult | null {
   const hasJoker = cards.some((c) => c.special === "joker");
-  const base = hasJoker ? evaluateHandWithWilds(cards) : evaluateHand(cards);
+  const base = hasJoker ? evaluateHandWithWilds(cards, goals) : evaluateHand(cards);
   if (!base) return null;
   return {
     hand: base.hand,
@@ -488,7 +570,8 @@ export function pathIsAdjacent(cells: { row: number; col: number }[]): boolean {
 
 function tryPathHand(
   path: { row: number; col: number }[],
-  getCard: (p: { row: number; col: number }) => Card | null | undefined
+  getCard: (p: { row: number; col: number }) => Card | null | undefined,
+  goals?: JokerGoalPrefer[]
 ): { path: { row: number; col: number }[]; result: FullHandResult } | null {
   if (path.length !== POKER_HAND_SIZE || !pathIsAdjacent(path)) return null;
 
@@ -499,7 +582,7 @@ function tryPathHand(
     cards.push(card);
   }
 
-  const result = evaluateHandFull(cards);
+  const result = evaluateHandFull(cards, goals);
   if (!result) return null;
 
   return { path, result };
@@ -508,10 +591,12 @@ function tryPathHand(
 /**
  * Resolve a swipe path to a valid 5-card poker hand.
  * Trims trailing touch overshoot so the first five cells of the path are used.
+ * With a joker, prefers substitutions that advance unmet goals, then highest points.
  */
 export function resolveHandFromPath(
   path: { row: number; col: number }[],
-  getCard: (p: { row: number; col: number }) => Card | null | undefined
+  getCard: (p: { row: number; col: number }) => Card | null | undefined,
+  goals?: JokerGoalPrefer[]
 ): { path: { row: number; col: number }[]; result: FullHandResult } | null {
   if (path.length < POKER_HAND_SIZE || !pathIsAdjacent(path)) return null;
 
@@ -523,18 +608,24 @@ export function resolveHandFromPath(
   }[] = [];
 
   for (let trim = 0; trim <= maxTrim; trim++) {
-    const candidate = tryPathHand(path.slice(0, path.length - trim), getCard);
+    const candidate = tryPathHand(path.slice(0, path.length - trim), getCard, goals);
     if (candidate) candidates.push({ ...candidate, trim });
   }
 
   if (candidates.length === 0) return null;
 
   const pathHasJoker = path.some((cell) => getCard(cell)?.special === "joker");
+  const goalRank = (r: FullHandResult) =>
+    jokerGoalScore(
+      { hand: r.hand, points: r.totalPoints, keyRanks: r.keyRanks, flushSuit: r.flushSuit },
+      goals
+    );
 
   if (pathHasJoker) {
     candidates.sort(
       (a, b) =>
         a.trim - b.trim ||
+        goalRank(b.result) - goalRank(a.result) ||
         b.result.totalPoints - a.result.totalPoints
     );
     const best = candidates[0]!;

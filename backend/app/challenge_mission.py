@@ -151,12 +151,15 @@ SCORE_RACE_HAND_LIMIT = 20
 SCORE_RACE_GOAL_BONUS_PCT = 5
 
 
-def generate_score_race_mission(seed: int | None = None) -> dict[str, Any]:
+def generate_score_race_mission(
+    seed: int | None = None, *, hand_limit: int | None = None
+) -> dict[str, Any]:
     """
-    Quick Play / Tournament race: exactly 20 hands, 3–5 goals.
+    Quick Play / Tournament race: fixed hand count, 3–5 goals.
     Completing a goal boosts total score by +5% (client applies).
     """
     rng = random.Random(seed) if seed is not None else random.SystemRandom()
+    limit = max(1, int(hand_limit or SCORE_RACE_HAND_LIMIT))
 
     goal_count = rng.randint(3, 5)
     goals: list[dict[str, Any]] = []
@@ -175,9 +178,9 @@ def generate_score_race_mission(seed: int | None = None) -> dict[str, Any]:
     # Decorative target for UI parity; race ends at hand_limit, not points.
     target_points = max(500, challenge_points + rng.randint(300, 700))
     limits = {
-        "one": SCORE_RACE_HAND_LIMIT,
-        "two": SCORE_RACE_HAND_LIMIT,
-        "three": SCORE_RACE_HAND_LIMIT,
+        "one": limit,
+        "two": limit,
+        "three": limit,
     }
 
     return {
@@ -185,8 +188,8 @@ def generate_score_race_mission(seed: int | None = None) -> dict[str, Any]:
         "goals": goals,
         "target_points": target_points,
         "star_move_limits": limits,
-        "move_limit": SCORE_RACE_HAND_LIMIT,
-        "hand_limit": SCORE_RACE_HAND_LIMIT,
+        "move_limit": limit,
+        "hand_limit": limit,
         "goal_bonus_pct": SCORE_RACE_GOAL_BONUS_PCT,
         "challenge_points": challenge_points,
         "challenge_hands": challenge_hands,

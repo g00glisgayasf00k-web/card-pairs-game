@@ -30,6 +30,7 @@ import {
   type TournamentBoardPick,
   type TournamentTier,
 } from "../lib/tournamentTiers";
+import { tournamentHandLimit } from "../lib/scoreRaceMission";
 
 interface Props {
   onClose: () => void;
@@ -260,14 +261,14 @@ export function TournamentModal({
               <img className="tn-kit__hero-chips" src={a.hero.chipsStack} alt="" />
               <div className="tn-kit__hero-copy">
                 <h2 id="tournament-title">Tournament</h2>
-                <p>20 hands · highest score wins · goals add +5%.</p>
+                <p>Highest score wins · goals add +5% · hands vary by cup.</p>
               </div>
             </div>
 
             <div className="tn-kit__body">
               <p className="tn-kit__hint">
-                Bronze resets daily, Silver weekly, Gold monthly — all at UK midnight. Watch an ad
-                for a free entry (limits per period), or pay gems. Top 3 take the payouts shown.
+                Bronze 20 hands · Silver 30 · Gold 50. Resets at UK midnight. Watch an ad for a free
+                entry, or pay gems. Top 3 take the payouts shown.
               </p>
               {error && <p className="tn-kit__error">{error}</p>}
 
@@ -306,7 +307,8 @@ export function TournamentModal({
                             : `Locked · clear Solo ${unlockLabel(tier)}`}
                         </span>
                         <span className="tn-cup__reset">
-                          {tournamentResetLabel(tier.reset)} · resets in {resetCountdown(tier)}
+                          {tournamentResetLabel(tier.reset)} · {tournamentHandLimit(tier.id)} hands ·
+                          resets in {resetCountdown(tier)}
                         </span>
                         {unlocked && (
                           <span className="tn-cup__free">
@@ -528,13 +530,13 @@ export function TournamentModal({
           >
             <h2 id="tournament-brief-title">{briefing.tierName}</h2>
             <p className="tn-brief__lead">
-              Play <strong>20 hands</strong>. Clear goals for a <strong>+5%</strong> total score
-              boost each. Highest score wins — time breaks ties.
+              Play <strong>{briefing.cfg.moveLimit} hands</strong>. Clear goals for a{" "}
+              <strong>+5%</strong> total score boost each. Highest score wins — time breaks ties.
             </p>
             <div className="tn-brief__goals">
               <div className="tn-brief__goal">
                 <span>Hands</span>
-                <strong>20</strong>
+                <strong>{briefing.cfg.moveLimit}</strong>
               </div>
               <div className="tn-brief__goal">
                 <span>Goals</span>

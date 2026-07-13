@@ -1419,7 +1419,7 @@ export function GameScreen({
                 <span className="perk-icon">{isQuickRace ? "💰" : "💰"}</span>
                 <span>
                   {isQuickRace
-                    ? `${(completedStats?.score ?? 0).toLocaleString()} pts · ${completedStats?.hands ?? 0}/20 hands · ${formatDurationMs(raceClockMs)}`
+                    ? `${(completedStats?.score ?? 0).toLocaleString()} pts · ${completedStats?.hands ?? 0}/${cfg.moveLimit} hands · ${formatDurationMs(raceClockMs)}`
                     : `${completedStats?.score.toLocaleString() ?? 0} pts · ${completedStats?.hands ?? 0} moves`}
                 </span>
               </div>
@@ -1551,8 +1551,8 @@ export function GameScreen({
               <div className="perk">
                 <span className="perk-icon">💰</span>
                 <span>
-                  {(completedStats?.score ?? 0).toLocaleString()} pts · {completedStats?.hands ?? 0}/20
-                  hands · {formatDurationMs(raceClockMs)}
+                  {(completedStats?.score ?? 0).toLocaleString()} pts · {completedStats?.hands ?? 0}/
+                  {tournamentMatch.cfg.moveLimit} hands · {formatDurationMs(raceClockMs)}
                 </span>
               </div>
               <div className="perk">

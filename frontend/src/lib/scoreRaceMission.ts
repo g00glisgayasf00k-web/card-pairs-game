@@ -10,6 +10,17 @@ import { RANKS, SUITS } from "./pokerHands";
 export const SCORE_RACE_HAND_LIMIT = 20;
 export const SCORE_RACE_GOAL_BONUS_PCT = 5;
 
+/** Tournament cup hand budgets (Quick Play stays at SCORE_RACE_HAND_LIMIT). */
+export const TOURNAMENT_HAND_LIMITS: Record<string, number> = {
+  bronze: 20,
+  silver: 30,
+  gold: 50,
+};
+
+export function tournamentHandLimit(tierId: string): number {
+  return TOURNAMENT_HAND_LIMITS[tierId] ?? SCORE_RACE_HAND_LIMIT;
+}
+
 const HAND_POOL: [HandLabel, number][] = [
   ["pair", 28],
   ["two_pair", 22],
@@ -97,8 +108,12 @@ function specify(hand: HandLabel, minCount: number, rng: SeedRng): HandChallenge
 }
 
 /** Build a score-race mission payload from a board seed. */
-export function generateScoreRaceMission(seed: number): ChallengeMissionPayload {
+export function generateScoreRaceMission(
+  seed: number,
+  handLimit: number = SCORE_RACE_HAND_LIMIT
+): ChallengeMissionPayload {
   const rng = new SeedRng(seed >>> 0 || 1);
+  const limit = Math.max(1, Math.floor(handLimit));
   const goalCount = rng.randint(3, 5);
   const goals: HandChallenge[] = [];
   const used = new Set<string>();
@@ -124,12 +139,12 @@ export function generateScoreRaceMission(seed: number): ChallengeMissionPayload 
     })),
     target_points: targetPoints,
     star_move_limits: {
-      one: SCORE_RACE_HAND_LIMIT,
-      two: SCORE_RACE_HAND_LIMIT,
-      three: SCORE_RACE_HAND_LIMIT,
+      one: limit,
+      two: limit,
+      three: limit,
     },
-    move_limit: SCORE_RACE_HAND_LIMIT,
-    hand_limit: SCORE_RACE_HAND_LIMIT,
+    move_limit: limit,
+    hand_limit: limit,
     goal_bonus_pct: SCORE_RACE_GOAL_BONUS_PCT,
     challenge_points: challengePoints,
     challenge_hands: challengeHands,
@@ -139,7 +154,7 @@ export function generateScoreRaceMission(seed: number): ChallengeMissionPayload 
 export function isScoreRaceMission(
   mission: ChallengeMissionPayload | null | undefined
 ): boolean {
-  return mission?.mode === "score_race" || mission?.hand_limit === SCORE_RACE_HAND_LIMIT;
+  return mission?.mode === "score_race" || typeof mission?.hand_limit === "number";
 }
 
 export function applyGoalScoreBonus(score: number, bonusPct = SCORE_RACE_GOAL_BONUS_PCT): number {

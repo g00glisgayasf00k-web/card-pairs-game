@@ -210,19 +210,19 @@ export const SPECIALS_GUIDE: {
     type: "arrow_h",
     name: "Row arrow ↔",
     earn: "Clear Three of a Kind, Straight, or Full House",
-    effect: "Tap to wipe the row (+45 pts per card). Hitting another arrow fires that one too.",
+    effect: "Tap to wipe the row (+45 pts per card). Hitting another arrow or a bomb triggers it too.",
   },
   {
     type: "arrow_v",
     name: "Column arrow ↕",
     earn: "Clear Three of a Kind, Straight, or Full House",
-    effect: "Tap to wipe the column (+45 pts per card). Hitting another arrow fires that one too.",
+    effect: "Tap to wipe the column (+45 pts per card). Hitting another arrow or a bomb triggers it too.",
   },
   {
     type: "bomb",
     name: "Bomb",
     earn: "Clear Four of a Kind or Straight Flush",
-    effect: "Tap to blast all 8 surrounding cards (+50 pts each)",
+    effect: "Tap to blast all 8 surrounding cards (+50 pts each). Hitting another bomb or an arrow triggers it too.",
   },
   {
     type: "joker",

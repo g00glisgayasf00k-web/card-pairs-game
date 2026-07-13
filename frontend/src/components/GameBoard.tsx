@@ -501,65 +501,48 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
       [onHand, onActivation, clear, embedded, showFeedback]
     );
 
-    // ── 💣 Bomb tap ───────────────────────────────────────────────────────────
-    const activateBomb = useCallback(
-      async (r: number, c: number) => {
-        setBusy(true);
-        const bombKey = pathKey(r, c);
-        const cleared = new Set<string>([bombKey]);
-        const blast = new Set<string>();
-
-        for (let dr = -1; dr <= 1; dr++) {
-          for (let dc = -1; dc <= 1; dc++) {
-            if (dr === 0 && dc === 0) continue;
-            const nr = r + dr, nc = c + dc;
-            if (nr >= 0 && nr < ROWS && nc >= 0 && nc < COLS) {
-              if (board[nr]?.[nc]) {
-                cleared.add(`${nr},${nc}`);
-                blast.add(`${nr},${nc}`);
-              }
-            }
-          }
-        }
-
-        const pts = cleared.size * BOMB_PTS_PER_CARD;
-        const blastOrder = new Map<string, number>();
-        blast.forEach((k) => {
-          const [rr, cc] = k.split(",").map(Number) as [number, number];
-          blastOrder.set(k, Math.abs(rr - r) + Math.abs(cc - c));
-        });
-        setPopping(new Set([bombKey]));
-        setPopOrder(new Map([[bombKey, 0], ...blastOrder]));
-        setBlasting(blast);
-        setBombBurst({ row: r, col: c });
-
-        await commitClear(
-          board,
-          blockers,
-          cleared,
-          [],
-          new Set([c]),
-          `💣 BOOM! ${cleared.size} cards cleared! +${pts}`,
-          pts,
-          null,
-          cleared.size,
-          ANIM.bombBurst
-        );
-      },
-      [board, blockers, commitClear]
-    );
-
-    // ── ↔↕ Arrow tap — clear row/column; hitting another arrow fires it too ───
-    const activateArrow = useCallback(
-      async (r: number, c: number, axis: "row" | "col") => {
+    // ── Bomb / arrow chain — each can trigger the other ───────────────────────
+    const activateSpecialChain = useCallback(
+      async (
+        start:
+          | { kind: "bomb"; r: number; c: number }
+          | { kind: "arrow"; r: number; c: number; axis: "row" | "col" }
+      ) => {
         setBusy(true);
         const cleared = new Set<string>();
         const order = new Map<string, number>();
+        const blast = new Set<string>();
         const activated = new Set<string>();
-        const queue: { r: number; c: number; axis: "row" | "col"; wave: number }[] = [
-          { r, c, axis, wave: 0 },
+        type ChainItem =
+          | { kind: "bomb"; r: number; c: number; wave: number }
+          | { kind: "arrow"; r: number; c: number; axis: "row" | "col"; wave: number };
+        const queue: ChainItem[] = [
+          start.kind === "bomb"
+            ? { kind: "bomb", r: start.r, c: start.c, wave: 0 }
+            : { kind: "arrow", r: start.r, c: start.c, axis: start.axis, wave: 0 },
         ];
         let chainCount = 0;
+        let anyBomb = start.kind === "bomb";
+        let primaryArrowAxis: "row" | "col" | null =
+          start.kind === "arrow" ? start.axis : null;
+
+        const enqueueHit = (
+          cell: Card,
+          rr: number,
+          cc: number,
+          wave: number,
+          skipKey: string
+        ) => {
+          const k = `${rr},${cc}`;
+          if (k === skipKey || activated.has(k)) return;
+          if (cell.special === "bomb") {
+            queue.push({ kind: "bomb", r: rr, c: cc, wave });
+          } else if (cell.special === "arrow_h") {
+            queue.push({ kind: "arrow", r: rr, c: cc, axis: "row", wave });
+          } else if (cell.special === "arrow_v") {
+            queue.push({ kind: "arrow", r: rr, c: cc, axis: "col", wave });
+          }
+        };
 
         while (queue.length > 0) {
           const cur = queue.shift()!;
@@ -568,68 +551,119 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
           activated.add(originKey);
           if (cur.wave > 0) chainCount += 1;
 
-          if (cur.axis === "row") {
-            for (let cc = 0; cc < COLS; cc++) {
-              const cell = board[cur.r]?.[cc];
-              if (!cell) continue;
-              const k = `${cur.r},${cc}`;
-              if (!cleared.has(k)) {
-                cleared.add(k);
-                order.set(k, cur.wave * (COLS + ROWS) + Math.abs(cc - cur.c));
-              }
-              if (k === originKey) continue;
-              if (cell.special === "arrow_h" && !activated.has(k)) {
-                queue.push({ r: cur.r, c: cc, axis: "row", wave: cur.wave + 1 });
-              } else if (cell.special === "arrow_v" && !activated.has(k)) {
-                queue.push({ r: cur.r, c: cc, axis: "col", wave: cur.wave + 1 });
+          if (cur.kind === "bomb") {
+            anyBomb = true;
+            if (!cleared.has(originKey) && board[cur.r]?.[cur.c]) {
+              cleared.add(originKey);
+              order.set(originKey, cur.wave * (COLS + ROWS));
+            }
+            for (let dr = -1; dr <= 1; dr++) {
+              for (let dc = -1; dc <= 1; dc++) {
+                if (dr === 0 && dc === 0) continue;
+                const nr = cur.r + dr;
+                const nc = cur.c + dc;
+                if (nr < 0 || nr >= ROWS || nc < 0 || nc >= COLS) continue;
+                const cell = board[nr]?.[nc];
+                if (!cell) continue;
+                const k = `${nr},${nc}`;
+                if (!cleared.has(k)) {
+                  cleared.add(k);
+                  order.set(k, cur.wave * (COLS + ROWS) + Math.abs(dr) + Math.abs(dc));
+                  blast.add(k);
+                }
+                enqueueHit(cell, nr, nc, cur.wave + 1, originKey);
               }
             }
           } else {
-            for (let rr = 0; rr < ROWS; rr++) {
-              const cell = board[rr]?.[cur.c];
-              if (!cell) continue;
-              const k = `${rr},${cur.c}`;
-              if (!cleared.has(k)) {
-                cleared.add(k);
-                order.set(k, cur.wave * (COLS + ROWS) + Math.abs(rr - cur.r));
+            if (primaryArrowAxis == null) primaryArrowAxis = cur.axis;
+            if (cur.axis === "row") {
+              for (let cc = 0; cc < COLS; cc++) {
+                const cell = board[cur.r]?.[cc];
+                if (!cell) continue;
+                const k = `${cur.r},${cc}`;
+                if (!cleared.has(k)) {
+                  cleared.add(k);
+                  order.set(k, cur.wave * (COLS + ROWS) + Math.abs(cc - cur.c));
+                }
+                enqueueHit(cell, cur.r, cc, cur.wave + 1, originKey);
               }
-              if (k === originKey) continue;
-              if (cell.special === "arrow_h" && !activated.has(k)) {
-                queue.push({ r: rr, c: cur.c, axis: "row", wave: cur.wave + 1 });
-              } else if (cell.special === "arrow_v" && !activated.has(k)) {
-                queue.push({ r: rr, c: cur.c, axis: "col", wave: cur.wave + 1 });
+            } else {
+              for (let rr = 0; rr < ROWS; rr++) {
+                const cell = board[rr]?.[cur.c];
+                if (!cell) continue;
+                const k = `${rr},${cur.c}`;
+                if (!cleared.has(k)) {
+                  cleared.add(k);
+                  order.set(k, cur.wave * (COLS + ROWS) + Math.abs(rr - cur.r));
+                }
+                enqueueHit(cell, rr, cur.c, cur.wave + 1, originKey);
               }
             }
           }
         }
 
         const count = cleared.size;
-        const pts = count * LINE_PTS_PER_CARD;
-        setArrowSweep({
-          axis: axis === "row" ? "row" : "col",
-          line: axis === "row" ? r : c,
-          from: axis === "row" ? c : r,
+        const ptsPer = anyBomb ? BOMB_PTS_PER_CARD : LINE_PTS_PER_CARD;
+        const pts = count * ptsPer;
+        const colsHit = new Set<number>();
+        cleared.forEach((k) => {
+          const col = Number(k.split(",")[1]);
+          if (Number.isFinite(col)) colsHit.add(col);
         });
+
+        if (anyBomb) {
+          setBombBurst({ row: start.r, col: start.c });
+          setBlasting(blast.size > 0 ? blast : new Set(cleared));
+        }
+        if (primaryArrowAxis) {
+          setArrowSweep({
+            axis: primaryArrowAxis === "row" ? "row" : "col",
+            line: primaryArrowAxis === "row" ? start.r : start.c,
+            from: primaryArrowAxis === "row" ? start.c : start.r,
+          });
+        }
         setPopping(cleared);
         setPopOrder(order);
 
-        const label = axis === "row" ? "row" : "column";
-        const icon = axis === "row" ? "↔" : "↕";
-        const chainNote = chainCount > 0 ? ` · ${chainCount} arrow chain!` : "";
+        const chainNote =
+          chainCount > 0 ? ` · ${chainCount} chain reaction!` : "";
+        let toastMsg: string;
+        if (start.kind === "bomb") {
+          toastMsg = `💣 BOOM! ${count} cards cleared! +${pts}${chainNote}`;
+        } else {
+          const label = start.axis === "row" ? "row" : "column";
+          const icon = start.axis === "row" ? "↔" : "↕";
+          toastMsg = `${icon} Cleared the ${label}! ${count} cards +${pts}${chainNote}`;
+        }
+
         await commitClear(
           board,
           blockers,
           cleared,
           [],
-          new Set([c]),
-          `${icon} Cleared the ${label}! ${count} cards +${pts}${chainNote}`,
+          colsHit.size > 0 ? colsHit : new Set([start.c]),
+          toastMsg,
           pts,
           null,
           count,
-          ANIM.swoosh
+          Math.max(anyBomb ? ANIM.bombBurst : 0, primaryArrowAxis ? ANIM.swoosh : 0)
         );
       },
       [board, blockers, commitClear]
+    );
+
+    const activateBomb = useCallback(
+      async (r: number, c: number) => {
+        await activateSpecialChain({ kind: "bomb", r, c });
+      },
+      [activateSpecialChain]
+    );
+
+    const activateArrow = useCallback(
+      async (r: number, c: number, axis: "row" | "col") => {
+        await activateSpecialChain({ kind: "arrow", r, c, axis });
+      },
+      [activateSpecialChain]
     );
 
     // ── Rainbow suit clear — drag onto a card ───────────────────────────────

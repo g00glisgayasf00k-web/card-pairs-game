@@ -17,7 +17,8 @@ import { loadProgress } from "../lib/progress";
 import { isQuickPlayUnlocked, quickPlayUnlockLabel } from "../lib/quickPlayUnlock";
 import { OutOfEnergyModal } from "./OutOfEnergyModal";
 
-type View = "hub" | "quick" | "results" | "friends";
+type View = "hub" | "quick" | "friends";
+type QuickTab = "play" | "results";
 
 interface Props {
   onClose: () => void;
@@ -247,6 +248,7 @@ export function MultiplayerModal({
   initialView = "hub",
 }: Props) {
   const [view, setView] = useState<View>(initialView);
+  const [quickTab, setQuickTab] = useState<QuickTab>("play");
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<"idle" | "waiting" | "matched">("idle");
   const [error, setError] = useState<string | null>(null);
@@ -328,13 +330,13 @@ export function MultiplayerModal({
   }, [status]);
 
   useEffect(() => {
-    if (view !== "results" || quickResults.length === 0) return;
+    if (view !== "quick" || quickTab !== "results" || quickResults.length === 0) return;
     const ids = quickResults.map((c) => c.id);
     const before = countUnseenCompletedResults(quickResults, "quick");
     markChallengeResultsSeen(ids);
     setResultsBadge(0);
     if (before > 0) onNotificationsChange?.();
-  }, [view, quickResults, onNotificationsChange]);
+  }, [view, quickTab, quickResults, onNotificationsChange]);
 
   if (view === "friends") {
     return (
@@ -445,10 +447,17 @@ export function MultiplayerModal({
                       setError(`Clear Solo ${unlockLabel} to unlock Quick play`);
                       return;
                     }
+                    setQuickTab("play");
                     setView("quick");
                     setError(null);
+                    void loadQuickResults();
                   }}
                 >
+                  {resultsBadge > 0 && (
+                    <span className="mp-kit-card__badge">
+                      {resultsBadge > 99 ? "99+" : resultsBadge}
+                    </span>
+                  )}
                   <span className="mp-kit-card__glow" style={{ backgroundImage: `url(${blue.glow})` }} aria-hidden />
                   <div className="mp-kit-card__body">
                     <img className="mp-kit-card__tag" src={blue.label} alt="" />
@@ -461,34 +470,6 @@ export function MultiplayerModal({
                     <span className="mp-kit-card__meta">
                       {quickUnlocked ? "⚡ 1 energy" : `Need ${unlockLabel}`}
                     </span>
-                  </div>
-                  <span className="mp-kit-card__icon-wrap" aria-hidden>
-                    <span className="mp-kit-card__ring" style={{ backgroundImage: `url(${blue.circle})` }} />
-                    <img className="mp-kit-card__icon" src={blue.icon} alt="" />
-                  </span>
-                  <img className="mp-kit-card__chev" src={a.ui.chevron} alt="" />
-                </button>
-
-                <button
-                  type="button"
-                  className="mp-kit-card"
-                  style={{ backgroundImage: `url(${blue.base})` }}
-                  onClick={() => {
-                    setView("results");
-                    void loadQuickResults();
-                  }}
-                >
-                  {resultsBadge > 0 && (
-                    <span className="mp-kit-card__badge">
-                      {resultsBadge > 99 ? "99+" : resultsBadge}
-                    </span>
-                  )}
-                  <span className="mp-kit-card__glow" style={{ backgroundImage: `url(${blue.glow})` }} aria-hidden />
-                  <div className="mp-kit-card__body">
-                    <img className="mp-kit-card__tag" src={blue.label} alt="" />
-                    <span className="mp-kit-card__title">Match results</span>
-                    <span className="mp-kit-card__sub">Your Quick Play history</span>
-                    <span className="mp-kit-card__meta">Turns · time</span>
                   </div>
                   <span className="mp-kit-card__icon-wrap" aria-hidden>
                     <span className="mp-kit-card__ring" style={{ backgroundImage: `url(${blue.circle})` }} />
@@ -528,93 +509,7 @@ export function MultiplayerModal({
           </>
         )}
 
-        {view === "results" && (
-          <>
-            <div className="mp-kit__back-row">
-              <button type="button" className="mp-kit__back" onClick={() => setView("hub")}>
-                <img src={a.ui.chevron} alt="" /> Back
-              </button>
-            </div>
-            <MpHero title="Match results" lead="Quick Play outcomes — fewest turns, then fastest time." />
-            <div className="mp-kit__body">
-              {resultsLoading && quickResults.length === 0 ? (
-                <p className="mp-kit-stage__sub" style={{ textAlign: "center" }}>
-                  Loading…
-                </p>
-              ) : quickResults.length === 0 ? (
-                <p className="mp-kit-stage__sub" style={{ textAlign: "center" }}>
-                  No Quick Play results yet. Finish a match to see it here.
-                </p>
-              ) : (
-                <ul className="challenge-results-list" style={{ margin: 0, padding: 0, listStyle: "none" }}>
-                  {quickResults.map((c) => (
-                    <QuickResultCard key={c.id} c={c} />
-                  ))}
-                </ul>
-              )}
-            </div>
-            <div className="mp-kit__footer">
-              <button type="button" className="mp-kit__ghost" onClick={() => setView("hub")}>
-                Back
-              </button>
-              <button type="button" className="mp-kit__ghost" onClick={onClose}>
-                Close
-              </button>
-            </div>
-          </>
-        )}
-
-        {view === "quick" && status === "matched" && matched && (
-          <>
-            <div className="mp-kit__back-row">
-              <button type="button" className="mp-kit__back" onClick={onClose}>
-                <img src={a.ui.chevron} alt="" /> Later
-              </button>
-            </div>
-            <div className="mp-kit__body">
-              <MpStage
-                title="Match ready"
-                sub={
-                  matchedOpponentRating != null
-                    ? `vs ${matchedOpponentName ?? "opponent"} · Rating ${matchedOpponentRating}`
-                    : `vs ${matchedOpponentName ?? "opponent"}`
-                }
-              />
-              <p className="mp-kit-stage__sub" style={{ textAlign: "center", margin: 0 }}>
-                Fewest turns wins. Equal turns → fastest time. After one finishes, the other has 10 minutes or is DQed.
-              </p>
-            </div>
-            <div className="mp-kit__footer">
-              <button type="button" className="mp-kit__cta" onClick={playMatched}>
-                Play now
-              </button>
-              <button type="button" className="mp-kit__ghost" onClick={onClose}>
-                Later
-              </button>
-            </div>
-          </>
-        )}
-
-        {view === "quick" && status !== "matched" && finding && (
-          <>
-            <div className="mp-kit__body">
-              {error && <p className="mp-kit__error">{error}</p>}
-              <MpStage pulse progress title="Looking for a player…" />
-            </div>
-            <div className="mp-kit__footer">
-              <button
-                type="button"
-                className="mp-kit__ghost"
-                disabled={cancelling}
-                onClick={() => void cancelQueue()}
-              >
-                {cancelling ? "Cancelling…" : "Cancel"}
-              </button>
-            </div>
-          </>
-        )}
-
-        {view === "quick" && status !== "matched" && !finding && (
+        {view === "quick" && (
           <>
             <div className="mp-kit__back-row">
               <button
@@ -622,50 +517,153 @@ export function MultiplayerModal({
                 className="mp-kit__back"
                 onClick={() => {
                   void cancelQueue();
+                  setQuickTab("play");
                   setView("hub");
                 }}
               >
                 <img src={a.ui.chevron} alt="" /> Back
               </button>
             </div>
-            <MpHero
-              title="Quick play"
-              lead={
-                quickUnlocked
-                  ? "Same board race. Fewest turns wins — time breaks ties. Quit = forfeit."
-                  : `Clear Solo ${unlockLabel} in campaign to unlock.`
-              }
-            />
-            <div className="mp-kit__body">
-              {error && <p className="mp-kit__error">{error}</p>}
-              <MpStage
-                title={quickUnlocked ? "Ready when you are" : "Locked"}
-                sub={
-                  quickUnlocked
-                    ? "Spend 1 energy to enter the queue."
-                    : `Reach Solo ${unlockLabel} first.`
-                }
-              />
+            <header className="play-mode-modal__header">
+              <h2 id="multiplayer-title">Quick play</h2>
+              <p className="play-mode-modal__lead">
+                Fewest turns wins — time breaks ties. Quit = forfeit.
+              </p>
+            </header>
+            <div className="play-mode-tabs" role="tablist">
+              {(["play", "results"] as QuickTab[]).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  role="tab"
+                  aria-selected={quickTab === t}
+                  className={`play-mode-tab${quickTab === t ? " play-mode-tab--on" : ""}`}
+                  onClick={() => {
+                    setQuickTab(t);
+                    if (t === "results") void loadQuickResults();
+                  }}
+                >
+                  {t === "play" ? "Play" : "Results"}
+                  {t === "results" && resultsBadge > 0 && (
+                    <span className="play-mode-tab__badge" aria-hidden>
+                      {resultsBadge > 99 ? "99+" : resultsBadge}
+                    </span>
+                  )}
+                </button>
+              ))}
             </div>
+
+            <div className="mp-kit__body play-mode-modal__body">
+              {quickTab === "results" && (
+                <div className="play-mode-panel">
+                  {resultsLoading && quickResults.length === 0 ? (
+                    <p className="play-mode-modal__hint">Loading…</p>
+                  ) : quickResults.length === 0 ? (
+                    <p className="play-mode-modal__hint">
+                      No Quick Play results yet. Finish a match to see it here.
+                    </p>
+                  ) : (
+                    <ul className="challenge-results-list">
+                      {quickResults.map((c) => (
+                        <QuickResultCard key={c.id} c={c} />
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+
+              {quickTab === "play" && status === "matched" && matched && (
+                <>
+                  <MpStage
+                    title="Match ready"
+                    sub={
+                      matchedOpponentRating != null
+                        ? `vs ${matchedOpponentName ?? "opponent"} · Rating ${matchedOpponentRating}`
+                        : `vs ${matchedOpponentName ?? "opponent"}`
+                    }
+                  />
+                  <p className="mp-kit-stage__sub" style={{ textAlign: "center", margin: 0 }}>
+                    Fewest turns wins. Equal turns → fastest time. After one finishes, the other has 10
+                    minutes or is DQed.
+                  </p>
+                </>
+              )}
+
+              {quickTab === "play" && status !== "matched" && finding && (
+                <>
+                  {error && <p className="mp-kit__error">{error}</p>}
+                  <MpStage pulse progress title="Looking for a player…" />
+                </>
+              )}
+
+              {quickTab === "play" && status !== "matched" && !finding && (
+                <>
+                  {error && <p className="mp-kit__error">{error}</p>}
+                  <MpStage
+                    title={quickUnlocked ? "Ready when you are" : "Locked"}
+                    sub={
+                      quickUnlocked
+                        ? "Spend 1 energy to enter the queue."
+                        : `Reach Solo ${unlockLabel} first.`
+                    }
+                  />
+                </>
+              )}
+            </div>
+
             <div className="mp-kit__footer">
-              <button
-                type="button"
-                className="mp-kit__cta"
-                disabled={busy || !quickUnlocked}
-                onClick={startQuickWithEnergy}
-              >
-                {quickUnlocked ? "Find match · ⚡1" : `Locked · ${unlockLabel}`}
-              </button>
-              <button
-                type="button"
-                className="mp-kit__ghost"
-                onClick={() => {
-                  void cancelQueue();
-                  setView("hub");
-                }}
-              >
-                Back
-              </button>
+              {quickTab === "play" && status === "matched" && matched && (
+                <>
+                  <button type="button" className="mp-kit__cta" onClick={playMatched}>
+                    Play now
+                  </button>
+                  <button type="button" className="mp-kit__ghost" onClick={onClose}>
+                    Later
+                  </button>
+                </>
+              )}
+              {quickTab === "play" && status !== "matched" && finding && (
+                <button
+                  type="button"
+                  className="mp-kit__ghost"
+                  disabled={cancelling}
+                  onClick={() => void cancelQueue()}
+                >
+                  {cancelling ? "Cancelling…" : "Cancel"}
+                </button>
+              )}
+              {quickTab === "play" && status !== "matched" && !finding && (
+                <>
+                  <button
+                    type="button"
+                    className="mp-kit__cta"
+                    disabled={busy || !quickUnlocked}
+                    onClick={startQuickWithEnergy}
+                  >
+                    {quickUnlocked ? "Find match · ⚡1" : `Locked · ${unlockLabel}`}
+                  </button>
+                  <button
+                    type="button"
+                    className="mp-kit__ghost"
+                    onClick={() => {
+                      void cancelQueue();
+                      setView("hub");
+                    }}
+                  >
+                    Back
+                  </button>
+                </>
+              )}
+              {quickTab === "results" && (
+                <>
+                  <button type="button" className="mp-kit__ghost" onClick={() => setQuickTab("play")}>
+                    Play
+                  </button>
+                  <button type="button" className="mp-kit__ghost" onClick={onClose}>
+                    Close
+                  </button>
+                </>
+              )}
             </div>
           </>
         )}

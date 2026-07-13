@@ -5,7 +5,15 @@ import {
   type TournamentStandingRow,
 } from "../lib/api";
 import { formatChallenge } from "../lib/levels";
+import { nativeAdsAvailable, showRewardedTournamentAd } from "../lib/nativeAds";
 import { loadProgress, saveProgress } from "../lib/progress";
+import { VIDEO_AD_DURATION_MS } from "../lib/treasuryAds";
+import {
+  maxTournamentFreeAds,
+  recordTournamentFreeAd,
+  tournamentFreeAdPeriodLabel,
+  tournamentFreeAdsRemaining,
+} from "../lib/tournamentAds";
 import {
   TOURNAMENT_TIERS,
   formatTournamentResetCountdown,
@@ -13,6 +21,7 @@ import {
   payoutAmounts,
   pickTournamentBoard,
   tournamentPeriodEndsAt,
+  tournamentPeriodKey,
   tournamentResetLabel,
   unlockLabel,
   type TournamentBoardPick,
@@ -40,6 +49,9 @@ export function TournamentModal({
   const [briefing, setBriefing] = useState<TournamentBoardPick | null>(null);
   const [standings, setStandings] = useState<Record<string, TournamentStandingRow[]>>({});
   const [periodEnds, setPeriodEnds] = useState<Record<string, string>>({});
+  const [periodKeys, setPeriodKeys] = useState<Record<string, string>>({});
+  const [webAdTier, setWebAdTier] = useState<TournamentTier | null>(null);
+  const [webAdProgress, setWebAdProgress] = useState(0);
 
   void tick;
   const gems = loadProgress()?.credits ?? 0;
@@ -59,26 +71,35 @@ export function TournamentModal({
       TOURNAMENT_TIERS.map(async (tier) => {
         try {
           const r = await fetchTournamentStandings(tier.id, 5);
-          return [tier.id, r.standings, r.period_ends_at] as const;
+          return [tier.id, r.standings, r.period_ends_at, r.period_key] as const;
         } catch {
-          return [tier.id, [] as TournamentStandingRow[], ""] as const;
+          return [tier.id, [] as TournamentStandingRow[], "", ""] as const;
         }
       })
     ).then((pairs) => {
       if (cancelled) return;
       const next: Record<string, TournamentStandingRow[]> = {};
       const ends: Record<string, string> = {};
-      for (const [id, rows, endAt] of pairs) {
+      const keys: Record<string, string> = {};
+      for (const [id, rows, endAt, pk] of pairs) {
         next[id] = rows;
         if (endAt) ends[id] = endAt;
+        if (pk) keys[id] = pk;
       }
       setStandings(next);
       setPeriodEnds(ends);
+      setPeriodKeys(keys);
     });
     return () => {
       cancelled = true;
     };
   }, [tick]);
+
+  const periodKeyFor = (tier: TournamentTier) =>
+    periodKeys[tier.id] || tournamentPeriodKey(tier.reset, new Date(nowMs));
+
+  const freeAdsLeft = (tier: TournamentTier) =>
+    tournamentFreeAdsRemaining(tier.id, periodKeyFor(tier));
 
   const resetCountdown = (tier: TournamentTier) => {
     const fromApi = periodEnds[tier.id];
@@ -86,6 +107,13 @@ export function TournamentModal({
       ? new Date(fromApi)
       : tournamentPeriodEndsAt(tier.reset, new Date(nowMs));
     return formatTournamentResetCountdown(endsAt, new Date(nowMs));
+  };
+
+  const startBriefing = (tier: TournamentTier) => {
+    setConfirmTier(null);
+    setBriefing(pickTournamentBoard(tier));
+    refresh();
+    onBalanceChange?.();
   };
 
   const enterTournament = (tier: TournamentTier) => {
@@ -108,12 +136,66 @@ export function TournamentModal({
       ...saved,
       credits: saved.credits - tier.entryGems,
     });
-    setConfirmTier(null);
-    setBriefing(pickTournamentBoard(tier));
     setBusyId(null);
-    refresh();
-    onBalanceChange?.();
+    startBriefing(tier);
   };
+
+  const finishFreeAdEntry = (tier: TournamentTier) => {
+    if (!recordTournamentFreeAd(tier.id, periodKeyFor(tier))) {
+      setError("No free ad entries left for this cup.");
+      setBusyId(null);
+      return;
+    }
+    setBusyId(null);
+    startBriefing(tier);
+  };
+
+  const enterTournamentWithAd = async (tier: TournamentTier) => {
+    setError(null);
+    if (!isTournamentUnlocked(tier)) {
+      setError(`Clear level ${unlockLabel(tier)} in Solo to unlock.`);
+      return;
+    }
+    if (freeAdsLeft(tier) <= 0) {
+      setError(`No free entries left ${tournamentFreeAdPeriodLabel(tier.reset)}.`);
+      return;
+    }
+    setBusyId(tier.id);
+    if (nativeAdsAvailable()) {
+      try {
+        const rewarded = await showRewardedTournamentAd();
+        if (rewarded) {
+          finishFreeAdEntry(tier);
+        } else {
+          setError("Ad didn’t finish — try again or pay with gems.");
+          setBusyId(null);
+        }
+      } catch {
+        setError("Ad failed to load — try again or pay with gems.");
+        setBusyId(null);
+      }
+      return;
+    }
+    setWebAdProgress(0);
+    setWebAdTier(tier);
+  };
+
+  useEffect(() => {
+    if (!webAdTier) return;
+    const start = Date.now();
+    const id = window.setInterval(() => {
+      const progress = Math.min(1, (Date.now() - start) / VIDEO_AD_DURATION_MS);
+      setWebAdProgress(progress);
+      if (progress >= 1) {
+        window.clearInterval(id);
+        const tier = webAdTier;
+        setWebAdTier(null);
+        setWebAdProgress(0);
+        finishFreeAdEntry(tier);
+      }
+    }, 50);
+    return () => window.clearInterval(id);
+  }, [webAdTier]);
 
   return (
     <>
@@ -156,8 +238,8 @@ export function TournamentModal({
 
             <div className="tn-kit__body">
               <p className="tn-kit__hint">
-                Bronze resets daily, Silver weekly, Gold monthly — all at UK midnight. Top 3 take
-                the payouts shown.
+                Bronze resets daily, Silver weekly, Gold monthly — all at UK midnight. Watch an ad
+                for a free entry (limits per period), or pay gems. Top 3 take the payouts shown.
               </p>
               {error && <p className="tn-kit__error">{error}</p>}
 
@@ -165,6 +247,9 @@ export function TournamentModal({
                 const unlocked = isTournamentUnlocked(tier);
                 const payouts = payoutAmounts(tier.rewardPool);
                 const canAfford = gems >= tier.entryGems;
+                const adsLeft = freeAdsLeft(tier);
+                const adsMax = maxTournamentFreeAds(tier.id);
+                const canEnter = canAfford || adsLeft > 0;
                 const rows = standings[tier.id] ?? [];
                 return (
                   <article
@@ -195,6 +280,12 @@ export function TournamentModal({
                         <span className="tn-cup__reset">
                           {tournamentResetLabel(tier.reset)} · resets in {resetCountdown(tier)}
                         </span>
+                        {unlocked && (
+                          <span className="tn-cup__free">
+                            Free ad entries · {adsLeft}/{adsMax}{" "}
+                            {tournamentFreeAdPeriodLabel(tier.reset)}
+                          </span>
+                        )}
                       </div>
                       <div className="tn-cup__pool">
                         <span className="tn-cup__pool-label">Pool</span>
@@ -235,7 +326,7 @@ export function TournamentModal({
                         <button
                           type="button"
                           className="tn-kit__cta"
-                          disabled={busyId === tier.id || !canAfford}
+                          disabled={busyId === tier.id || !canEnter}
                           onClick={() => {
                             setError(null);
                             setConfirmTier(tier);
@@ -249,7 +340,7 @@ export function TournamentModal({
                           Locked
                         </button>
                       )}
-                      {unlocked && !canAfford && (
+                      {unlocked && !canAfford && adsLeft <= 0 && (
                         <button type="button" className="tn-kit__ghost" onClick={() => onOpenShop?.()}>
                           Get gems
                         </button>
@@ -279,24 +370,76 @@ export function TournamentModal({
           >
             <h2 id="tournament-enter-title">Enter {confirmTier.name}?</h2>
             <p>
-              Entry fee <strong>{confirmTier.entryGems}</strong> gems. You&apos;ll get a random
-              board from this cup&apos;s Solo range. Win with the fewest hands — if tied, closest
-              to the point goal ranks higher.
+              Pay <strong>{confirmTier.entryGems}</strong> gems, or watch a short video for a free
+              entry ({freeAdsLeft(confirmTier)}/{maxTournamentFreeAds(confirmTier.id)} left{" "}
+              {tournamentFreeAdPeriodLabel(confirmTier.reset)}). You&apos;ll get a random board from
+              this cup&apos;s Solo range.
             </p>
             <div className="tn-confirm__actions">
               <button
                 type="button"
                 className="tn-kit__cta"
-                disabled={busyId === confirmTier.id}
+                disabled={
+                  busyId === confirmTier.id || gems < confirmTier.entryGems || Boolean(webAdTier)
+                }
                 onClick={() => enterTournament(confirmTier)}
               >
                 <img src={a.header.gems} alt="" width={14} height={14} />
                 Pay {confirmTier.entryGems}
               </button>
-              <button type="button" className="tn-kit__ghost" onClick={() => setConfirmTier(null)}>
+              <button
+                type="button"
+                className="tn-kit__cta tn-kit__cta--free"
+                disabled={
+                  busyId === confirmTier.id || freeAdsLeft(confirmTier) <= 0 || Boolean(webAdTier)
+                }
+                onClick={() => void enterTournamentWithAd(confirmTier)}
+              >
+                {busyId === confirmTier.id && !webAdTier ? "Loading…" : "▶ Watch ad · Free"}
+              </button>
+              <button
+                type="button"
+                className="tn-kit__ghost"
+                disabled={Boolean(webAdTier)}
+                onClick={() => setConfirmTier(null)}
+              >
                 Cancel
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {webAdTier && (
+        <div className="tn-confirm-overlay tn-ad-overlay" role="status" aria-live="polite">
+          <div className="tn-ad" onClick={(e) => e.stopPropagation()}>
+            <span className="tn-ad__badge">Sponsored</span>
+            <div className="tn-ad__screen">
+              <span className="tn-ad__play" aria-hidden>
+                ▶
+              </span>
+              <p className="tn-ad__title">Free tournament entry</p>
+              <p className="tn-ad__tagline">Watch to enter {webAdTier.name}</p>
+            </div>
+            <div className="tn-ad__progress" aria-hidden>
+              <span className="tn-ad__progress-fill" style={{ width: `${webAdProgress * 100}%` }} />
+            </div>
+            <p className="tn-ad__hint">
+              {webAdProgress >= 1 ? "Entry unlocked" : "Watching… reward in a moment"}
+            </p>
+            {webAdProgress < 0.35 && (
+              <button
+                type="button"
+                className="tn-kit__ghost"
+                onClick={() => {
+                  setWebAdTier(null);
+                  setWebAdProgress(0);
+                  setBusyId(null);
+                }}
+              >
+                Skip
+              </button>
+            )}
           </div>
         </div>
       )}

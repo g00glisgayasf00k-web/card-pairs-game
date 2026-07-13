@@ -68,3 +68,8 @@ export function showRewardedGemAd(): Promise<boolean> {
 export function showRewardedEnergyAd(): Promise<boolean> {
   return showRewardedAd(REWARDED_ENERGY_AD_ID);
 }
+
+/** Tournament free-entry reward — same unit as gem ads for now. */
+export function showRewardedTournamentAd(): Promise<boolean> {
+  return showRewardedAd(REWARDED_GEM_AD_ID);
+}

@@ -155,6 +155,24 @@ export function tournamentPeriodEndsAt(reset: TournamentReset, now = new Date())
   return new Date(londonMidnightUtcMs(nextYear, nextMonth, 1));
 }
 
+/** Matches backend `period_key` (London calendar / ISO week). */
+export function tournamentPeriodKey(reset: TournamentReset, now = new Date()): string {
+  const { year, month, day } = londonParts(now);
+  if (reset === "daily") {
+    return `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  }
+  if (reset === "monthly") {
+    return `${year}-${String(month).padStart(2, "0")}`;
+  }
+  const utc = new Date(Date.UTC(year, month - 1, day));
+  const dow = utc.getUTCDay() || 7;
+  utc.setUTCDate(utc.getUTCDate() + 4 - dow);
+  const isoYear = utc.getUTCFullYear();
+  const yearStart = new Date(Date.UTC(isoYear, 0, 1));
+  const week = Math.ceil(((utc.getTime() - yearStart.getTime()) / 86_400_000 + 1) / 7);
+  return `${isoYear}-W${String(week).padStart(2, "0")}`;
+}
+
 export function formatTournamentResetCountdown(endsAt: Date, now = new Date()): string {
   const ms = Math.max(0, endsAt.getTime() - now.getTime());
   if (ms <= 0) return "soon";

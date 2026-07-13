@@ -2773,7 +2773,8 @@ html.native-shell .app.app--levels {
 }
 
 .milestone-chest-overlay {
-  z-index: 80;
+  /* Above .levelup-overlay (5000) so the chest isn't trapped under round-complete. */
+  z-index: 5100;
 }
 
 .milestone-chest-modal {

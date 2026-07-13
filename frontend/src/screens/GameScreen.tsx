@@ -1193,7 +1193,10 @@ export function GameScreen({
         )}
 
         {showChallengeUi && cfg.challenges.length > 0 && (
-          <div className="game-goalbar" aria-label="Level goals">
+          <div
+            className={`game-goalbar${cfg.challenges.length >= 4 ? " game-goalbar--many" : ""}`}
+            aria-label="Level goals"
+          >
             <div className="game-goalbar__goals">
                 {cfg.challenges.map((c) => {
                   const have = challengeProgress(levelHandCounts, c);

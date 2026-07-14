@@ -273,7 +273,7 @@ export function tierBoardGlobalLevels(tier: TournamentTier): number[] {
   return levels;
 }
 
-/** Pick a score-race board for the cup (hands vary by cup, 3–5 goals, +5% per goal). */
+/** Pick a score-race board for the cup (hands vary by cup, 3–5 goals, ×10 goal payout). */
 export function pickTournamentBoard(tier: TournamentTier): TournamentBoardPick {
   const levels = tierBoardGlobalLevels(tier);
   const level = levels[Math.floor(Math.random() * levels.length)] ?? levels[0]!;

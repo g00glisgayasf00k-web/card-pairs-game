@@ -63,7 +63,11 @@ import { GameBoard, type GameBoardHandle } from "../components/GameBoard";
 import { ProfileModal } from "../components/ProfileModal";
 import { GemShopModal } from "../components/GemShopModal";
 import { OutOfEnergyModal } from "../components/OutOfEnergyModal";
-import { applyGoalScoreBonus, SCORE_RACE_HAND_LIMIT } from "../lib/scoreRaceMission";
+import {
+  raceHandPoints,
+  SCORE_RACE_GOAL_PAYOUT_MULT,
+  SCORE_RACE_HAND_LIMIT,
+} from "../lib/scoreRaceMission";
 import { fetchChallenge, forfeitChallenge, leaveQuickMatch, submitChallenge, submitTournamentRun, type ChallengeDto, type ChallengeMissionDto } from "../lib/api";
 import type { TournamentBoardPick } from "../lib/tournamentTiers";
 import { onHardwareBack } from "../lib/nativeBack";
@@ -609,7 +613,7 @@ export function GameScreen({
     (score: number, handCounts: HandCounts, hands: number) => {
       if (phase !== "playing" || advancingRef.current) return false;
       if (level === 1 && tutorialStep < TUTORIAL_FREE_STEP && !isSpecialRun) return false;
-      // Score races always run the full hand budget — goals only add +5% boosts.
+      // Score races always run the full hand budget — goals pay ×10 on the finishing hand.
       if (isScoreRace) {
         if (hands < cfg.moveLimit) return false;
       } else if (!levelRequirementsMet(score, handCounts, cfg)) {
@@ -743,21 +747,23 @@ export function GameScreen({
         cfg.challenges,
         result
       );
-      let nextScore = levelScoreRef.current + pts;
       let goalsJustCleared = 0;
       if (isScoreRace) {
         for (const c of cfg.challenges) {
           const before = challengeProgress(prevCounts, c);
           const after = challengeProgress(nextHandCounts, c);
           if (before < c.minCount && after >= c.minCount) {
-            nextScore = applyGoalScoreBonus(nextScore);
             goalsJustCleared += 1;
           }
         }
-        if (goalsJustCleared > 0) {
-          setGoalBonusFlash(`+${5 * goalsJustCleared}% score boost!`);
-          window.setTimeout(() => setGoalBonusFlash(null), 1600);
-        }
+      }
+      const awarded = isScoreRace
+        ? raceHandPoints(pts, goalsJustCleared, SCORE_RACE_GOAL_PAYOUT_MULT)
+        : pts;
+      const nextScore = levelScoreRef.current + awarded;
+      if (isScoreRace && goalsJustCleared > 0) {
+        setGoalBonusFlash(`Goal ×${SCORE_RACE_GOAL_PAYOUT_MULT} · +${awarded}`);
+        window.setTimeout(() => setGoalBonusFlash(null), 1600);
       }
       levelHandsRef.current = nextHands;
       levelScoreRef.current = nextScore;
@@ -1211,7 +1217,7 @@ export function GameScreen({
                       className={`tutorial-goal-chip${done ? " tutorial-goal-chip--done" : ""}`}
                       title={
                         isScoreRace
-                          ? `${formatChallenge(c)} — clear for +5% total score`
+                          ? `${formatChallenge(c)} — clear for ×${SCORE_RACE_GOAL_PAYOUT_MULT} points`
                           : formatChallenge(c)
                       }
                     >

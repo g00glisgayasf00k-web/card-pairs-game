@@ -550,8 +550,8 @@ export function TournamentModal({
           >
             <h2 id="tournament-brief-title">{briefing.tierName}</h2>
             <p className="tn-brief__lead">
-              Play <strong>{briefing.cfg.moveLimit} hands</strong>. Clear goals for a{" "}
-              <strong>+5%</strong> total score boost each. Highest score wins — time breaks ties.
+              Play <strong>{briefing.cfg.moveLimit} hands</strong>. Finish a goal and that hand pays{" "}
+              <strong>×10</strong>. Highest score wins — time breaks ties.
             </p>
             <div className="tn-brief__goals">
               <div className="tn-brief__goal">
@@ -571,7 +571,7 @@ export function TournamentModal({
               </ul>
             )}
             <p className="tn-brief__note">
-              Finish goals early so more of your run benefits from the +5% boosts.
+              Only the finishing hand is ×10 — other hands score normally.
             </p>
             <div className="tn-confirm__actions">
               <button
@@ -606,8 +606,8 @@ export function TournamentModal({
               wins; time breaks ties.
             </p>
             <p>
-              Each board has <strong>3–5 goals</strong>. Clear a goal and your{" "}
-              <strong>total score jumps by 5%</strong>.
+              Each board has <strong>3–5 goals</strong>. The hand that completes a goal pays{" "}
+              <strong>×10</strong> (pair 50 → 500). Normal hands stay at base rates.
             </p>
             <p>
               Enter with gems or a free video (limits reset with each cup). Cups reset at{" "}

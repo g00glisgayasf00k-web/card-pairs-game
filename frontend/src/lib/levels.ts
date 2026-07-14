@@ -63,14 +63,8 @@ export const MAX_LEVEL = 500;
 /** From this level, milestone hands require exact ranks / suits. */
 export const SPECIFIC_CHALLENGE_FROM_LEVEL = 100;
 
-/** Typical points earned per hand/swipe (used for move budgets). */
-export const AVG_PTS_PER_MOVE = 360;
-
-/** World N starts at N×1000 pts; ~9% growth per stage within a world. */
-const WORLD_BASE_POINTS = 1000;
-const STAGE_TARGET_GROWTH = 1.09;
-/** Applied after world × stage scale. */
-const TARGET_POINT_BOOST = 1.3;
+/** Typical points per hand for estimates (pair-heavy early game). */
+export const AVG_PTS_PER_MOVE = 150;
 
 /**
  * Each world introduces one new hand type for milestone goals.
@@ -89,14 +83,17 @@ const WORLD_INTRO_HAND: HandLabel[] = [
   "royal_flush",
 ];
 
+/** Soft caps so late worlds don't become hour-long grinds. */
+const STAR_HAND_CAPS = { three: 42, two: 52, one: 65 } as const;
+
 /**
- * Move budget multipliers on target ÷ avg pts.
- * Tuned so early pair-heavy levels have room (pairs score 50, not ~360).
+ * @deprecated Prefer campaignStarBudgets — kept for legacy helpers.
+ * Soft multipliers if something still derives hands from a point target.
  */
 export const STAR_MOVE_MULTIPLIER = {
-  threeStar: 2.4,
-  twoStar: 3.4,
-  oneStar: 4.4,
+  threeStar: 1.55,
+  twoStar: 2.05,
+  oneStar: 2.55,
 } as const;
 
 const CAMPAIGN_TIERS = [
@@ -271,7 +268,54 @@ export function challengeMetrics(challenges: HandChallenge[]): {
   };
 }
 
-/** Move budgets tied to the point target (~360 pts per move). */
+/** Expected pts/hand for Solo target math — pair-heavy early, richer later. */
+export function campaignAvgPtsForLevel(level: number): number {
+  const world = worldForLevel(level);
+  if (world <= 2) return 110;
+  if (world <= 5) return 150;
+  if (world <= 12) return 190;
+  return 220;
+}
+
+/**
+ * Hands-first Solo budgets: short early sessions, soft growth, hard caps late.
+ * Points are derived so solid play lands near the 2★–3★ band.
+ */
+export function campaignStarBudgets(
+  level: number,
+  challengeHands = 0
+): { one: number; two: number; three: number } {
+  const world = worldForLevel(level);
+  const step = stepInTier(level);
+  let three = Math.max(
+    challengeHands + 2,
+    Math.round(8 + 12 * Math.log10(Math.max(1, world)) + (world - 1) * 0.55 + (step - 1) * 0.3)
+  );
+  three = Math.min(three, STAR_HAND_CAPS.three);
+  const two = Math.min(
+    Math.max(three + 1, three + Math.max(3, Math.round(3 + world * 0.2))),
+    STAR_HAND_CAPS.two
+  );
+  const one = Math.min(
+    Math.max(two + 1, two + Math.max(4, Math.round(4 + world * 0.3))),
+    STAR_HAND_CAPS.one
+  );
+  return { three, two, one };
+}
+
+export function campaignTargetPoints(
+  level: number,
+  challengeFloor: number,
+  starMoveLimits: { one: number; two: number; three: number }
+): number {
+  const avgPts = campaignAvgPtsForLevel(level);
+  const fromPace = Math.round(
+    (avgPts * (starMoveLimits.three + starMoveLimits.two)) / 2 * 0.9
+  );
+  return Math.max(challengeFloor + avgPts * 2, fromPace);
+}
+
+/** Move budgets derived from a point target (legacy / mission helpers). */
 export function movesBudgetForStars(stars: 1 | 2 | 3, targetPoints: number): number {
   const mult =
     stars === 3
@@ -303,13 +347,13 @@ export function starMoveLimit(stars: 1 | 2 | 3, targetPoints: number): number {
   return movesBudgetForStars(stars, targetPoints);
 }
 
-/** Theoretical minimum moves to reach the point target at ~360 pts/move. */
+/** Theoretical minimum moves to reach the point target at avg pts/move. */
 export function baseMovesForTarget(targetPoints: number): number {
   return Math.max(1, Math.ceil(targetPoints / AVG_PTS_PER_MOVE));
 }
 
 /**
- * Estimate swipes to reach the point target (~360 pts per move).
+ * Estimate swipes to reach the point target.
  */
 export function computeEstimatedMoves(
   targetPoints: number,
@@ -318,7 +362,7 @@ export function computeEstimatedMoves(
   return baseMovesForTarget(targetPoints);
 }
 
-/** Max hands before game over — 1★ budget (+120% on base). */
+/** Max hands before game over — 1★ budget. */
 export function computeMoveLimit(
   targetPoints: number,
   _challenges: HandChallenge[] = [],
@@ -358,7 +402,7 @@ export function estimateRemainingSwipes(
   const pace =
     swipesUsed > 0
       ? Math.max(levelScore / swipesUsed, HAND_SCORES.pair)
-      : AVG_PTS_PER_MOVE;
+      : campaignAvgPtsForLevel(cfg.level);
   const fillerSwipes = fillerPts > 0 ? Math.ceil(fillerPts / pace) : 0;
 
   return challengeSwipesLeft + fillerSwipes;
@@ -512,23 +556,11 @@ export function challengeProgress(counts: HandCounts, c: HandChallenge): number 
   return counts[challengeKey(c)] ?? 0;
 }
 
-function targetPointsForLevel(level: number): number {
-  const world = worldForLevel(level);
-  const stage = stepInTier(level);
-  const worldStart = world * WORLD_BASE_POINTS;
-  const scaled = Math.round(worldStart * STAGE_TARGET_GROWTH ** (stage - 1));
-  let pts = Math.round(scaled * TARGET_POINT_BOOST);
-  if (level > 50) {
-    pts = Math.round(pts * (1 + (level - 50) * 0.003));
-  }
-  return pts;
-}
-
 function buildLevelConfig(level: number): LevelConfig {
   const challenges = challengesForLevel(level);
   const { challengePoints, challengeHands } = challengeMetrics(challenges);
-  const targetPoints = targetPointsForLevel(level);
-  const starMoveLimits = starMoveLimitsForTarget(targetPoints, challengeHands);
+  const starMoveLimits = campaignStarBudgets(level, challengeHands);
+  const targetPoints = campaignTargetPoints(level, challengePoints, starMoveLimits);
   const fixedObstacles = fixedObstaclesForLevel(level);
   return {
     level,
@@ -539,7 +571,7 @@ function buildLevelConfig(level: number): LevelConfig {
     challengePoints,
     challengeHands,
     starMoveLimits,
-    estimatedMoves: computeEstimatedMoves(targetPoints, challenges),
+    estimatedMoves: starMoveLimits.three,
     moveLimit: starMoveLimits.one,
     blockers: blockersForLevel(level),
     fixedObstacles,
@@ -581,6 +613,9 @@ export interface ChallengeMissionPayload {
   /** Quick Play / Tournament: fixed hand race. */
   mode?: string;
   hand_limit?: number;
+  /** Race: multiply points on the hand that completes a goal (default 10). */
+  goal_payout_mult?: number;
+  /** @deprecated Prefer goal_payout_mult. */
   goal_bonus_pct?: number;
 }
 

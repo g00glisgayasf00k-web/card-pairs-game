@@ -704,9 +704,8 @@ export function MultiplayerModal({
               clear.
             </p>
             <p>
-              You get <strong>3–5 goals</strong>. Each time you finish one, your{" "}
-              <strong>total score jumps by 5%</strong>. Clear goals early so later hands ride a bigger
-              total.
+              You get <strong>3–5 goals</strong>. The hand that finishes a goal pays{" "}
+              <strong>×10</strong> (a pair is 500, not 50). Normal hands keep normal points.
             </p>
             <p>
               <strong>Highest score wins.</strong> Tied scores? Faster time wins. Quit = forfeit.

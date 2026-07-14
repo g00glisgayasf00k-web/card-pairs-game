@@ -8,6 +8,10 @@ import type { ChallengeMissionPayload, HandChallenge, LevelConfig } from "./leve
 import { RANKS, SUITS } from "./pokerHands";
 
 export const SCORE_RACE_HAND_LIMIT = 20;
+/** Completing a goal pays this multiple of the finishing hand's points (pair 50 → 500). */
+export const SCORE_RACE_GOAL_PAYOUT_MULT = 10;
+
+/** @deprecated Prefer SCORE_RACE_GOAL_PAYOUT_MULT — kept for older mission JSON. */
 export const SCORE_RACE_GOAL_BONUS_PCT = 5;
 
 /** Tournament cup hand budgets (Quick Play stays at SCORE_RACE_HAND_LIMIT). */
@@ -145,6 +149,7 @@ export function generateScoreRaceMission(
     },
     move_limit: limit,
     hand_limit: limit,
+    goal_payout_mult: SCORE_RACE_GOAL_PAYOUT_MULT,
     goal_bonus_pct: SCORE_RACE_GOAL_BONUS_PCT,
     challenge_points: challengePoints,
     challenge_hands: challengeHands,
@@ -157,6 +162,18 @@ export function isScoreRaceMission(
   return mission?.mode === "score_race" || typeof mission?.hand_limit === "number";
 }
 
+/** Hand points in a race — ×10 when that hand newly completes one or more goals. */
+export function raceHandPoints(
+  basePoints: number,
+  goalsNewlyCompleted: number,
+  mult = SCORE_RACE_GOAL_PAYOUT_MULT
+): number {
+  const pts = Math.max(0, Math.floor(basePoints));
+  if (goalsNewlyCompleted < 1) return pts;
+  return pts * Math.max(1, Math.floor(mult));
+}
+
+/** @deprecated Races use raceHandPoints (×10 goal hand), not a total %. */
 export function applyGoalScoreBonus(score: number, bonusPct = SCORE_RACE_GOAL_BONUS_PCT): number {
   return Math.floor(score * (1 + bonusPct / 100));
 }

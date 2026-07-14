@@ -1055,12 +1055,12 @@ export function GameScreen({
               </button>
               <div className="moves-banner__main">
                 <div className="moves-banner__head">
-                  {isQuickRace ? (
+                  {isScoreRace ? (
                     <>
-                      <span className="moves-banner__count">{levelHands}</span>
-                      <span className="moves-banner__label">
-                        turn{levelHands === 1 ? "" : "s"}
+                      <span className="moves-banner__count">
+                        {levelHands}/{cfg.moveLimit}
                       </span>
+                      <span className="moves-banner__label">hands</span>
                       <span className="moves-banner__limit">· {formatRaceClock(raceClockMs)}</span>
                     </>
                   ) : threeStarBudgetLost ? (

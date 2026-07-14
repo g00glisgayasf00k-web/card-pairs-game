@@ -33,6 +33,21 @@ import {
 } from "../lib/tournamentTiers";
 import { tournamentHandLimit } from "../lib/scoreRaceMission";
 
+function formatDurationMs(ms: number | null | undefined): string {
+  if (ms == null || !Number.isFinite(ms) || ms < 0) return "—";
+  const totalSec = Math.floor(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  if (m <= 0) return `${s}s`;
+  return `${m}m ${s.toString().padStart(2, "0")}s`;
+}
+
+function formatStandingScore(r: TournamentStandingRow): string {
+  const pts = `${r.score.toLocaleString()} pts`;
+  if (r.duration_ms == null || r.duration_ms <= 0) return pts;
+  return `${pts} · ${formatDurationMs(r.duration_ms)}`;
+}
+
 interface Props {
   onClose: () => void;
   onBalanceChange?: () => void;
@@ -369,7 +384,7 @@ export function TournamentModal({
                             <span>
                               #{r.place ?? "—"} {r.username}
                             </span>
-                            <strong>{r.score.toLocaleString()} pts</strong>
+                            <strong>{formatStandingScore(r)}</strong>
                             </li>
                           ))}
                         </ol>
@@ -393,7 +408,7 @@ export function TournamentModal({
                             <span>
                               #{r.place ?? "—"} {r.username}
                             </span>
-                            <strong>{r.score.toLocaleString()} pts</strong>
+                            <strong>{formatStandingScore(r)}</strong>
                                 </li>
                               ))}
                             </ol>

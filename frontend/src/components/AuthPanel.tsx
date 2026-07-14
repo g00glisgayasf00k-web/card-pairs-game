@@ -6,6 +6,8 @@ import { GoogleSignInButton } from "./GoogleSignInButton";
 
 type AuthMode = "signup" | "login" | "forgot";
 
+const PRIVACY_URL = "/privacy.html";
+
 interface Props {
   onSuccess: (username: string, token: string) => void;
   initialUsername?: string;
@@ -19,6 +21,7 @@ export function AuthPanel({ onSuccess, initialUsername = "", variant = "home" }:
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [recoveryIdentifier, setRecoveryIdentifier] = useState("");
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -34,13 +37,19 @@ export function AuthPanel({ onSuccess, initialUsername = "", variant = "home" }:
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (mode === "signup" && !privacyAccepted) {
+      setError("Please accept the Privacy Policy to create an account");
+      return;
+    }
     setBusy(true);
     setError(null);
     setInfo(null);
     try {
       const res =
         mode === "signup"
-          ? await register(username.trim(), password, email.trim() || undefined)
+          ? await register(username.trim(), password, email.trim() || undefined, {
+              privacyAccepted: true,
+            })
           : await login(username.trim(), password);
       await finishAuth(res.username, res.token);
     } catch (err) {
@@ -66,11 +75,18 @@ export function AuthPanel({ onSuccess, initialUsername = "", variant = "home" }:
   };
 
   const handleGoogle = async (credential: string) => {
+    if (mode === "signup" && !privacyAccepted) {
+      setError("Please accept the Privacy Policy before continuing with Google");
+      return;
+    }
     setBusy(true);
     setError(null);
     setInfo(null);
     try {
-      const res = await loginWithGoogle(credential);
+      const res = await loginWithGoogle(
+        credential,
+        mode === "signup" ? { privacyAccepted: true } : undefined
+      );
       await finishAuth(res.username, res.token);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Google sign-in failed");
@@ -81,6 +97,23 @@ export function AuthPanel({ onSuccess, initialUsername = "", variant = "home" }:
 
   const isHome = variant === "home";
   const showGoogle = googleSignInEnabled() && mode !== "forgot";
+  const privacyBlock =
+    mode === "signup" ? (
+      <label className="auth-privacy">
+        <input
+          type="checkbox"
+          checked={privacyAccepted}
+          onChange={(e) => setPrivacyAccepted(e.target.checked)}
+          disabled={busy}
+        />
+        <span>
+          I agree to the{" "}
+          <a href={PRIVACY_URL} target="_blank" rel="noopener noreferrer">
+            Privacy Policy
+          </a>
+        </span>
+      </label>
+    ) : null;
 
   return (
     <div className={`auth-panel auth-panel--${variant}`}>
@@ -93,7 +126,8 @@ export function AuthPanel({ onSuccess, initialUsername = "", variant = "home" }:
       {mode === "forgot" ? (
         <>
           <p className="auth-panel__lead">
-            Enter the email on your account, or your username if you linked an email when you signed up.
+            Enter the email on your account, or your username if you linked an email when you signed
+            up.
           </p>
           <form className="home-auth-form" onSubmit={handleForgot}>
             <div className="home-auth-fields">
@@ -124,11 +158,13 @@ export function AuthPanel({ onSuccess, initialUsername = "", variant = "home" }:
         </>
       ) : (
         <>
+          {privacyBlock}
+
           {showGoogle && (
             <>
               <GoogleSignInButton
                 onCredential={handleGoogle}
-                disabled={busy}
+                disabled={busy || (mode === "signup" && !privacyAccepted)}
                 text={mode === "signup" ? "signup_with" : "signin_with"}
               />
               <div className="auth-divider">
@@ -196,7 +232,11 @@ export function AuthPanel({ onSuccess, initialUsername = "", variant = "home" }:
                 minLength={6}
                 disabled={busy}
               />
-              <button type="submit" className="home-btn-submit" disabled={busy}>
+              <button
+                type="submit"
+                className="home-btn-submit"
+                disabled={busy || (mode === "signup" && !privacyAccepted)}
+              >
                 {busy ? "Please wait…" : mode === "signup" ? "Create account" : "Sign in"}
               </button>
             </div>

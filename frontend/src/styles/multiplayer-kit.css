@@ -288,9 +288,21 @@
 
 .mp-kit-card__body,
 .mp-kit-card__icon-wrap,
-.mp-kit-card__chev {
+.mp-kit-card__chev,
+.mp-kit-card__info {
   position: relative;
   z-index: 2;
+}
+
+.mp-kit-card__title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  min-width: 0;
+}
+
+.mp-kit-card__info {
+  flex-shrink: 0;
 }
 
 .mp-kit-card__body {

@@ -15,6 +15,8 @@ from app.services.email import send_password_reset_email
 auth_bp = Blueprint("auth", __name__)
 
 _EMAIL_RE = re.compile(r"^[^\s@]+@[^\s@]+\.[^\s@]+$")
+# Bump when the public privacy policy text materially changes.
+PRIVACY_POLICY_VERSION = "1"
 
 
 def _hash_password(password: str) -> str:
@@ -73,9 +75,44 @@ def _clear_reset_token(user: User) -> None:
     user.reset_token_expires = None
 
 
+def _truthy_accept(raw) -> bool:
+    if raw is True:
+        return True
+    if isinstance(raw, (int, float)) and raw == 1:
+        return True
+    if isinstance(raw, str) and raw.strip().lower() in ("1", "true", "yes", "on"):
+        return True
+    return False
+
+
+def _require_privacy_acceptance(data: dict) -> tuple[bool, tuple | None]:
+    """Returns (ok, error_response). error_response is (jsonify, status) when not ok."""
+    if not _truthy_accept(data.get("privacy_accepted")):
+        return False, (
+            jsonify(
+                {
+                    "error": "You must accept the Privacy Policy to create an account",
+                }
+            ),
+            400,
+        )
+    return True, None
+
+
+def _mark_privacy_accepted(user: User) -> None:
+    user.privacy_accepted_at = utc_now()
+    user.privacy_policy_version = PRIVACY_POLICY_VERSION
+
+
 @auth_bp.get("/config")
 def public_config():
-    return jsonify({"googleClientId": current_app.config.get("GOOGLE_CLIENT_ID") or ""})
+    return jsonify(
+        {
+            "googleClientId": current_app.config.get("GOOGLE_CLIENT_ID") or "",
+            "privacyPolicyVersion": PRIVACY_POLICY_VERSION,
+            "privacyPolicyUrl": "/privacy.html",
+        }
+    )
 
 
 @auth_bp.post("/register")
@@ -85,6 +122,10 @@ def register():
     password = data.get("password") or ""
     email_raw = (data.get("email") or "").strip()
     email = _normalize_email(email_raw) if email_raw else None
+
+    ok, err = _require_privacy_acceptance(data)
+    if not ok:
+        return err
 
     if len(username) < 3 or len(username) > 32:
         return jsonify({"error": "Username must be 3–32 characters"}), 400
@@ -98,6 +139,7 @@ def register():
         return jsonify({"error": "Email already in use"}), 409
 
     user = User(username=username, password_hash=_hash_password(password), email=email)
+    _mark_privacy_accepted(user)
     db.session.add(user)
     try:
         db.session.commit()
@@ -234,6 +276,9 @@ def google_login():
         user = User.query.filter_by(email=email).first()
 
     if not user:
+        ok, err = _require_privacy_acceptance(data)
+        if not ok:
+            return err
         base_name = name or (email.split("@")[0] if email else f"player_{google_sub[:8]}")
         user = User(
             username=_unique_username(base_name),
@@ -241,6 +286,7 @@ def google_login():
             google_id=google_sub,
             email=email or None,
         )
+        _mark_privacy_accepted(user)
         db.session.add(user)
     else:
         if not user.google_id:

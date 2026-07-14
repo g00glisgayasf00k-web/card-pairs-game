@@ -16,6 +16,8 @@ class User(db.Model):
     is_admin = db.Column(db.Boolean, default=False, nullable=False)
     reset_token_hash = db.Column(db.String(128), nullable=True)
     reset_token_expires = db.Column(db.DateTime, nullable=True)
+    privacy_accepted_at = db.Column(db.DateTime, nullable=True)
+    privacy_policy_version = db.Column(db.String(16), nullable=True)
     created_at = db.Column(
         db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )

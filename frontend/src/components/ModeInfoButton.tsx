@@ -14,7 +14,11 @@ export function ModeInfoButton({
     <button
       type="button"
       className={`mode-info-btn${className ? ` ${className}` : ""}`}
-      onClick={onClick}
+      onClick={(e) => {
+        e.stopPropagation();
+        e.preventDefault();
+        onClick();
+      }}
       aria-label={label}
       title={label}
     >

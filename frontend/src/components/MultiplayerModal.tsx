@@ -440,8 +440,9 @@ export function MultiplayerModal({
             <div className="mp-kit__body">
               {error && <p className="mp-kit__error">{error}</p>}
               <div className="mp-kit__options">
-                <button
-                  type="button"
+                <div
+                  role="button"
+                  tabIndex={0}
                   className={`mp-kit-card${quickUnlocked ? "" : " mp-kit-card--locked"}`}
                   style={{ backgroundImage: `url(${blue.base})` }}
                   onClick={() => {
@@ -454,6 +455,12 @@ export function MultiplayerModal({
                     setError(null);
                     void loadQuickResults();
                   }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      (e.currentTarget as HTMLElement).click();
+                    }
+                  }}
                 >
                   {resultsBadge > 0 && (
                     <span className="mp-kit-card__badge">
@@ -463,7 +470,14 @@ export function MultiplayerModal({
                   <span className="mp-kit-card__glow" style={{ backgroundImage: `url(${blue.glow})` }} aria-hidden />
                   <div className="mp-kit-card__body">
                     <img className="mp-kit-card__tag" src={blue.label} alt="" />
-                    <span className="mp-kit-card__title">Quick play</span>
+                    <span className="mp-kit-card__title-row">
+                      <span className="mp-kit-card__title">Quick play</span>
+                      <ModeInfoButton
+                        className="mp-kit-card__info"
+                        onClick={() => setShowRules(true)}
+                        label="Quick Play rules"
+                      />
+                    </span>
                     <span className="mp-kit-card__sub">
                       {quickUnlocked
                         ? "Match near your Rating"
@@ -478,7 +492,7 @@ export function MultiplayerModal({
                     <img className="mp-kit-card__icon" src={blue.icon} alt="" />
                   </span>
                   <img className="mp-kit-card__chev" src={a.ui.chevron} alt="" />
-                </button>
+                </div>
 
                 <button
                   type="button"
@@ -527,10 +541,7 @@ export function MultiplayerModal({
               </button>
             </div>
             <header className="play-mode-modal__header">
-              <div className="play-mode-modal__title-row">
-                <h2 id="multiplayer-title">Quick play</h2>
-                <ModeInfoButton onClick={() => setShowRules(true)} label="Quick Play rules" />
-              </div>
+              <h2 id="multiplayer-title">Quick play</h2>
               <p className="play-mode-modal__lead">Rated 1v1 · 20 hands · highest score wins</p>
             </header>
             <div className="play-mode-tabs" role="tablist">

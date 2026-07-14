@@ -29,6 +29,11 @@ def ensure_schema():
         ),
         ("reset_token_hash", "ALTER TABLE users ADD COLUMN reset_token_hash VARCHAR(128)"),
         ("reset_token_expires", "ALTER TABLE users ADD COLUMN reset_token_expires TIMESTAMP"),
+        ("privacy_accepted_at", "ALTER TABLE users ADD COLUMN privacy_accepted_at TIMESTAMP"),
+        (
+            "privacy_policy_version",
+            "ALTER TABLE users ADD COLUMN privacy_policy_version VARCHAR(16)",
+        ),
     ]
     if not is_sqlite:
         migrations[0] = (

@@ -17,10 +17,20 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
   return data as T;
 }
 
-export async function register(username: string, password: string, email?: string) {
+export async function register(
+  username: string,
+  password: string,
+  email?: string,
+  opts?: { privacyAccepted?: boolean }
+) {
   return request<{ token: string; username: string }>("/api/auth/register", {
     method: "POST",
-    body: JSON.stringify({ username, password, ...(email ? { email } : {}) }),
+    body: JSON.stringify({
+      username,
+      password,
+      ...(email ? { email } : {}),
+      privacy_accepted: Boolean(opts?.privacyAccepted),
+    }),
   });
 }
 
@@ -31,10 +41,16 @@ export async function login(username: string, password: string) {
   });
 }
 
-export async function loginWithGoogle(credential: string) {
+export async function loginWithGoogle(
+  credential: string,
+  opts?: { privacyAccepted?: boolean }
+) {
   return request<{ token: string; username: string; email?: string }>("/api/auth/google", {
     method: "POST",
-    body: JSON.stringify({ credential }),
+    body: JSON.stringify({
+      credential,
+      ...(opts?.privacyAccepted ? { privacy_accepted: true } : {}),
+    }),
   });
 }
 

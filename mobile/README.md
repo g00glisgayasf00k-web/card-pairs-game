@@ -95,10 +95,16 @@ Then **Run ▶** on a device or emulator.
 
 ## Release / Play Store
 
+Full step-by-step (keystore, signed **AAB**, Play Console upload): see **[PLAY_STORE.md](./PLAY_STORE.md)**.
+
+Short version:
+
 1. Create a signing keystore (keep it safe — never commit it).
-2. Configure signing in `frontend/android/app/build.gradle`.
-3. Build: `.\gradlew.bat assembleRelease` or **Build → Generate Signed Bundle/APK** in Android Studio.
-4. Upload the **AAB** to Google Play Console.
+2. `npm run cap:sync` then open Android Studio (`npm run cap:open`).
+3. **Build → Generate Signed App Bundle** → upload the **`.aab`** to Play Console (Internal testing first).
+4. Privacy policy URL for the listing: `https://royal-match-poker.onrender.com/privacy.html`
+
+Do **not** upload the debug APK from GitHub Actions or `mobile/output/`.
 
 ## Notes
 

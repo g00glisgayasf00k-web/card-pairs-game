@@ -243,11 +243,6 @@ export function TournamentModal({
             <div className="tn-kit__top">
               <div className="tn-kit__brand">
                 <img className="tn-kit__brand-label" src={green.label} alt="Tournament" />
-                <ModeInfoButton
-                  className="mode-info-btn--on-dark"
-                  onClick={() => setShowRules(true)}
-                  label="Tournament rules"
-                />
                 <span className="tn-kit__gems">
                   <img src={a.header.gems} alt="" />
                   {gems.toLocaleString()}
@@ -303,7 +298,14 @@ export function TournamentModal({
                         <img className="tn-cup__icon" src={green.icon} alt="" />
                       </span>
                       <div className="tn-cup__copy">
-                        <span className="tn-cup__name">{tier.name}</span>
+                        <span className="tn-cup__name-row">
+                          <span className="tn-cup__name">{tier.name}</span>
+                          <ModeInfoButton
+                            className="tn-cup__info"
+                            onClick={() => setShowRules(true)}
+                            label={`${tier.name} rules`}
+                          />
+                        </span>
                         <span className="tn-cup__unlock">
                           {unlocked
                             ? "Unlocked"

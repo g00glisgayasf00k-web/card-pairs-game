@@ -15,14 +15,36 @@ import {
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 const outDir = join(root, "docs");
-const outPath = join(outDir, "solo-campaign-levels.md");
+const outPath = join(outDir, "README-solo-levels.md");
 
 const lines: string[] = [];
-lines.push(`# Solo campaign levels (1–${MAX_LEVEL})`);
+lines.push("# Solo Campaign Levels");
 lines.push("");
 lines.push(
-  "Generated from `frontend/src/lib/levels.ts` — goals, point target, and hand budgets for 3★ / 2★ / 1★."
+  `Full list of all **${MAX_LEVEL}** Solo levels: goals, point targets, and hand budgets for 3★ / 2★ / 1★.`
 );
+lines.push("");
+lines.push("**Source of truth:** `frontend/src/lib/levels.ts`");
+lines.push("");
+lines.push("## How to read this table");
+lines.push("");
+lines.push(
+  "- **Target pts** — total score required to clear (plus all milestone goals)."
+);
+lines.push(
+  "- **3★ / 2★ / 1★ hands** — maximum hands used for each star tier. The **1★** column is the fail limit (`moveLimit`)."
+);
+lines.push(
+  `- **Goals** — milestone hands required. From level ${SPECIFIC_CHALLENGE_FROM_LEVEL}+ these often need specific ranks/suits.`
+);
+lines.push(
+  `- **Avg pts/hand** (pacing math): ~${campaignAvgPtsForLevel(1)} early → ~${campaignAvgPtsForLevel(500)} late worlds.`
+);
+lines.push(
+  "- Solo hands pay **base poker values only** (no Quick Play ×10 goal bonus)."
+);
+lines.push("");
+lines.push("## All levels");
 lines.push("");
 lines.push("| Level | Label | Target pts | 3★ hands | 2★ hands | 1★ hands | Goals |");
 lines.push("|------:|-------|----------:|---------:|---------:|---------:|-------|");
@@ -38,15 +60,7 @@ for (let level = 1; level <= MAX_LEVEL; level++) {
 }
 
 lines.push("");
-lines.push("## Notes");
-lines.push("");
-lines.push("- **Target pts**: total score required to clear (plus all milestone goals).");
-lines.push("- **Hands**: maximum hands used for each star tier; **1★** column is the fail limit (`moveLimit`).");
-lines.push(
-  `- **Avg pts/hand** (pacing): ~${campaignAvgPtsForLevel(1)} early → ~${campaignAvgPtsForLevel(500)} late worlds.`
-);
-lines.push(`- From level ${SPECIFIC_CHALLENGE_FROM_LEVEL}+, goals often require specific ranks/suits.`);
-lines.push("- Solo hands pay base poker values only (no Quick Play ×10 goal bonus).");
+lines.push("---");
 lines.push("");
 lines.push("Regenerate: `cd frontend && npx tsx scripts/generate-solo-levels.ts`");
 

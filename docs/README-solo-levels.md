@@ -1,6 +1,18 @@
-# Solo campaign levels (1–500)
+# Solo Campaign Levels
 
-Generated from `frontend/src/lib/levels.ts` — goals, point target, and hand budgets for 3★ / 2★ / 1★.
+Full list of all **500** Solo levels: goals, point targets, and hand budgets for 3★ / 2★ / 1★.
+
+**Source of truth:** `frontend/src/lib/levels.ts`
+
+## How to read this table
+
+- **Target pts** — total score required to clear (plus all milestone goals).
+- **3★ / 2★ / 1★ hands** — maximum hands used for each star tier. The **1★** column is the fail limit (`moveLimit`).
+- **Goals** — milestone hands required. From level 100+ these often need specific ranks/suits.
+- **Avg pts/hand** (pacing math): ~120 early → ~200 late worlds.
+- Solo hands pay **base poker values only** (no Quick Play ×10 goal bonus).
+
+## All levels
 
 | Level | Label | Target pts | 3★ hands | 2★ hands | 1★ hands | Goals |
 |------:|-------|----------:|---------:|---------:|---------:|-------|
@@ -505,12 +517,6 @@ Generated from `frontend/src/lib/levels.ts` — goals, point target, and hand bu
 | 499 | Elite 5 9 | 13400 | 28 | 38 | 48 | 2× ♥ 89TJQ; 4× Royal Flush |
 | 500 | Elite 5 10 | 13400 | 28 | 38 | 48 | 2× ♣ 56789; 4× Royal Flush |
 
-## Notes
-
-- **Target pts**: total score required to clear (plus all milestone goals).
-- **Hands**: maximum hands used for each star tier; **1★** column is the fail limit (`moveLimit`).
-- **Avg pts/hand** (pacing): ~120 early → ~200 late worlds.
-- From level 100+, goals often require specific ranks/suits.
-- Solo hands pay base poker values only (no Quick Play ×10 goal bonus).
+---
 
 Regenerate: `cd frontend && npx tsx scripts/generate-solo-levels.ts`

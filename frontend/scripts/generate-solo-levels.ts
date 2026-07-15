@@ -1,5 +1,5 @@
 /**
- * Regenerate docs/solo-campaign-levels.md from live level config.
+ * Regenerate docs/README-solo-levels.md from live level config.
  * Run: npx tsx scripts/generate-solo-levels.ts
  */
 import { mkdirSync, writeFileSync } from "fs";

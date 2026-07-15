@@ -221,6 +221,31 @@ class TournamentRun(db.Model):
     user = db.relationship("User", foreign_keys=[user_id])
 
 
+class TournamentPrize(db.Model):
+    """Gem award for a finished cup period (top 3). Gems granted at settle; seen_at tracks popup."""
+
+    __tablename__ = "tournament_prizes"
+    __table_args__ = (
+        db.UniqueConstraint(
+            "tier_id", "period_key", "place", name="uq_tournament_prize_tier_period_place"
+        ),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    tier_id = db.Column(db.String(32), nullable=False, index=True)
+    period_key = db.Column(db.String(32), nullable=False, index=True)
+    place = db.Column(db.Integer, nullable=False)
+    gems = db.Column(db.Integer, nullable=False)
+    score = db.Column(db.Integer, nullable=False, default=0)
+    granted_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    seen_at = db.Column(db.DateTime, nullable=True)
+
+    user = db.relationship("User", foreign_keys=[user_id])
+
+
 class SupportTicket(db.Model):
     """Player contact-support message for the admin inbox."""
 

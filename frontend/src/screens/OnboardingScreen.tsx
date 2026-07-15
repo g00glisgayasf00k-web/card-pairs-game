@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AuthPanel } from "../components/AuthPanel";
 import { ProfileModal } from "../components/ProfileModal";
 import { MultiplayerModal } from "../components/MultiplayerModal";
@@ -14,12 +14,17 @@ import {
   HOME_ASSETS,
   type HomeNavTab,
 } from "../components/home";
-import { loadProgress } from "../lib/progress";
+import { loadProgress, applyServerCredits } from "../lib/progress";
 import { MAX_LEVEL } from "../lib/levels";
 import type { ChallengeDto } from "../lib/api";
+import {
+  ackTournamentPendingPrizes,
+  fetchTournamentPendingPrizes,
+} from "../lib/api";
 import type { TournamentBoardPick } from "../lib/tournamentTiers";
 import { useNotificationSummary } from "../lib/useNotificationSummary";
 import { onHardwareBack } from "../lib/nativeBack";
+import { TournamentPrizePopup, type PrizePopupItem } from "../components/TournamentPrizePopup";
 
 interface Props {
   username: string | null;
@@ -50,6 +55,7 @@ export function OnboardingScreen({
   const [menu, setMenu] = useState<HomeMenu>(null);
   const [playSheet, setPlaySheet] = useState<PlaySheet>(null);
   const [walletTick, setWalletTick] = useState(0);
+  const [prizePopup, setPrizePopup] = useState<PrizePopupItem[] | null>(null);
   const { summary, refresh: refreshNotifs } = useNotificationSummary(loggedIn);
   const saved = loadProgress();
   void walletTick;
@@ -61,7 +67,56 @@ export function OnboardingScreen({
   }, [openChallengeSheet, onChallengeSheetOpened]);
 
   useEffect(() => {
+    if (!loggedIn) {
+      setPrizePopup(null);
+      return;
+    }
+    let cancelled = false;
+    void fetchTournamentPendingPrizes()
+      .then((r) => {
+        if (cancelled) return;
+        if (typeof r.credits === "number") {
+          applyServerCredits(r.credits, r.client_updated_at);
+          setWalletTick((t) => t + 1);
+        }
+        if (r.prizes.length === 0) return;
+        setPrizePopup(
+          r.prizes.map((p) => ({
+            id: p.id,
+            tierName: p.tier_name ?? p.tier_id,
+            place: p.place,
+            gems: p.gems,
+          }))
+        );
+      })
+      .catch(() => {
+        /* offline / guest — ignore */
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [loggedIn]);
+
+  const dismissPrizes = useCallback(async () => {
+    const ids = prizePopup?.map((p) => p.id);
+    setPrizePopup(null);
+    try {
+      const r = await ackTournamentPendingPrizes(ids);
+      if (typeof r.credits === "number") {
+        applyServerCredits(r.credits, r.client_updated_at);
+        setWalletTick((t) => t + 1);
+      }
+    } catch {
+      /* already granted; ack can retry next launch */
+    }
+  }, [prizePopup]);
+
+  useEffect(() => {
     return onHardwareBack(() => {
+      if (prizePopup) {
+        void dismissPrizes();
+        return true;
+      }
       if (playSheet) {
         setPlaySheet(null);
         return true;
@@ -72,7 +127,7 @@ export function OnboardingScreen({
       }
       return false;
     });
-  }, [playSheet, menu]);
+  }, [playSheet, menu, prizePopup, dismissPrizes]);
 
   const closeMenu = () => setMenu(null);
 
@@ -253,6 +308,10 @@ export function OnboardingScreen({
             onPlayTournament(board);
           }}
         />
+      )}
+
+      {prizePopup && prizePopup.length > 0 && (
+        <TournamentPrizePopup prizes={prizePopup} onDismiss={() => void dismissPrizes()} />
       )}
     </div>
   );

@@ -506,7 +506,14 @@ export function MultiplayerModal({
                   <span className="mp-kit-card__glow" style={{ backgroundImage: `url(${blue.glow})` }} aria-hidden />
                   <div className="mp-kit-card__body">
                     <img className="mp-kit-card__tag" src={a.home.friendsLabel} alt="" />
-                    <span className="mp-kit-card__title">Challenge a friend</span>
+                    <span className="mp-kit-card__title-row">
+                      <span className="mp-kit-card__title">Challenge a friend</span>
+                      <ModeInfoButton
+                        className="mp-kit-card__info"
+                        onClick={() => setShowRules(true)}
+                        label="Challenge a friend rules"
+                      />
+                    </span>
                     <span className="mp-kit-card__sub">Pick someone from your list</span>
                     <span className="mp-kit-card__meta">⚡ 1 each</span>
                   </div>
@@ -698,18 +705,19 @@ export function MultiplayerModal({
             aria-labelledby="qp-rules-title"
             onClick={(e) => e.stopPropagation()}
           >
-            <h2 id="qp-rules-title">Quick Play rules</h2>
+            <h2 id="qp-rules-title">Online play rules</h2>
             <p>
-              <strong>Play exactly 20 hands.</strong> Your score is the points from every hand you
-              clear.
+              Each player has <strong>20 turns</strong>, the player with the highest score wins.
+              Should there be a tie the player who completed the board in the shortest time will be
+              the winner.
             </p>
             <p>
-              You get <strong>3–5 goals</strong>. The hand that finishes a goal pays{" "}
+              Each game you have <strong>3–5 goals</strong>. The hand that finishes a goal pays{" "}
               <strong>×10</strong> (a pair is 500, not 50). Normal hands keep normal points.
             </p>
             <p>
-              <strong>Highest score wins.</strong> Tied scores? Faster time wins. Quit = forfeit.
-              After one player finishes, the other has <strong>10 minutes</strong> or is DQed.
+              <strong>Challenge a friend</strong> works the same way. Quit = forfeit. After one
+              player finishes, the other has <strong>10 minutes</strong> or is DQed.
             </p>
             <div className="tn-confirm__actions">
               <button type="button" className="mp-kit__cta" onClick={() => setShowRules(false)}>

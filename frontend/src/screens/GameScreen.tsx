@@ -220,7 +220,13 @@ export function GameScreen({
   const challengeEnergyFree = isChallenge || isTournament;
   const isSpecialRun = isChallenge || isTournament;
   const isQuickRace = Boolean(challengeMatch && challengeMatch.kind === "quick");
-  const isScoreRace = isQuickRace || isTournament;
+  const isChallengeRace = Boolean(
+    challengeMatch &&
+      (challengeMatch.kind === "quick" ||
+        challengeMatch.mission?.mode === "score_race" ||
+        typeof challengeMatch.mission?.hand_limit === "number")
+  );
+  const isScoreRace = isChallengeRace || isTournament;
   const isReplaySession = useRef(
     !isSpecialRun &&
       startLevel !== undefined &&
@@ -298,14 +304,18 @@ export function GameScreen({
   const cfg = useMemo(() => {
     if (challengeMatch?.mission) {
       const base = buildChallengeMissionConfig(challengeMatch.mission, challengeMatch.level);
-      if (challengeMatch.kind === "quick") {
+      const race =
+        challengeMatch.kind === "quick" ||
+        challengeMatch.mission.mode === "score_race" ||
+        typeof challengeMatch.mission.hand_limit === "number";
+      if (race) {
         const handLimit =
           challengeMatch.mission.hand_limit ??
           challengeMatch.mission.move_limit ??
           SCORE_RACE_HAND_LIMIT;
         return {
           ...base,
-          label: "Quick Play",
+          label: challengeMatch.kind === "quick" ? "Quick Play" : "Friend duel",
           targetPoints: 1,
           moveLimit: handLimit,
           starMoveLimits: { one: handLimit, two: handLimit, three: handLimit },

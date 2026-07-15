@@ -1,7 +1,7 @@
 import { toGlobalLevel } from "./levelMap";
 import type { LevelConfig } from "./levels";
 import { loadProgress } from "./progress";
-import { generateScoreRaceMission, scoreRaceLevelConfig, tournamentHandLimit } from "./scoreRaceMission";
+import { generateScoreRaceMission, scoreRaceLevelConfig, tournamentGoalRange, tournamentHandLimit } from "./scoreRaceMission";
 
 /** UI world ids are 0-based (0-10 = first world’s final stage). */
 export type TournamentReset = "daily" | "weekly" | "monthly";
@@ -273,13 +273,13 @@ export function tierBoardGlobalLevels(tier: TournamentTier): number[] {
   return levels;
 }
 
-/** Pick a score-race board for the cup (hands vary by cup, 3–5 goals, ×10 goal payout). */
+/** Pick a score-race board for the cup (hands/goals vary by cup, ×10 goal payout). */
 export function pickTournamentBoard(tier: TournamentTier): TournamentBoardPick {
   const levels = tierBoardGlobalLevels(tier);
   const level = levels[Math.floor(Math.random() * levels.length)] ?? levels[0]!;
   const boardSeed = (Math.floor(Math.random() * 0xffffffff) >>> 0) || 1;
   const handLimit = tournamentHandLimit(tier.id);
-  const mission = generateScoreRaceMission(boardSeed, handLimit);
+  const mission = generateScoreRaceMission(boardSeed, handLimit, tournamentGoalRange(tier.id));
   const cfg = scoreRaceLevelConfig(mission, {
     tier: tier.name,
     label: "Tournament",

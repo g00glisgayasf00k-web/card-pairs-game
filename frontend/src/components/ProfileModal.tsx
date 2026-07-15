@@ -70,8 +70,6 @@ export function ProfileModal({ username, onClose, onAccountChange, onSignOut }: 
           onSignOut={onSignOut}
         />
 
-        <ContactSupportSection />
-
         <ul className="profile-stats">
           <li>
             <span className="profile-stats__icon">⚡</span>
@@ -121,6 +119,8 @@ export function ProfileModal({ username, onClose, onAccountChange, onSignOut }: 
             </span>
           </li>
         </ul>
+
+        <ContactSupportSection />
 
         <p className="profile-modal__version">Version {__APP_VERSION__}</p>
       </div>

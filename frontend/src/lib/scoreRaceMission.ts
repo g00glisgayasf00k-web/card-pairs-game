@@ -16,13 +16,24 @@ export const SCORE_RACE_GOAL_BONUS_PCT = 5;
 
 /** Tournament cup hand budgets (Quick Play stays at SCORE_RACE_HAND_LIMIT). */
 export const TOURNAMENT_HAND_LIMITS: Record<string, number> = {
-  bronze: 20,
-  silver: 30,
-  gold: 50,
+  bronze: 10,
+  silver: 20,
+  gold: 30,
+};
+
+/** Goal count ranges per cup. */
+export const TOURNAMENT_GOAL_RANGES: Record<string, [number, number]> = {
+  bronze: [2, 3],
+  silver: [3, 4],
+  gold: [5, 6],
 };
 
 export function tournamentHandLimit(tierId: string): number {
   return TOURNAMENT_HAND_LIMITS[tierId] ?? SCORE_RACE_HAND_LIMIT;
+}
+
+export function tournamentGoalRange(tierId: string): [number, number] {
+  return TOURNAMENT_GOAL_RANGES[tierId] ?? [3, 5];
 }
 
 const HAND_POOL: [HandLabel, number][] = [
@@ -114,11 +125,14 @@ function specify(hand: HandLabel, minCount: number, rng: SeedRng): HandChallenge
 /** Build a score-race mission payload from a board seed. */
 export function generateScoreRaceMission(
   seed: number,
-  handLimit: number = SCORE_RACE_HAND_LIMIT
+  handLimit: number = SCORE_RACE_HAND_LIMIT,
+  goalRange: [number, number] = [3, 5]
 ): ChallengeMissionPayload {
   const rng = new SeedRng(seed >>> 0 || 1);
   const limit = Math.max(1, Math.floor(handLimit));
-  const goalCount = rng.randint(3, 5);
+  const gLo = Math.max(1, Math.floor(goalRange[0]));
+  const gHi = Math.max(gLo, Math.floor(goalRange[1]));
+  const goalCount = rng.randint(gLo, gHi);
   const goals: HandChallenge[] = [];
   const used = new Set<string>();
   for (let i = 0; i < goalCount; i++) {

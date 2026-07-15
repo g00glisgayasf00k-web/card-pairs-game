@@ -31,7 +31,7 @@ import {
   type TournamentBoardPick,
   type TournamentTier,
 } from "../lib/tournamentTiers";
-import { tournamentHandLimit } from "../lib/scoreRaceMission";
+import { tournamentGoalRange, tournamentHandLimit } from "../lib/scoreRaceMission";
 
 function formatDurationMs(ms: number | null | undefined): string {
   if (ms == null || !Number.isFinite(ms) || ms < 0) return "—";
@@ -327,8 +327,12 @@ export function TournamentModal({
                             : `Locked · clear Solo ${unlockLabel(tier)}`}
                         </span>
                         <span className="tn-cup__reset">
-                          {tournamentResetLabel(tier.reset)} · {tournamentHandLimit(tier.id)} hands ·
-                          resets in {resetCountdown(tier)}
+                          {tournamentResetLabel(tier.reset)} · {tournamentHandLimit(tier.id)} hands ·{" "}
+                          {(() => {
+                            const [lo, hi] = tournamentGoalRange(tier.id);
+                            return lo === hi ? `${lo} goals` : `${lo}–${hi} goals`;
+                          })()}{" "}
+                          · resets in {resetCountdown(tier)}
                         </span>
                         {unlocked && (
                           <span className="tn-cup__free">
@@ -601,17 +605,20 @@ export function TournamentModal({
           >
             <h2 id="tn-rules-title">Tournament rules</h2>
             <p>
-              <strong>Score race.</strong> Play a fixed number of hands — Bronze{" "}
-              <strong>20</strong>, Silver <strong>30</strong>, Gold <strong>50</strong>. Highest score
-              wins; time breaks ties.
+              Same scoring as Quick Play: highest score wins; tied scores → fastest finish. The hand
+              that completes a goal pays <strong>×10</strong>; normal hands stay at base rates.
             </p>
             <p>
-              Each board has <strong>3–5 goals</strong>. The hand that completes a goal pays{" "}
-              <strong>×10</strong> (pair 50 → 500). Normal hands stay at base rates.
+              <strong>Bronze</strong> — 10 hands, 2–3 goals.
+              <br />
+              <strong>Silver</strong> — 20 hands, 3–4 goals.
+              <br />
+              <strong>Gold</strong> — 30 hands, 5–6 goals.
             </p>
             <p>
               Enter with gems or a free video (limits reset with each cup). Cups reset at{" "}
-              <strong>UK midnight</strong> — top 3 split the prize pool shown on each card.
+              <strong>UK midnight</strong> — top 3 earn the prize gems when the cup ends (you'll get
+              a popup next time you open the game).
             </p>
             <div className="tn-confirm__actions">
               <button type="button" className="tn-kit__cta" onClick={() => setShowRules(false)}>

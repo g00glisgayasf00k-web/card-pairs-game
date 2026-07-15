@@ -487,23 +487,30 @@ html.native-shell .home-screen-shell {
   box-sizing: border-box;
   display: inline-grid;
   place-items: center;
-  width: 1.7rem;
-  height: 1.7rem;
+  width: 2.15rem;
+  height: 2.15rem;
   padding: 0;
   border-radius: 999px;
-  border: 1.5px solid rgba(255, 215, 0, 0.55);
-  background: rgba(0, 0, 0, 0.35);
-  color: #ffe9a0;
+  border: 2px solid #fff3c4;
+  background: linear-gradient(180deg, #ffe9a0 0%, #e8c547 55%, #c9a227 100%);
+  color: #1a1205;
   font-family: "Cinzel", "Crimson Pro", Georgia, serif;
-  font-size: 0.82rem;
+  font-size: 1.05rem;
   font-weight: 800;
-  font-style: italic;
+  font-style: normal;
   line-height: 1;
   letter-spacing: 0;
   cursor: pointer;
   box-shadow:
-    0 0 12px rgba(255, 215, 0, 0.18),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+    0 0 0 1px rgba(0, 0, 0, 0.35),
+    0 4px 14px rgba(0, 0, 0, 0.45),
+    0 0 18px rgba(255, 215, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
+}
+
+.mode-info-btn__mark {
+  display: block;
+  transform: translateY(0.5px);
 }
 
 .mode-info-btn:active {
@@ -511,12 +518,54 @@ html.native-shell .home-screen-shell {
 }
 
 .mode-info-btn--on-dark {
-  border-color: rgba(255, 233, 160, 0.65);
-  background: rgba(6, 26, 23, 0.55);
+  border-color: #fff8dc;
+  background: linear-gradient(180deg, #ffe9a0 0%, #e8c547 55%, #c9a227 100%);
+  color: #1a1205;
+}
+
+.tn-cup__info.mode-info-btn,
+.mp-kit-card__info.mode-info-btn {
+  width: 2.15rem;
+  height: 2.15rem;
+  font-size: 1.05rem;
 }
 
 .tn-confirm--rules {
   max-width: 22rem;
+}
+
+.tn-confirm--prize .tn-prize-list {
+  list-style: none;
+  margin: 0.75rem 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+}
+
+.tn-confirm--prize .tn-prize-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.55rem 0.7rem;
+  border-radius: 0.65rem;
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid rgba(255, 233, 160, 0.22);
+  font-size: 0.9rem;
+}
+
+.tn-confirm--prize .tn-prize-list strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  color: #ffe9a0;
+}
+
+.tn-confirm--prize .tn-prize-total {
+  margin: 0 0 0.5rem;
+  text-align: center;
+  font-size: 0.92rem;
 }
 
 .tn-confirm--rules p {

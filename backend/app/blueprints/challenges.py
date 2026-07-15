@@ -13,7 +13,7 @@ from app.models import Challenge, Friendship, MatchTicket, PlayerProgress, User,
 from app.progress_grants import adjust_gems, challenge_fee_gems, get_player_elo, set_player_elo
 from app.elo import apply_elo_result
 from app.services.push import send_to_user
-from app.challenge_mission import generate_challenge_mission
+from app.challenge_mission import generate_score_race_mission
 
 challenges_bp = Blueprint("challenges", __name__)
 
@@ -314,9 +314,27 @@ def _compare_quick(
     return None
 
 
-def _decide_winner(ch: Challenge) -> int | None:
+def _mission_payload(ch: Challenge) -> dict:
+    raw = getattr(ch, "mission_json", None)
+    if not raw:
+        return {}
+    try:
+        data = json.loads(raw)
+        return data if isinstance(data, dict) else {}
+    except (TypeError, json.JSONDecodeError):
+        return {}
+
+
+def _is_score_race_challenge(ch: Challenge) -> bool:
     kind = getattr(ch, "kind", None) or "friend"
     if kind == "quick":
+        return True
+    mission = _mission_payload(ch)
+    return mission.get("mode") == "score_race" or isinstance(mission.get("hand_limit"), int)
+
+
+def _decide_winner(ch: Challenge) -> int | None:
+    if _is_score_race_challenge(ch):
         return _compare_quick(
             ch.challenger_score or 0,
             getattr(ch, "challenger_duration_ms", None),
@@ -530,7 +548,7 @@ def create_challenge():
     level = max(1, min(MAX_LEVEL, level))
 
     seed = secrets.randbits(31)
-    mission = generate_challenge_mission(seed)
+    mission = generate_score_race_mission(seed)
     ch = Challenge(
         challenger_id=me,
         opponent_id=friend_id,

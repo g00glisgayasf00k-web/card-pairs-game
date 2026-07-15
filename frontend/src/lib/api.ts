@@ -659,6 +659,37 @@ export async function submitTournamentRun(
   });
 }
 
+export interface TournamentPendingPrize {
+  id: number;
+  tier_id: string;
+  tier_name?: string;
+  period_key: string;
+  place: number;
+  gems: number;
+  score: number;
+  granted_at: string | null;
+}
+
+export async function fetchTournamentPendingPrizes() {
+  return request<{
+    prizes: TournamentPendingPrize[];
+    credits: number;
+    client_updated_at: number;
+  }>("/api/tournaments/pending-prizes");
+}
+
+export async function ackTournamentPendingPrizes(ids?: number[]) {
+  return request<{
+    ok: boolean;
+    acknowledged: number;
+    credits: number;
+    client_updated_at: number;
+  }>("/api/tournaments/pending-prizes/ack", {
+    method: "POST",
+    body: JSON.stringify(ids ? { ids } : {}),
+  });
+}
+
 export interface SupportTicket {
   id: number;
   subject: string;

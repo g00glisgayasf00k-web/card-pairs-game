@@ -4,7 +4,7 @@ interface Props {
   className?: string;
 }
 
-/** Compact (i) control — opens mode rules without crowding the screen. */
+/** Clear rules control — gold disc with a bold mark so it reads against card art. */
 export function ModeInfoButton({
   onClick,
   label = "How this mode works",
@@ -22,7 +22,9 @@ export function ModeInfoButton({
       aria-label={label}
       title={label}
     >
-      <span aria-hidden>i</span>
+      <span className="mode-info-btn__mark" aria-hidden>
+        ?
+      </span>
     </button>
   );
 }

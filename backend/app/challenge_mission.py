@@ -152,18 +152,28 @@ SCORE_RACE_GOAL_PAYOUT_MULT = 10
 # Legacy field kept on mission JSON for older clients.
 SCORE_RACE_GOAL_BONUS_PCT = 5
 
+# Cup hand limits + goal ranges (Quick Play uses SCORE_RACE_HAND_LIMIT + 3–5).
+TOURNAMENT_HAND_LIMITS = {"bronze": 10, "silver": 20, "gold": 30}
+TOURNAMENT_GOAL_RANGES = {"bronze": (2, 3), "silver": (3, 4), "gold": (5, 6)}
+
 
 def generate_score_race_mission(
-    seed: int | None = None, *, hand_limit: int | None = None
+    seed: int | None = None,
+    *,
+    hand_limit: int | None = None,
+    goal_min: int | None = None,
+    goal_max: int | None = None,
 ) -> dict[str, Any]:
     """
-    Quick Play / Tournament race: fixed hand count, 3–5 goals.
+    Quick Play / friend / Tournament race: fixed hand count, random goals.
     The hand that completes a goal pays ×10 (client applies); normal hands pay base.
     """
     rng = random.Random(seed) if seed is not None else random.SystemRandom()
     limit = max(1, int(hand_limit or SCORE_RACE_HAND_LIMIT))
+    g_lo = 3 if goal_min is None else max(1, int(goal_min))
+    g_hi = 5 if goal_max is None else max(g_lo, int(goal_max))
 
-    goal_count = rng.randint(3, 5)
+    goal_count = rng.randint(g_lo, g_hi)
     goals: list[dict[str, Any]] = []
     used: set[str] = set()
     for _ in range(goal_count):

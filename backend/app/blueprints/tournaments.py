@@ -7,7 +7,15 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 from sqlalchemy import distinct
 
 from app.models import TournamentRun, User, db
+from app.progress_grants import load_progress_payload
+from app.models import PlayerProgress
 from app.tournament_periods import period_key, period_meta, period_sort_key
+from app.tournament_prizes import (
+    acknowledge_prizes,
+    pending_prizes_for_user,
+    settle_closed_periods,
+    tier_display_name,
+)
 
 tournaments_bp = Blueprint("tournaments", __name__)
 
@@ -66,6 +74,44 @@ def _standings_for_period(
     return rows, my_place
 
 
+def _credits_for(user_id: int) -> dict:
+    row = PlayerProgress.query.filter_by(user_id=user_id).first()
+    payload = load_progress_payload(row)
+    return {
+        "credits": int(payload.get("credits") or 0),
+        "client_updated_at": int(payload.get("updatedAt") or 0),
+    }
+
+
+@tournaments_bp.get("/pending-prizes")
+@jwt_required()
+def pending_prizes():
+    """Settle closed cups if needed; return unseen prize popups for this player."""
+    me = int(get_jwt_identity())
+    prizes = pending_prizes_for_user(me)
+    for p in prizes:
+        p["tier_name"] = tier_display_name(p["tier_id"])
+    return jsonify({"prizes": prizes, **_credits_for(me)})
+
+
+@tournaments_bp.post("/pending-prizes/ack")
+@jwt_required()
+def ack_pending_prizes():
+    me = int(get_jwt_identity())
+    body = request.get_json(silent=True) or {}
+    raw_ids = body.get("ids")
+    ids = None
+    if isinstance(raw_ids, list):
+        ids = []
+        for x in raw_ids:
+            try:
+                ids.append(int(x))
+            except (TypeError, ValueError):
+                pass
+    updated = acknowledge_prizes(me, ids)
+    return jsonify({"ok": True, "acknowledged": updated, **_credits_for(me)})
+
+
 @tournaments_bp.get("/<tier_id>/standings")
 @jwt_required()
 def standings(tier_id: str):
@@ -73,6 +119,7 @@ def standings(tier_id: str):
     if tier not in VALID_TIERS:
         return jsonify({"error": "Unknown cup"}), 404
 
+    settle_closed_periods()
     meta = period_meta(tier)
     pk = meta["period_key"]
     limit = min(50, max(1, int(request.args.get("limit", 20))))
@@ -89,6 +136,7 @@ def history(tier_id: str):
     if tier not in VALID_TIERS:
         return jsonify({"error": "Unknown cup"}), 404
 
+    settle_closed_periods()
     meta = period_meta(tier)
     current_pk = meta["period_key"]
     periods_limit = min(20, max(1, int(request.args.get("periods", 8))))
@@ -122,6 +170,7 @@ def submit(tier_id: str):
     if tier not in VALID_TIERS:
         return jsonify({"error": "Unknown cup"}), 404
 
+    settle_closed_periods()
     body = request.get_json(silent=True) or {}
     try:
         hands = int(body.get("hands"))

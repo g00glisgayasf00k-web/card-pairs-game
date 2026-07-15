@@ -9,10 +9,17 @@ declare global {
 
 let loadPromise: Promise<void> | null = null;
 
-/** Load the AdSense script once — only call from the free-gem video flow. */
+function hasAdSenseScript(): boolean {
+  if (document.getElementById(SCRIPT_ID)) return true;
+  return Boolean(
+    document.querySelector('script[src*="pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"]')
+  );
+}
+
+/** Load the AdSense script once (no-op if already present in index.html). */
 export function ensureAdSenseLoaded(): Promise<void> {
   if (typeof document === "undefined") return Promise.resolve();
-  if (document.getElementById(SCRIPT_ID)) return Promise.resolve();
+  if (hasAdSenseScript()) return Promise.resolve();
 
   if (!loadPromise) {
     loadPromise = new Promise<void>((resolve, reject) => {

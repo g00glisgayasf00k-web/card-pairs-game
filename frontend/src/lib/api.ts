@@ -399,6 +399,8 @@ export interface ChallengeMissionDto {
   mode?: string;
   hand_limit?: number;
   goal_payout_mult?: number;
+  goal_payout_mult_min?: number;
+  goal_payout_mult_max?: number;
   /** @deprecated Prefer goal_payout_mult. */
   goal_bonus_pct?: number;
 }

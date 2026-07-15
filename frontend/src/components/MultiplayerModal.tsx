@@ -263,6 +263,10 @@ export function MultiplayerModal({
   const [elo, setElo] = useState(() => loadProgress()?.elo ?? 1000);
   const [resultsBadge, setResultsBadge] = useState(0);
   const pollingRef = useRef(false);
+  const quickTabRef = useRef(quickTab);
+  quickTabRef.current = quickTab;
+  const viewRef = useRef(view);
+  viewRef.current = view;
   const a = HOME_ASSETS;
   const blue = a.cards.blue;
   const friendBadge = friendRequestCount + challengeCount;
@@ -282,13 +286,21 @@ export function MultiplayerModal({
         })
         .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
       setQuickResults(list);
-      setResultsBadge(countUnseenCompletedResults(quick, "quick"));
+      const readingResults = viewRef.current === "quick" && quickTabRef.current === "results";
+      if (readingResults && list.length > 0) {
+        const before = countUnseenCompletedResults(list, "quick");
+        markChallengeResultsSeen(list.map((c) => c.id));
+        setResultsBadge(0);
+        if (before > 0) onNotificationsChange?.();
+      } else {
+        setResultsBadge(countUnseenCompletedResults(quick, "quick"));
+      }
     } catch {
       /* ignore */
     } finally {
       setResultsLoading(false);
     }
-  }, []);
+  }, [onNotificationsChange]);
 
   useEffect(() => {
     void loadQuickResults();
@@ -712,8 +724,9 @@ export function MultiplayerModal({
               the winner.
             </p>
             <p>
-              Each game you have <strong>3–5 goals</strong>. The hand that finishes a goal pays{" "}
-              <strong>×10</strong> (a pair is 500, not 50). Normal hands keep normal points.
+              Each game you have <strong>3–5 goals</strong>. The hand that finishes a goal pays a
+              random <strong>×2 to ×10</strong> bonus (you'll see the multiplier pop up). Normal hands
+              keep normal points.
             </p>
             <p>
               <strong>Challenge a friend</strong> works the same way. Quit = forfeit. After one

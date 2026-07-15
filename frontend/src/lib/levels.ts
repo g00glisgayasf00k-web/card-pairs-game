@@ -60,8 +60,8 @@ export interface LevelConfig {
 export type HandCounts = Partial<Record<string, number>>;
 
 export const MAX_LEVEL = 500;
-/** From this level, milestone hands require exact ranks / suits. */
-export const SPECIFIC_CHALLENGE_FROM_LEVEL = 100;
+/** From this level, milestone hands require exact ranks / suits for variety. */
+export const SPECIFIC_CHALLENGE_FROM_LEVEL = 40;
 
 /**
  * Realistic Solo average base points per hand (no multipliers).
@@ -73,23 +73,6 @@ export const AVG_PTS_PER_MOVE = 135;
 const WORLD_BASE_POINTS = 900;
 const STAGE_TARGET_GROWTH = 1.08;
 const TARGET_POINT_BOOST = 1.2;
-
-/**
- * Each world introduces one new hand type for milestone goals.
- * World 1 = Pair + Two Pair only; world 2 adds Three of a Kind; and so on.
- */
-const WORLD_INTRO_HAND: HandLabel[] = [
-  "two_pair",
-  "three_of_a_kind",
-  "straight",
-  "flush",
-  "full_house",
-  "four_of_a_kind",
-  "straight_flush",
-  "royal_flush",
-  "royal_flush",
-  "royal_flush",
-];
 
 /** Soft caps so late worlds stay finishable in one sitting. */
 const STAR_HAND_CAPS = { three: 28, two: 38, one: 48 } as const;
@@ -191,50 +174,167 @@ function specifyChallenges(challenges: HandChallenge[], level: number): HandChal
   return challenges.map((c) => specifyChallenge(c, rng));
 }
 
-/** Light milestone hands — points target is the main goal; scales up in later worlds. */
-function challengesForLevel(level: number): HandChallenge[] {
+/** Hands unlocked by world — grows the ladder; RF never “takes over” every level. */
+function unlockedHands(world: number): HandLabel[] {
+  const count = Math.min(HAND_LADDER.length, Math.max(2, 1 + world));
+  return HAND_LADDER.slice(0, count);
+}
+
+const HAND_PICK_WEIGHT: Record<HandLabel, number> = {
+  pair: 30,
+  two_pair: 24,
+  three_of_a_kind: 18,
+  straight: 14,
+  flush: 12,
+  full_house: 10,
+  four_of_a_kind: 7,
+  straight_flush: 4,
+  royal_flush: 2,
+};
+
+function weightForHand(hand: HandLabel, world: number): number {
+  let w = HAND_PICK_WEIGHT[hand] ?? 8;
+  // Keep royals / SF rare until mid-late campaign.
+  if (hand === "royal_flush") w = world < 8 ? 0 : world < 15 ? 1 : 2;
+  if (hand === "straight_flush") w = world < 6 ? Math.max(1, w - 2) : w;
+  if (hand === "pair" && world >= 12) w = Math.max(8, Math.floor(w * 0.55));
+  return Math.max(0, w);
+}
+
+function pickWeightedHand(
+  pool: HandLabel[],
+  rng: () => number,
+  exclude: Set<HandLabel>,
+  world: number
+): HandLabel | null {
+  const choices = pool.filter((h) => !exclude.has(h));
+  const weighted = choices
+    .map((hand) => ({ hand, w: weightForHand(hand, world) }))
+    .filter((x) => x.w > 0);
+  if (!weighted.length) return null;
+  const total = weighted.reduce((s, x) => s + x.w, 0);
+  let roll = rng() * total;
+  for (const item of weighted) {
+    roll -= item.w;
+    if (roll <= 0) return item.hand;
+  }
+  return weighted[weighted.length - 1]!.hand;
+}
+
+function goalCountForLevel(world: number, step: number, rng: () => number): number {
+  if (world <= 1) return step <= 7 ? 1 : 2;
+  if (world <= 3) {
+    if (step <= 3) return 1;
+    if (step <= 7) return 2;
+    return 2;
+  }
+  if (world <= 8) {
+    if (step <= 2) return 2;
+    if (step <= 6) return rng() < 0.55 ? 2 : 3;
+    return 3;
+  }
+  if (world <= 20) {
+    if (step <= 2) return 2;
+    if (step <= 5) return 3;
+    return rng() < 0.45 ? 3 : 4;
+  }
+  // Late campaign — several mixed goals, still capped.
+  if (step <= 2) return 3;
+  return Math.min(4, rng() < 0.5 ? 3 : 4);
+}
+
+function minCountForGoal(hand: HandLabel, world: number, rng: () => number): number {
+  const bump = world > 10 ? Math.floor((world - 10) / 5) : 0;
+  if (hand === "pair") return 2 + Math.min(2, bump) + (rng() < 0.35 ? 1 : 0);
+  if (hand === "two_pair") return 1 + (world >= 6 && rng() < 0.4 ? 1 : 0) + Math.min(1, bump);
+  if (hand === "three_of_a_kind") return 1 + (world >= 10 && rng() < 0.35 ? 1 : 0);
+  // Rare hands stay at 1 (occasionally 2 very late).
+  if (
+    (hand === "straight" || hand === "flush" || hand === "full_house") &&
+    world >= 18 &&
+    rng() < 0.25
+  ) {
+    return 2;
+  }
+  return 1;
+}
+
+/** Hands used on each level — filled as configs build so consecutive levels stay varied. */
+const LEVEL_GOAL_HANDS: HandLabel[][] = [];
+
+/**
+ * Milestone goals for a Solo level — mixed hands, escalates goal count with world,
+ * avoids repeating the previous level’s hand set.
+ */
+function baseChallengesForLevel(level: number): HandChallenge[] {
   const world = worldForLevel(level);
   const step = stepInTier(level);
-  const introHand = WORLD_INTRO_HAND[Math.min(world - 1, WORLD_INTRO_HAND.length - 1)] ?? "royal_flush";
-  const bump = world > 10 ? Math.floor((world - 10) / 4) : 0;
+  const rng = seededRng(level, 77);
+  const pool = unlockedHands(world);
+  const exclude = new Set<HandLabel>();
 
-  let base: HandChallenge[];
-
-  if (step === 1) {
-    base = [{ hand: "pair", minCount: 2 + Math.min(bump, 2) }];
-  } else if (world === 1) {
-    if (step <= 5) {
-      base = [{ hand: "pair", minCount: (step <= 3 ? 2 : 3) + Math.min(bump, 1) }];
-    } else if (step <= 7) {
-      base = [{ hand: "two_pair", minCount: 1 + Math.min(bump, 1) }];
-    } else {
-      base = sortChallengesByHand([
-        { hand: "pair", minCount: 2 + Math.min(bump, 1) },
-        { hand: "two_pair", minCount: 1 + Math.min(bump, 1) },
-      ]);
-    }
-  } else {
-    const prevHand =
-      HAND_LADDER.indexOf(introHand) > 0
-        ? HAND_LADDER[HAND_LADDER.indexOf(introHand) - 1]!
-        : "pair";
-
-    if (step <= 5) {
-      base = [{ hand: introHand, minCount: 1 + Math.min(bump, 2) }];
-    } else if (step <= 8) {
-      base = sortChallengesByHand([
-        { hand: "pair", minCount: 2 + Math.min(bump, 1) },
-        { hand: introHand, minCount: 1 + Math.min(bump, 1) },
-      ]);
-    } else {
-      base = sortChallengesByHand([
-        { hand: prevHand, minCount: 1 + Math.min(bump, 1) },
-        { hand: introHand, minCount: 2 + Math.min(bump, 2) },
-      ]);
+  if (level > 1) {
+    for (const h of LEVEL_GOAL_HANDS[level - 2] ?? []) {
+      exclude.add(h);
     }
   }
 
-  return specifyChallenges(base, level);
+  // Soft opener every world start — pairs, but don’t clone consecutive pair-only banks.
+  if (step === 1 && world <= 6) {
+    const soft: HandChallenge[] = [{ hand: "pair", minCount: minCountForGoal("pair", world, rng) }];
+    if (world >= 3 && pool.includes("two_pair") && rng() < 0.55) {
+      soft.push({ hand: "two_pair", minCount: minCountForGoal("two_pair", world, rng) });
+    }
+    const sorted = sortChallengesByHand(soft);
+    LEVEL_GOAL_HANDS[level - 1] = sorted.map((c) => c.hand);
+    return sorted;
+  }
+
+  let need = goalCountForLevel(world, step, rng);
+  need = Math.min(need, pool.length);
+
+  const picked: HandLabel[] = [];
+  const used = new Set<HandLabel>();
+
+  // Prefer excluding last level’s hands; if the pool is too small, clear excludes.
+  const tryPick = (hardExclude: Set<HandLabel>) => {
+    picked.length = 0;
+    used.clear();
+    for (let i = 0; i < need; i++) {
+      const combined = new Set<HandLabel>([...used, ...hardExclude]);
+      // Never stack multiple royals on one level.
+      if (picked.includes("royal_flush")) combined.add("royal_flush");
+      let hand = pickWeightedHand(pool, rng, combined, world);
+      if (!hand) {
+        hand = pickWeightedHand(pool, rng, used, world);
+      }
+      if (!hand) break;
+      picked.push(hand);
+      used.add(hand);
+    }
+  };
+
+  tryPick(exclude);
+  if (picked.length < Math.min(need, 2) && exclude.size > 0) {
+    tryPick(new Set());
+  }
+
+  // Guarantee at least one goal.
+  if (picked.length === 0) {
+    picked.push(pool.includes("pair") ? "pair" : pool[0]!);
+  }
+
+  const goals: HandChallenge[] = picked.map((hand) => ({
+    hand,
+    minCount: minCountForGoal(hand, world, rng),
+  }));
+
+  LEVEL_GOAL_HANDS[level - 1] = [...picked];
+  return sortChallengesByHand(goals);
+}
+
+function challengesForLevel(level: number): HandChallenge[] {
+  return specifyChallenges(baseChallengesForLevel(level), level);
 }
 
 function worldForLevel(level: number): number {
@@ -614,6 +714,8 @@ export interface ChallengeMissionPayload {
   hand_limit?: number;
   /** Race: multiply points on the hand that completes a goal (default 10). */
   goal_payout_mult?: number;
+  goal_payout_mult_min?: number;
+  goal_payout_mult_max?: number;
   /** @deprecated Prefer goal_payout_mult. */
   goal_bonus_pct?: number;
 }

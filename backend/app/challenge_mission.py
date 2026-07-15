@@ -148,7 +148,10 @@ def generate_challenge_mission(seed: int | None = None) -> dict[str, Any]:
 
 
 SCORE_RACE_HAND_LIMIT = 20
-SCORE_RACE_GOAL_PAYOUT_MULT = 10
+# Client rolls a random multiplier in [MIN, MAX] when a goal completes.
+SCORE_RACE_GOAL_PAYOUT_MULT_MIN = 2
+SCORE_RACE_GOAL_PAYOUT_MULT_MAX = 10
+SCORE_RACE_GOAL_PAYOUT_MULT = SCORE_RACE_GOAL_PAYOUT_MULT_MAX
 # Legacy field kept on mission JSON for older clients.
 SCORE_RACE_GOAL_BONUS_PCT = 5
 
@@ -166,7 +169,7 @@ def generate_score_race_mission(
 ) -> dict[str, Any]:
     """
     Quick Play / friend / Tournament race: fixed hand count, random goals.
-    The hand that completes a goal pays ×10 (client applies); normal hands pay base.
+    Completing a goal pays a random ×2–×10 on that hand (client rolls); normal hands pay base.
     """
     rng = random.Random(seed) if seed is not None else random.SystemRandom()
     limit = max(1, int(hand_limit or SCORE_RACE_HAND_LIMIT))
@@ -202,7 +205,9 @@ def generate_score_race_mission(
         "star_move_limits": limits,
         "move_limit": limit,
         "hand_limit": limit,
-        "goal_payout_mult": SCORE_RACE_GOAL_PAYOUT_MULT,
+        "goal_payout_mult": SCORE_RACE_GOAL_PAYOUT_MULT_MAX,
+        "goal_payout_mult_min": SCORE_RACE_GOAL_PAYOUT_MULT_MIN,
+        "goal_payout_mult_max": SCORE_RACE_GOAL_PAYOUT_MULT_MAX,
         "goal_bonus_pct": SCORE_RACE_GOAL_BONUS_PCT,
         "challenge_points": challenge_points,
         "challenge_hands": challenge_hands,

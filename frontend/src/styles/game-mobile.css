@@ -526,6 +526,67 @@ html.native-shell .app.app--levels {
   }
 }
 
+.race-award-toast {
+  position: absolute;
+  left: 50%;
+  top: 38%;
+  z-index: 40;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  min-width: 9.5rem;
+  padding: 0.85rem 1.25rem 0.75rem;
+  border-radius: 1rem;
+  border: 2px solid rgba(255, 233, 160, 0.85);
+  background: linear-gradient(165deg, rgba(20, 90, 56, 0.96) 0%, rgba(6, 35, 24, 0.97) 100%);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.35),
+    0 12px 28px rgba(0, 0, 0, 0.55),
+    0 0 32px rgba(255, 215, 0, 0.28);
+  pointer-events: none;
+  animation: race-award-pop 0.45s cubic-bezier(0.2, 1.4, 0.4, 1);
+}
+
+.race-award-toast__mult {
+  font-family: "Cinzel", Georgia, serif;
+  font-size: 2.1rem;
+  font-weight: 800;
+  line-height: 1;
+  color: #ffe9a0;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.45);
+}
+
+.race-award-toast__pts {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: #fff;
+}
+
+.race-award-toast__label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 243, 176, 0.85);
+}
+
+@keyframes race-award-pop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -40%) scale(0.7);
+  }
+  60% {
+    opacity: 1;
+    transform: translate(-50%, -52%) scale(1.08);
+  }
+  100% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
 .game-goalbar__goals .tutorial-goal-chip {
   white-space: nowrap;
   flex: 0 0 auto;

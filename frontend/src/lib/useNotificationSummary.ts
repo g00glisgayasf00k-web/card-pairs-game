@@ -24,7 +24,10 @@ export function useNotificationSummary(enabled: boolean) {
         fetchNotificationSummary(),
         fetchChallenges().catch(() => ({ challenges: [] as const })),
       ]);
-      const unseenResults = countUnseenCompletedResults(challengePayload.challenges ?? []);
+      const unseenResults = countUnseenCompletedResults(
+        challengePayload.challenges ?? [],
+        "any"
+      );
       setSummary({
         ...next,
         total: next.friend_requests + next.challenges + unseenResults,

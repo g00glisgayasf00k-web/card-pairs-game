@@ -8,11 +8,24 @@ import type { ChallengeMissionPayload, HandChallenge, LevelConfig } from "./leve
 import { RANKS, SUITS } from "./pokerHands";
 
 export const SCORE_RACE_HAND_LIMIT = 20;
-/** Completing a goal pays this multiple of the finishing hand's points (pair 50 → 500). */
-export const SCORE_RACE_GOAL_PAYOUT_MULT = 10;
+/** Goal-clear payout is rolled randomly in this inclusive range (client-side). */
+export const SCORE_RACE_GOAL_MULT_MIN = 2;
+export const SCORE_RACE_GOAL_MULT_MAX = 10;
+/** @deprecated Display/docs max — actual payout uses rollGoalPayoutMult(). */
+export const SCORE_RACE_GOAL_PAYOUT_MULT = SCORE_RACE_GOAL_MULT_MAX;
 
 /** @deprecated Prefer SCORE_RACE_GOAL_PAYOUT_MULT — kept for older mission JSON. */
 export const SCORE_RACE_GOAL_BONUS_PCT = 5;
+
+/** Random ×2–×10 awarded when a race goal completes. */
+export function rollGoalPayoutMult(
+  min = SCORE_RACE_GOAL_MULT_MIN,
+  max = SCORE_RACE_GOAL_MULT_MAX
+): number {
+  const lo = Math.max(1, Math.floor(min));
+  const hi = Math.max(lo, Math.floor(max));
+  return lo + Math.floor(Math.random() * (hi - lo + 1));
+}
 
 /** Tournament cup hand budgets (Quick Play stays at SCORE_RACE_HAND_LIMIT). */
 export const TOURNAMENT_HAND_LIMITS: Record<string, number> = {
@@ -164,6 +177,8 @@ export function generateScoreRaceMission(
     move_limit: limit,
     hand_limit: limit,
     goal_payout_mult: SCORE_RACE_GOAL_PAYOUT_MULT,
+    goal_payout_mult_min: SCORE_RACE_GOAL_MULT_MIN,
+    goal_payout_mult_max: SCORE_RACE_GOAL_MULT_MAX,
     goal_bonus_pct: SCORE_RACE_GOAL_BONUS_PCT,
     challenge_points: challengePoints,
     challenge_hands: challengeHands,
@@ -176,7 +191,7 @@ export function isScoreRaceMission(
   return mission?.mode === "score_race" || typeof mission?.hand_limit === "number";
 }
 
-/** Hand points in a race — ×10 when that hand newly completes one or more goals. */
+/** Hand points in a race — multiplied when that hand newly completes one or more goals. */
 export function raceHandPoints(
   basePoints: number,
   goalsNewlyCompleted: number,

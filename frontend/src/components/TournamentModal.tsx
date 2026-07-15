@@ -554,8 +554,8 @@ export function TournamentModal({
           >
             <h2 id="tournament-brief-title">{briefing.tierName}</h2>
             <p className="tn-brief__lead">
-              Play <strong>{briefing.cfg.moveLimit} hands</strong>. Finish a goal and that hand pays{" "}
-              <strong>×10</strong>. Highest score wins — time breaks ties.
+              Play <strong>{briefing.cfg.moveLimit} hands</strong>. Finish a goal for a random{" "}
+              <strong>×2–×10</strong> bonus on that hand. Highest score wins — time breaks ties.
             </p>
             <div className="tn-brief__goals">
               <div className="tn-brief__goal">
@@ -575,7 +575,7 @@ export function TournamentModal({
               </ul>
             )}
             <p className="tn-brief__note">
-              Only the finishing hand is ×10 — other hands score normally.
+              Only the finishing hand gets the random multiplier — other hands score normally.
             </p>
             <div className="tn-confirm__actions">
               <button
@@ -606,7 +606,8 @@ export function TournamentModal({
             <h2 id="tn-rules-title">Tournament rules</h2>
             <p>
               Same scoring as Quick Play: highest score wins; tied scores → fastest finish. The hand
-              that completes a goal pays <strong>×10</strong>; normal hands stay at base rates.
+              that completes a goal pays a random <strong>×2–×10</strong> bonus (shown on screen);
+              normal hands stay at base rates.
             </p>
             <p>
               <strong>Bronze</strong> — 10 hands, 2–3 goals.

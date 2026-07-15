@@ -65,9 +65,12 @@ import { GemShopModal } from "../components/GemShopModal";
 import { OutOfEnergyModal } from "../components/OutOfEnergyModal";
 import {
   raceHandPoints,
-  SCORE_RACE_GOAL_PAYOUT_MULT,
+  rollGoalPayoutMult,
+  SCORE_RACE_GOAL_MULT_MAX,
+  SCORE_RACE_GOAL_MULT_MIN,
   SCORE_RACE_HAND_LIMIT,
 } from "../lib/scoreRaceMission";
+import { markChallengeResultsSeen } from "../lib/challengeResultSeen";
 import { fetchChallenge, forfeitChallenge, leaveQuickMatch, submitChallenge, submitTournamentRun, type ChallengeDto, type ChallengeMissionDto } from "../lib/api";
 import type { TournamentBoardPick } from "../lib/tournamentTiers";
 import { onHardwareBack } from "../lib/nativeBack";
@@ -251,7 +254,10 @@ export function GameScreen({
   const [finishClockMs, setFinishClockMs] = useState(() => Date.now());
   const [tournamentPlace, setTournamentPlace] = useState<number | null>(null);
   const [tournamentSubmitPending, setTournamentSubmitPending] = useState(false);
-  const [goalBonusFlash, setGoalBonusFlash] = useState<string | null>(null);
+  const [goalBonusFlash, setGoalBonusFlash] = useState<{
+    mult: number;
+    points: number;
+  } | null>(null);
   const [chestReward, setChestReward] = useState<{
     level: number;
     gems: number;
@@ -767,14 +773,24 @@ export function GameScreen({
           }
         }
       }
-      const awarded = isScoreRace
-        ? raceHandPoints(pts, goalsJustCleared, SCORE_RACE_GOAL_PAYOUT_MULT)
-        : pts;
-      const nextScore = levelScoreRef.current + awarded;
+      let awarded = pts;
       if (isScoreRace && goalsJustCleared > 0) {
-        setGoalBonusFlash(`Goal ×${SCORE_RACE_GOAL_PAYOUT_MULT} · +${awarded}`);
-        window.setTimeout(() => setGoalBonusFlash(null), 1600);
+        const mission = challengeMatch?.mission;
+        const mult = rollGoalPayoutMult(
+          typeof mission?.goal_payout_mult_min === "number"
+            ? mission.goal_payout_mult_min
+            : SCORE_RACE_GOAL_MULT_MIN,
+          typeof mission?.goal_payout_mult_max === "number"
+            ? mission.goal_payout_mult_max
+            : SCORE_RACE_GOAL_MULT_MAX
+        );
+        awarded = raceHandPoints(pts, goalsJustCleared, mult);
+        setGoalBonusFlash({ mult, points: awarded });
+        window.setTimeout(() => setGoalBonusFlash(null), 2200);
+      } else if (isScoreRace) {
+        awarded = raceHandPoints(pts, 0);
       }
+      const nextScore = levelScoreRef.current + awarded;
       levelHandsRef.current = nextHands;
       levelScoreRef.current = nextScore;
       levelHandCountsRef.current = nextHandCounts;
@@ -811,7 +827,7 @@ export function GameScreen({
         setPhase("moves_failed");
       }
     },
-    [tryAdvanceLevel, cfg, effectiveMoveLimit, isScoreRace]
+    [tryAdvanceLevel, cfg, effectiveMoveLimit, isScoreRace, challengeMatch]
   );
 
   const handleBuyMoves = useCallback((packId: string) => {
@@ -894,6 +910,13 @@ export function GameScreen({
     clearProgress();
     onMenu();
   };
+
+  // Clear Quick Play / friend result badges once the player has seen the outcome.
+  useEffect(() => {
+    if (challengeResult?.status === "completed" && challengeResult.id) {
+      markChallengeResultsSeen([challengeResult.id]);
+    }
+  }, [challengeResult?.status, challengeResult?.id]);
 
   const boardLocked = phase !== "playing" || energyBlocked;
 
@@ -1227,7 +1250,7 @@ export function GameScreen({
                       className={`tutorial-goal-chip${done ? " tutorial-goal-chip--done" : ""}`}
                       title={
                         isScoreRace
-                          ? `${formatChallenge(c)} — clear for ×${SCORE_RACE_GOAL_PAYOUT_MULT} points`
+                          ? `${formatChallenge(c)} — clear for a random ×${SCORE_RACE_GOAL_MULT_MIN}–×${SCORE_RACE_GOAL_MULT_MAX} bonus`
                           : formatChallenge(c)
                       }
                     >
@@ -1238,9 +1261,17 @@ export function GameScreen({
             </div>
             {goalBonusFlash && (
               <p className="game-goalbar__bonus" role="status">
-                {goalBonusFlash}
+                Goal ×{goalBonusFlash.mult} · +{goalBonusFlash.points.toLocaleString()}
               </p>
             )}
+          </div>
+        )}
+
+        {goalBonusFlash && (
+          <div className="race-award-toast" role="status" aria-live="polite">
+            <span className="race-award-toast__mult">×{goalBonusFlash.mult}</span>
+            <span className="race-award-toast__pts">+{goalBonusFlash.points.toLocaleString()}</span>
+            <span className="race-award-toast__label">Goal bonus!</span>
           </div>
         )}
 

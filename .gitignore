@@ -18,3 +18,12 @@ frontend/android/.idea/
 *.keystore
 *.jks
 mobile/output/
+# Intermediate / machine-local promo capture junk
+frontend/scripts/out/
+frontend/scripts/frames/
+docs/promo/out/title-vertical.mp4
+docs/promo/out/end-vertical.mp4
+docs/promo/out/gameplay-captioned.mp4
+docs/promo/out/concat.txt
+docs/promo/out/test-title.mp4
+docs/promo/out/*.webm

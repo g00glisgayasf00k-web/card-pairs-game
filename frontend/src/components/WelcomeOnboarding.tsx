@@ -50,7 +50,7 @@ export function WelcomeOnboarding({ onAuthSuccess }: Props) {
         </header>
       )}
 
-      {!isAuth && (
+      {!isAuth && step !== "welcome" && (
         <div className="welcome-onboard__dots" role="tablist" aria-label="Intro steps">
           {STEPS.filter((s) => s !== "auth").map((s, i) => (
             <button
@@ -69,24 +69,37 @@ export function WelcomeOnboarding({ onAuthSuccess }: Props) {
       <div className="welcome-onboard__stage" key={step}>
         {step === "welcome" && (
           <section className="welcome-slide welcome-slide--intro" aria-labelledby="welcome-title">
-            <div className="welcome-hero welcome-hero--promo">
+            <div className="welcome-poster">
               <img
-                className="welcome-hero__promo"
+                className="welcome-poster__art"
                 src={HOME_ASSETS.hero.youtubeThumbnail}
                 alt="Royal Poker Match — swipe five cards into poker hands"
               />
+              <div className="welcome-poster__fade" aria-hidden />
+              <div className="welcome-poster__foot">
+                <div className="welcome-onboard__dots welcome-onboard__dots--on-poster" role="tablist" aria-label="Intro steps">
+                  {STEPS.filter((s) => s !== "auth").map((s, i) => (
+                    <button
+                      key={s}
+                      type="button"
+                      role="tab"
+                      aria-selected={step === s}
+                      className={`welcome-onboard__dot${step === s ? " welcome-onboard__dot--on" : ""}`}
+                      onClick={() => setStep(s)}
+                      aria-label={`Slide ${i + 1}`}
+                    />
+                  ))}
+                </div>
+                <div className="welcome-chips">
+                  <span>Solo Player</span>
+                  <span>Head to Head</span>
+                  <span>Free to Play</span>
+                </div>
+              </div>
             </div>
             <h1 id="welcome-title" className="visually-hidden">
               Royal Poker Match
             </h1>
-            <p className="welcome-slide__lead">
-              Swipe five cards into real poker hands, clear the goals, and win cup prizes.
-            </p>
-            <div className="welcome-chips">
-              <span>Solo Player</span>
-              <span>Head to Head</span>
-              <span>Free to Play</span>
-            </div>
           </section>
         )}
 
@@ -194,7 +207,7 @@ export function WelcomeOnboarding({ onAuthSuccess }: Props) {
                 </button>
               )}
               <button type="button" className="welcome-onboard__cta" onClick={goNext}>
-                {step === "modes" ? "Create account" : "Next"}
+                {step === "welcome" ? "Get started" : step === "modes" ? "Create account" : "Next"}
               </button>
             </div>
           </>

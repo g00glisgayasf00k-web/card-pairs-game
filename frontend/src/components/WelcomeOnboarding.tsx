@@ -91,8 +91,8 @@ export function WelcomeOnboarding({ onAuthSuccess }: Props) {
               Swipe five cards into real poker hands, clear the goals, and win cup prizes.
             </p>
             <div className="welcome-chips">
-              <span>500 Levels</span>
-              <span>Daily Cups</span>
+              <span>Solo Player</span>
+              <span>Head to Head</span>
               <span>Free to Play</span>
             </div>
           </section>
@@ -141,8 +141,8 @@ export function WelcomeOnboarding({ onAuthSuccess }: Props) {
               <article className="welcome-mode welcome-mode--blue">
                 <img className="welcome-mode__glow" src={HOME_ASSETS.cards.blue.glow} alt="" />
                 <div className="welcome-mode__body">
-                  <img className="welcome-mode__label" src={HOME_ASSETS.cards.blue.label} alt="Multiplayer" />
-                  <strong>Play online</strong>
+                  <img className="welcome-mode__label" src={HOME_ASSETS.cards.blue.label} alt="Head to Head" />
+                  <strong>Head to Head</strong>
                   <span>Quick Play races &amp; friend challenges</span>
                 </div>
                 <span className="welcome-mode__icon-wrap">

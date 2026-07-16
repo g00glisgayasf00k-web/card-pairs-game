@@ -114,7 +114,7 @@ function FriendsBoard({ rows }: { rows: LeaderboardFriendRow[] }) {
   if (!rows.length) {
     return (
       <p className="muted">
-        Add friends from Multiplayer to compare campaign stars here.
+        Add friends from Head to Head to compare campaign stars here.
       </p>
     );
   }

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { HOME_ASSETS } from "./homeAssets";
+import { HeadToHeadLabel } from "./HeadToHeadLabel";
 import type { HomeGlow } from "./homeTheme";
 
 interface ProgressProps {
@@ -65,7 +66,11 @@ export function GameModeCard({
       />
 
       <div className="home-mode-card__body">
-        <img className="home-mode-card__tag-img" src={assets.label} alt={label} />
+        {glow === "blue" ? (
+          <HeadToHeadLabel className="home-mode-card__tag-img" />
+        ) : (
+          <img className="home-mode-card__tag-img" src={assets.label} alt={label} />
+        )}
         <span className="home-mode-card__title">{title}</span>
         <span className="home-mode-card__subtitle">{subtitle}</span>
 

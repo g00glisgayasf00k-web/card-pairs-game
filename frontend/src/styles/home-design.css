@@ -213,6 +213,27 @@ html.native-shell .home-screen-shell {
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.4));
 }
 
+/* Text stand-in for the old Multiplayer label PNG */
+.h2h-label {
+  display: block;
+  font-family: "Cinzel", "Crimson Pro", Georgia, serif;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1.2;
+  color: #ffd700;
+  text-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.45),
+    0 0 10px rgba(255, 215, 0, 0.35);
+}
+
+.home-mode-card__tag-img.h2h-label {
+  height: auto;
+  margin-bottom: 0.4rem;
+  filter: none;
+}
+
 .home-mode-card__title {
   display: block;
   font-size: 1.08rem;
@@ -1330,6 +1351,11 @@ html.native-shell .home-screen-shell {
   object-fit: contain;
   object-position: left center;
   margin-bottom: 0.1rem;
+}
+
+.welcome-mode__label.h2h-label {
+  height: auto;
+  font-size: 0.72rem;
 }
 
 .welcome-mode__body strong {

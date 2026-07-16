@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { ChallengeFriendModal } from "./ChallengeFriendModal";
+import { HeadToHeadLabel } from "./home/HeadToHeadLabel";
 import { HOME_ASSETS } from "./home/homeAssets";
 import {
   fetchChallenges,
@@ -55,7 +56,7 @@ function MpShell({
         <div className="mp-kit__inner">
           <div className="mp-kit__top">
             <div className="mp-kit__brand">
-              <img className="mp-kit__brand-label" src={a.cards.blue.label} alt="Multiplayer" />
+              <HeadToHeadLabel className="mp-kit__brand-label" />
               {showRating && rating != null && (
                 <span className="mp-kit__rating">
                   <img src={a.home.levelBadge} alt="" />
@@ -116,7 +117,7 @@ function MpStage({
         <span className="mp-kit-stage__ring" style={{ backgroundImage: `url(${blue.circle})` }} />
         <img className="mp-kit-stage__icon" src={blue.icon} alt="" width={96} height={96} />
       </div>
-      <img className="mp-kit-stage__label" src={blue.label} alt="" />
+      <HeadToHeadLabel className="mp-kit-stage__label" />
       <p className="mp-kit-stage__title">{title}</p>
       {sub && <p className="mp-kit-stage__sub">{sub}</p>}
       {progress && (
@@ -446,7 +447,7 @@ export function MultiplayerModal({
         {view === "hub" && (
           <>
             <MpHero
-              title="Multiplayer"
+              title="Head to Head"
               lead="Play online versus similar players, or challenge your friends."
             />
             <div className="mp-kit__body">
@@ -481,7 +482,7 @@ export function MultiplayerModal({
                   )}
                   <span className="mp-kit-card__glow" style={{ backgroundImage: `url(${blue.glow})` }} aria-hidden />
                   <div className="mp-kit-card__body">
-                    <img className="mp-kit-card__tag" src={blue.label} alt="" />
+                    <HeadToHeadLabel className="mp-kit-card__tag" />
                     <span className="mp-kit-card__title-row">
                       <span className="mp-kit-card__title">Quick play</span>
                       <ModeInfoButton

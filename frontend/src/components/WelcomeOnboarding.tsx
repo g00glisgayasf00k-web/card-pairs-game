@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { AuthPanel } from "./AuthPanel";
-import { HOME_ASSETS } from "./home";
+import { HeadToHeadLabel, HOME_ASSETS } from "./home";
 import {
   hasSeenWelcomeOnboarding,
   markWelcomeOnboardingSeen,
@@ -141,7 +141,7 @@ export function WelcomeOnboarding({ onAuthSuccess }: Props) {
               <article className="welcome-mode welcome-mode--blue">
                 <img className="welcome-mode__glow" src={HOME_ASSETS.cards.blue.glow} alt="" />
                 <div className="welcome-mode__body">
-                  <img className="welcome-mode__label" src={HOME_ASSETS.cards.blue.label} alt="Head to Head" />
+                  <HeadToHeadLabel className="welcome-mode__label" />
                   <strong>Head to Head</strong>
                   <span>Quick Play races &amp; friend challenges</span>
                 </div>

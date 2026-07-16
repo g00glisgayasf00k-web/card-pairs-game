@@ -19,6 +19,7 @@ import {
 } from "../lib/challengeResultSeen";
 import { hasEnergy, syncEnergyState, trySpendEnergyOnce } from "../lib/energy";
 import { OutOfEnergyModal } from "./OutOfEnergyModal";
+import { HeadToHeadLabel } from "./home/HeadToHeadLabel";
 import { HOME_ASSETS } from "./home/homeAssets";
 
 interface Props {
@@ -325,11 +326,7 @@ export function ChallengeFriendModal({
             {kitShell && (
               <div className="mp-kit__top">
                 <div className="mp-kit__brand">
-                  <img
-                    className="mp-kit__brand-label"
-                    src={HOME_ASSETS.cards.blue.label}
-                    alt="Multiplayer"
-                  />
+                  <HeadToHeadLabel className="mp-kit__brand-label" />
                 </div>
                 <button type="button" className="mp-kit__close" onClick={onClose} aria-label="Close">
                   ×

@@ -73,6 +73,11 @@
   object-fit: contain;
 }
 
+.mp-kit__brand-label.h2h-label {
+  height: auto;
+  font-size: 0.85rem;
+}
+
 .mp-kit__rating {
   display: inline-flex;
   align-items: center;
@@ -321,6 +326,11 @@
   margin-bottom: 0.1rem;
 }
 
+.mp-kit-card__tag.h2h-label {
+  height: auto;
+  font-size: 0.72rem;
+}
+
 .mp-kit-card__title {
   font-family: "Cinzel", "Crimson Pro", Georgia, serif;
   font-size: 1.05rem;
@@ -480,6 +490,11 @@
   width: auto;
   max-width: 70%;
   object-fit: contain;
+}
+
+.mp-kit-stage__label.h2h-label {
+  height: auto;
+  font-size: 0.85rem;
 }
 
 .mp-kit-stage__title {

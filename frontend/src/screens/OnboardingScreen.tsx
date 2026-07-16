@@ -191,8 +191,8 @@ export function OnboardingScreen({
               />
               <GameModeCard
                 glow="blue"
-                label="Multiplayer"
-                title="Play online"
+                label="Head to Head"
+                title="Find a match"
                 subtitle="Quick play or challenge a friend"
                 badge={summary.total}
                 onClick={() => setPlaySheet("challenge")}

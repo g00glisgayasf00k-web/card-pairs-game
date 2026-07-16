@@ -557,6 +557,92 @@ export function evaluateHandFull(
   };
 }
 
+/** A joker hand the player can pick, with the best variant for each distinct type. */
+export interface WildHandOption extends FullHandResult {
+  /** True when this option advances one of the current level's unmet goals. */
+  goalMatch: boolean;
+}
+
+function jokerSubstitutions(wildCount: number): { rank: Rank; suit: Suit }[][] {
+  if (wildCount === 1) return ALL_CARDS.map((c) => [c]);
+  const combos: { rank: Rank; suit: Suit }[][] = [];
+  for (const a of ALL_CARDS) {
+    for (const b of ALL_CARDS) combos.push([a, b]);
+  }
+  return combos;
+}
+
+/**
+ * All distinct poker hands a jokered 5-card path can make, best variant per type.
+ * Sorted goal-matching first, then highest points. Returns a single option when
+ * there is no joker (or nothing to choose between).
+ */
+export function enumerateWildHandOptions(
+  cards: Card[],
+  goals?: JokerGoalPrefer[]
+): WildHandOption[] {
+  const withMatch = (r: HandAnalysis): WildHandOption => ({
+    hand: r.hand,
+    basePoints: r.points,
+    totalPoints: r.points,
+    hasJoker: true,
+    keyRanks: r.keyRanks,
+    flushSuit: r.flushSuit,
+    goalMatch: jokerGoalScore(r, goals) > 0,
+  });
+
+  const wilds = cards.filter((c) => c.special === "joker");
+  if (wilds.length === 0 || cards.length !== POKER_HAND_SIZE) {
+    const r = evaluateHandFull(cards, goals);
+    return r ? [{ ...r, goalMatch: false }] : [];
+  }
+
+  const normals = cards.filter((c) => c.special !== "joker");
+  if (normals.length === 0) {
+    return [
+      withMatch({
+        hand: "royal_flush",
+        points: HAND_SCORES.royal_flush,
+        keyRanks: ["10", "J", "Q", "K", "A"],
+        flushSuit: "spades",
+      }),
+    ];
+  }
+
+  const bestByHand = new Map<HandLabel, HandAnalysis>();
+  for (const subs of jokerSubstitutions(wilds.length)) {
+    let j = 0;
+    const filled = cards.map((c) => {
+      if (c.special === "joker") {
+        const sub = subs[j++]!;
+        return { rank: sub.rank, suit: sub.suit };
+      }
+      return { rank: c.rank, suit: c.suit };
+    });
+    const result = evaluateHand(filled);
+    if (!result) continue;
+    const existing = bestByHand.get(result.hand) ?? null;
+    if (preferWildResult(result, existing, goals)) {
+      bestByHand.set(result.hand, result);
+    }
+  }
+
+  const options = [...bestByHand.values()].map(withMatch);
+  options.sort((a, b) => {
+    const ag = jokerGoalScore(
+      { hand: a.hand, points: a.totalPoints, keyRanks: a.keyRanks, flushSuit: a.flushSuit },
+      goals
+    );
+    const bg = jokerGoalScore(
+      { hand: b.hand, points: b.totalPoints, keyRanks: b.keyRanks, flushSuit: b.flushSuit },
+      goals
+    );
+    if (ag !== bg) return bg - ag;
+    return b.totalPoints - a.totalPoints;
+  });
+  return options;
+}
+
 // ── Path helpers ─────────────────────────────────────────────────────────────
 
 export function pathIsAdjacent(cells: { row: number; col: number }[]): boolean {

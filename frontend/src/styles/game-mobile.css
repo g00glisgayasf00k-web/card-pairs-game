@@ -4272,3 +4272,182 @@ html.native-shell .app.app--levels {
   color: rgba(255, 255, 255, 0.82);
 }
 
+/* ── Joker hand picker ── */
+.game-panel {
+  position: relative;
+}
+
+.joker-picker {
+  position: absolute;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+}
+
+.joker-picker__backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(4, 10, 8, 0.62);
+  backdrop-filter: blur(3px);
+}
+
+.joker-picker__panel {
+  position: relative;
+  width: min(21rem, 92vw);
+  max-height: 82%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 0.7rem;
+  padding: 1rem 1rem 0.9rem;
+  border-radius: 18px;
+  border: 1px solid rgba(255, 215, 0, 0.35);
+  background: linear-gradient(160deg, rgba(20, 40, 34, 0.98), rgba(6, 18, 15, 0.98));
+  box-shadow: 0 18px 44px rgba(0, 0, 0, 0.55), 0 0 30px rgba(255, 215, 0, 0.12);
+  animation: joker-picker-in 0.24s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes joker-picker-in {
+  from {
+    opacity: 0;
+    transform: translateY(14px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.joker-picker__head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+}
+
+.joker-picker__emoji {
+  font-size: 1.7rem;
+  filter: drop-shadow(0 2px 6px rgba(0, 0, 0, 0.5));
+}
+
+.joker-picker__head h3 {
+  margin: 0;
+  font-family: "Cinzel", Georgia, serif;
+  font-size: 1.02rem;
+  font-weight: 800;
+  color: #ffd700;
+}
+
+.joker-picker__head p {
+  margin: 0.05rem 0 0;
+  font-size: 0.74rem;
+  color: #a8b5b2;
+}
+
+.joker-picker__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.joker-picker__opt {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+  padding: 0.6rem 0.75rem;
+  border-radius: 13px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.05);
+  color: #fff;
+  cursor: pointer;
+  text-align: left;
+  -webkit-tap-highlight-color: transparent;
+  transition:
+    transform 0.12s ease,
+    border-color 0.15s ease,
+    background 0.15s ease;
+}
+
+.joker-picker__opt:active {
+  transform: scale(0.98);
+}
+
+.joker-picker__opt:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 215, 0, 0.4);
+}
+
+.joker-picker__opt--goal {
+  border-color: rgba(255, 215, 0, 0.55);
+  background: linear-gradient(120deg, rgba(255, 215, 0, 0.14), rgba(255, 255, 255, 0.05));
+}
+
+.joker-picker__opt-main {
+  display: flex;
+  flex-direction: column;
+  gap: 0.12rem;
+  min-width: 0;
+}
+
+.joker-picker__opt-name {
+  font-family: "Cinzel", Georgia, serif;
+  font-size: 0.92rem;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+}
+
+.joker-picker__opt-reward {
+  font-size: 0.66rem;
+  color: #8fd6b0;
+  text-transform: capitalize;
+}
+
+.joker-picker__opt-side {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+.joker-picker__opt-goal {
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #061a17;
+  background: linear-gradient(145deg, #fff3b0, #ffd700);
+  padding: 0.14rem 0.4rem;
+  border-radius: 999px;
+}
+
+.joker-picker__opt-pts {
+  font-family: "Cinzel", Georgia, serif;
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: #fff3b0;
+}
+
+.joker-picker__cancel {
+  align-self: center;
+  margin-top: 0.1rem;
+  padding: 0.35rem 1rem;
+  border: none;
+  background: transparent;
+  color: #a8b5b2;
+  font-size: 0.78rem;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+  cursor: pointer;
+}
+
+.joker-picker__cancel:hover {
+  color: #fff;
+}
+

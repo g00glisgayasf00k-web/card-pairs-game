@@ -66,36 +66,35 @@ export function WelcomeOnboarding({ onAuthSuccess }: Props) {
 
       <div className="welcome-onboard__stage" key={step}>
         {step === "welcome" && (
-          <section className="welcome-slide" aria-labelledby="welcome-title">
-            <div className="welcome-slide__art welcome-slide__art--hero">
+          <section className="welcome-slide welcome-slide--intro" aria-labelledby="welcome-title">
+            <div className="welcome-hero">
               <img
-                className="welcome-slide__hero-bg"
+                className="welcome-hero__bg"
                 src={HOME_ASSETS.hero.panelBg}
                 alt=""
                 aria-hidden
               />
               <img
-                className="welcome-slide__particles"
+                className="welcome-hero__particles"
                 src={HOME_ASSETS.hero.particlesGold}
                 alt=""
                 aria-hidden
               />
               <img
-                className="welcome-slide__cards"
+                className="welcome-hero__cards"
                 src={HOME_ASSETS.hero.cardsHand}
-                alt=""
-              />
-              <img
-                className="welcome-slide__chips"
-                src={HOME_ASSETS.hero.chipsStack}
-                alt=""
-                aria-hidden
+                alt="A royal flush of cards"
               />
             </div>
-            <h1 id="welcome-title">Royal Poker Match</h1>
+            <h1 id="welcome-title">The royal way to match</h1>
             <p className="welcome-slide__lead">
-              Swipe real poker hands. Clear goals. Climb Solo, beat friends, and chase cup prizes.
+              Swipe five cards into real poker hands, clear the goals, and win cup prizes.
             </p>
+            <div className="welcome-chips">
+              <span>500 Levels</span>
+              <span>Daily Cups</span>
+              <span>Free to Play</span>
+            </div>
           </section>
         )}
 

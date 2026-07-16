@@ -10,8 +10,10 @@ import {
 import {
   createBoard,
   createBoardFromSeed,
+  enumerateWildHandOptions,
   formatEarnedSpecials,
   HAND_DISPLAY,
+  HAND_SCORES,
   isTappableSpecial,
   pathIsAdjacent,
   POKER_HAND_SIZE,
@@ -24,6 +26,7 @@ import {
   type JokerGoalPrefer,
   type SpecialType,
   type Suit,
+  type WildHandOption,
 } from "../lib/pokerHands";
 import { pathMatchesGuide } from "../lib/tutorialLevel1";
 import {
@@ -316,6 +319,10 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
     const [dropMap, setDropMap] = useState<Map<string, number>>(new Map());
     const [newKeys, setNewKeys] = useState<Set<string>>(new Set());
     const [busy, setBusy] = useState(false);
+    const [jokerChoice, setJokerChoice] = useState<{
+      path: { row: number; col: number }[];
+      options: WildHandOption[];
+    } | null>(null);
     const fitRef = useRef<HTMLDivElement>(null);
     const gridRef = useRef<HTMLDivElement>(null);
     const finishingSwipe = useRef(false);
@@ -715,6 +722,78 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
       [board, blockers, commitClear]
     );
 
+    // ── Commit a resolved 5-card hand (pop → score → gravity/refill) ──────────
+    const commitResolvedHand = useCallback(
+      async (
+        validPath: { row: number; col: number }[],
+        result: FullHandResult
+      ) => {
+        finishingSwipe.current = true;
+        setBusy(true);
+        setJokerChoice(null);
+
+        const handKeys = new Set(validPath.map((p) => pathKey(p.row, p.col)));
+        const allCleared = handKeys;
+
+        const finalPts = result.totalPoints;
+        let toast = `${HAND_DISPLAY[result.hand]}! +${finalPts}`;
+        if (result.hasJoker) toast += " 🃏";
+
+        const earned = specialsEarnedForHand(result.hand);
+        toast += formatEarnedSpecials(earned);
+        const order = new Map(validPath.map((p, i) => [pathKey(p.row, p.col), i]));
+        setPopping(handKeys);
+        setPopOrder(order);
+
+        const boardSnapshot = board;
+        const blockersSnapshot = blockers;
+        const isTutorialStep = !!onTutorialStepComplete;
+        try {
+          await delay(waitForPop(validPath.length));
+
+          setPopping(new Set());
+          setPopOrder(new Map());
+          setHintCell(null);
+          showFeedback(toast);
+
+          onHand(result);
+
+          if (isTutorialStep) {
+            onTutorialStepComplete();
+          } else {
+            const gravity = applyGravity(
+              boardSnapshot,
+              blockersSnapshot,
+              allCleared,
+              earned,
+              validPath,
+              refillRngRef.current ?? undefined
+            );
+            setBoard(gravity.newBoard);
+            setBlockers(gravity.newBlockers);
+            setDropMap(gravity.dropMap);
+            setNewKeys(gravity.newKeys);
+
+            await delay(waitForSettle());
+            setDropMap(new Map());
+            setNewKeys(new Set());
+          }
+        } finally {
+          finishingSwipe.current = false;
+          clear();
+          setBusy(false);
+        }
+      },
+      [board, blockers, clear, onHand, onTutorialStepComplete, showFeedback]
+    );
+
+    const cancelJokerChoice = useCallback(() => {
+      setJokerChoice(null);
+      finishingSwipe.current = false;
+      setBusy(false);
+      clear();
+    }, [clear]);
+
     // ── Main swipe handler ────────────────────────────────────────────────────
     const finishSwipe = useCallback(async () => {
       if (finishingSwipe.current || locked || busy) {
@@ -878,63 +957,27 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
         return;
       }
 
-      finishingSwipe.current = true;
-      setBusy(true);
-
-      const handKeys = new Set(validPath.map((p) => pathKey(p.row, p.col)));
-      const allCleared = handKeys;
-
-      const finalPts = result.totalPoints;
-      let toast = `${HAND_DISPLAY[result.hand]}! +${finalPts}`;
-      if (result.hasJoker) toast += " 🃏";
-
-      const earned = specialsEarnedForHand(result.hand);
-      toast += formatEarnedSpecials(earned);
-      const order = new Map(validPath.map((p, i) => [pathKey(p.row, p.col), i]));
-      setPopping(handKeys);
-      setPopOrder(order);
-
-      const boardSnapshot = board;
-      const blockersSnapshot = blockers;
-      const isTutorialStep = !!onTutorialStepComplete;
-      try {
-        await delay(waitForPop(validPath.length));
-
-        setPopping(new Set());
-        setPopOrder(new Map());
-        setHintCell(null);
-        showFeedback(toast);
-
-        onHand(result);
-
-        if (isTutorialStep) {
-          onTutorialStepComplete();
-        } else {
-          const gravity = applyGravity(
-            boardSnapshot,
-            blockersSnapshot,
-            allCleared,
-            earned,
-            validPath,
-            refillRngRef.current ?? undefined
-          );
-          setBoard(gravity.newBoard);
-          setBlockers(gravity.newBlockers);
-          setDropMap(gravity.dropMap);
-          setNewKeys(gravity.newKeys);
-
-          await delay(waitForSettle());
-          setDropMap(new Map());
-          setNewKeys(new Set());
+      // Joker in the hand → let the player pick which poker hand to make,
+      // unless it's a guided tutorial step (which expects one exact hand).
+      if (result.hasJoker && !onTutorialStepComplete) {
+        const cards = validPath
+          .map((p) => board[p.row]?.[p.col])
+          .filter((c): c is Card => !!c);
+        const options = enumerateWildHandOptions(cards, preferJokerGoals);
+        if (options.length > 1) {
+          finishingSwipe.current = true;
+          setBusy(true);
+          setJokerChoice({ path: validPath, options });
+          return;
         }
-      } finally {
-        finishingSwipe.current = false;
-        clear();
-        setBusy(false);
+        await commitResolvedHand(validPath, options[0] ?? result);
+        return;
       }
+
+      await commitResolvedHand(validPath, result);
     }, [
       busy, board, blockers, clear, locked, pathRef,
-      onHand, activateBomb, activateArrow, activateRainbow,
+      activateBomb, activateArrow, activateRainbow, commitResolvedHand,
       guidedPath, tutorialExpectedHand, tutorialWrongSwipeHint, onTutorialStepComplete, embedded, showFeedback,
       preferJokerGoals,
     ]);
@@ -1091,6 +1134,52 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
           </div>
         ) : (
           grid
+        )}
+
+        {jokerChoice && (
+          <div className="joker-picker" role="dialog" aria-modal="true" aria-labelledby="joker-picker-title">
+            <div className="joker-picker__backdrop" onClick={cancelJokerChoice} />
+            <div className="joker-picker__panel">
+              <div className="joker-picker__head">
+                <span className="joker-picker__emoji" aria-hidden>🃏</span>
+                <div>
+                  <h3 id="joker-picker-title">Play your Joker</h3>
+                  <p>Pick the hand to score</p>
+                </div>
+              </div>
+              <ul className="joker-picker__list">
+                {jokerChoice.options.map((opt) => {
+                  const rewards = formatEarnedSpecials(specialsEarnedForHand(opt.hand)).replace(
+                    /^ · /,
+                    ""
+                  );
+                  return (
+                    <li key={opt.hand}>
+                      <button
+                        type="button"
+                        className={`joker-picker__opt${opt.goalMatch ? " joker-picker__opt--goal" : ""}`}
+                        onClick={() => void commitResolvedHand(jokerChoice.path, opt)}
+                      >
+                        <span className="joker-picker__opt-main">
+                          <span className="joker-picker__opt-name">{HAND_DISPLAY[opt.hand]}</span>
+                          {rewards && <span className="joker-picker__opt-reward">{rewards}</span>}
+                        </span>
+                        <span className="joker-picker__opt-side">
+                          {opt.goalMatch && <span className="joker-picker__opt-goal">Goal</span>}
+                          <span className="joker-picker__opt-pts">
+                            +{HAND_SCORES[opt.hand]}
+                          </span>
+                        </span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+              <button type="button" className="joker-picker__cancel" onClick={cancelJokerChoice}>
+                Cancel
+              </button>
+            </div>
+          </div>
         )}
       </div>
     );

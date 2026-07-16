@@ -11,6 +11,7 @@ export const HOME_ASSETS = {
     chipsStack: "/assets/hero/chips_stack.png",
     particlesGold: "/assets/hero/particles_gold.png",
     youtubeThumbnail: "/assets/hero/youtube-thumbnail.png",
+    onboardingLandscape: "/assets/hero/onboarding-hero-landscape.png",
   },
   cards: {
     purple: {

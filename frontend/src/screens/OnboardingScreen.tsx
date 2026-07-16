@@ -165,15 +165,13 @@ export function OnboardingScreen({
   return (
     <div className="bg-home-page flex min-h-dvh justify-center text-home-text">
       <div className="home-screen-shell relative flex w-full max-w-[420px] flex-col gap-4 px-4">
-        {loggedIn && (
-          <HomeHeader
-            gems={gems}
-            loggedIn={loggedIn}
-            username={username}
-            onShop={() => setMenu("shop")}
-            onProfile={() => setMenu(menu === "account" ? null : "account")}
-          />
-        )}
+        <HomeHeader
+          gems={gems}
+          loggedIn={loggedIn}
+          username={username}
+          onShop={() => setMenu("shop")}
+          onProfile={() => setMenu(menu === "account" ? null : "account")}
+        />
 
         {loggedIn ? (
           <>

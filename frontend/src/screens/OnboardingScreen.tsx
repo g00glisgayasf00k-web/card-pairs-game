@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
-import { AuthPanel } from "../components/AuthPanel";
 import { ProfileModal } from "../components/ProfileModal";
+import { WelcomeOnboarding } from "../components/WelcomeOnboarding";
 import { MultiplayerModal } from "../components/MultiplayerModal";
 import { TournamentModal } from "../components/TournamentModal";
 import { GemShopModal } from "../components/GemShopModal";
@@ -209,12 +209,7 @@ export function OnboardingScreen({
             <HomeBottomNav active={activeTab} onSelect={openTab} />
           </>
         ) : (
-          <div className="rounded-home-card border border-home-border bg-home-glass p-4">
-            <HomeHeroBanner />
-            <div className="mt-4">
-              <AuthPanel variant="home" onSuccess={() => handleAccountChange()} />
-            </div>
-          </div>
+          <WelcomeOnboarding onAuthSuccess={() => handleAccountChange()} />
         )}
       </div>
 

@@ -44,9 +44,11 @@ export function WelcomeOnboarding({ onAuthSuccess }: Props) {
     <div className="welcome-onboard" data-step={step}>
       <div className="welcome-onboard__glow" aria-hidden />
 
-      <header className="welcome-onboard__brand">
-        <img src={HOME_ASSETS.header.logo} alt="Royal Poker Match" />
-      </header>
+      {step !== "welcome" && (
+        <header className="welcome-onboard__brand">
+          <img src={HOME_ASSETS.header.logo} alt="Royal Poker Match" />
+        </header>
+      )}
 
       {!isAuth && (
         <div className="welcome-onboard__dots" role="tablist" aria-label="Intro steps">
@@ -67,26 +69,16 @@ export function WelcomeOnboarding({ onAuthSuccess }: Props) {
       <div className="welcome-onboard__stage" key={step}>
         {step === "welcome" && (
           <section className="welcome-slide welcome-slide--intro" aria-labelledby="welcome-title">
-            <div className="welcome-hero">
+            <div className="welcome-hero welcome-hero--promo">
               <img
-                className="welcome-hero__bg"
-                src={HOME_ASSETS.hero.panelBg}
-                alt=""
-                aria-hidden
-              />
-              <img
-                className="welcome-hero__particles"
-                src={HOME_ASSETS.hero.particlesGold}
-                alt=""
-                aria-hidden
-              />
-              <img
-                className="welcome-hero__cards"
-                src={HOME_ASSETS.hero.cardsHand}
-                alt="A royal flush of cards"
+                className="welcome-hero__promo"
+                src={HOME_ASSETS.hero.youtubeThumbnail}
+                alt="Royal Poker Match — swipe five cards into poker hands"
               />
             </div>
-            <h1 id="welcome-title">The royal way to match</h1>
+            <h1 id="welcome-title" className="visually-hidden">
+              Royal Poker Match
+            </h1>
             <p className="welcome-slide__lead">
               Swipe five cards into real poker hands, clear the goals, and win cup prizes.
             </p>

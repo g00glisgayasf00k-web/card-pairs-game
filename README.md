@@ -77,7 +77,8 @@ backend/app/blueprints/   # Flask blueprints for Render
 backend/app/services/     # Poker hand evaluation
 frontend/src/             # React game UI
 frontend/android/         # Capacitor Android project (APK)
-mobile/                   # Android build scripts + APK output
+frontend/ios/             # Capacitor iOS project (Xcode / App Store)
+mobile/                   # Android + iOS build docs and APK output
 render.yaml               # Render blueprint
 Dockerfile                # Single-container production build
 ```

@@ -1,4 +1,18 @@
-# Royal Match Poker — Android (APK)
+# Royal Match Poker — Mobile (Android + iOS)
+
+Native shells wrap the same React game via **Capacitor** and talk to the live API on Render.
+
+| Platform | Docs | Project |
+|----------|------|---------|
+| **Android** | this file (below) | `frontend/android/` |
+| **iOS** | **[IOS.md](./IOS.md)** | `frontend/ios/` |
+
+**App ID:** `com.royalmatch.poker`  
+**API:** `https://royal-match-poker.onrender.com`
+
+---
+
+# Android (APK)
 
 This folder holds scripts and build output for the native Android app. The Capacitor project lives in `frontend/android/` and wraps the same React game, talking to the live API on Render.
 
@@ -131,7 +145,11 @@ Push fires for friend requests, challenge invites, accepts, and finished matches
 | Script | Purpose |
 |--------|---------|
 | `npm run build:mobile` | Vite build with production API URL |
-| `npm run cap:sync` | Build + copy into Android project |
+| `npm run cap:sync` | Build + copy into **Android and iOS** |
+| `npm run cap:sync:android` | Build + sync Android only |
 | `npm run icons:android` | Regenerate launcher icons from `resources/icon.svg` |
-| `npm run cap:open` | Open Android Studio |
-| `npm run cap:run` | Sync + run on connected device |
+| `npm run cap:open` / `cap:open:android` | Open Android Studio |
+| `npm run cap:run` / `cap:run:android` | Sync + run on connected device |
+
+For iOS scripts and App Store steps, see **[IOS.md](./IOS.md)**.
+

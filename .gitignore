@@ -18,6 +18,15 @@ frontend/android/.idea/
 *.keystore
 *.jks
 mobile/output/
+
+# Capacitor / iOS (Pods & build products; project sources are tracked)
+frontend/ios/App/Pods/
+frontend/ios/App/build/
+frontend/ios/App/output/
+frontend/ios/DerivedData/
+frontend/ios/App/App/public/
+frontend/ios/capacitor-cordova-ios-plugins/
+
 # Intermediate / machine-local promo capture junk
 frontend/scripts/out/
 frontend/scripts/frames/

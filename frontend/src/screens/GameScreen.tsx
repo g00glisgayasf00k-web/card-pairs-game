@@ -1340,7 +1340,7 @@ export function GameScreen({
               )}
             </div>
           )}
-          <nav className="action-bar action-bar--bottom" aria-label="Game actions">
+          <nav className="action-bar action-bar--rail" aria-label="Game actions">
             <button
               type="button"
               className="action-btn action-btn--restart"

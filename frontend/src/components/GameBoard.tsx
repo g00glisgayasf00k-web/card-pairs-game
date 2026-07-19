@@ -468,7 +468,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
         currentBlockers: BlockerGrid,
         allCleared: Set<string>,
         earnedSpecials: SpecialType[],
-        cols: Set<number>,
+        _cols: Set<number>,
         toastMsg: string,
         pts: number,
         isHand: FullHandResult | null,

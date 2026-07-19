@@ -12,7 +12,7 @@ import {
   type FullHandResult,
   type HandLabel,
 } from "../lib/pokerHands";
-import { campaignLeaderboardPoints, campaignLeaderboardPointsFromProgress, computeLevelStars, challengeKey, challengeProgress, challengesMet, formatChallenge, formatChallengeLabel, applyHandToChallengeCounts, buildChallengeMissionConfig, getLevelConfig, levelPointsMet, levelRequirementsMet, movesRemaining, MAX_LEVEL, outOfMoves, type HandCounts } from "../lib/levels";
+import { campaignLeaderboardPoints, campaignLeaderboardPointsFromProgress, computeLevelStars, challengeKey, challengeProgress, formatChallenge, formatChallengeLabel, applyHandToChallengeCounts, buildChallengeMissionConfig, getLevelConfig, levelPointsMet, levelRequirementsMet, movesRemaining, MAX_LEVEL, outOfMoves, type HandCounts } from "../lib/levels";
 import {
   canAffordMovesPack,
   HINT_COST,
@@ -1355,7 +1355,6 @@ export function GameScreen({
 
           <div className="play-arena">
             <main className={`board-stage${boardLocked ? " board-stage--locked" : ""}`}>
-              <div className="board-stage__glow" aria-hidden />
               <div className="board-stage__frame">
                 <GameBoard
                   ref={boardRef}

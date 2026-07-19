@@ -84,7 +84,7 @@ export async function pullRemoteProgress(): Promise<boolean> {
         } catch {
           /* offline — local fresh save still applies */
         }
-        await pushProgress(fresh);
+        await pushProgress();
       }
       return true;
     }

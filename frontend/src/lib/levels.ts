@@ -508,7 +508,7 @@ export function isChallengeSpecific(c: HandChallenge): boolean {
 /** Stable progress key — hand label for generic goals, detailed key for specific ones. */
 export function challengeKey(c: HandChallenge): string {
   if (!isChallengeSpecific(c)) return c.hand;
-  const parts = [c.hand];
+  const parts: string[] = [c.hand];
   if (c.ranks?.length) parts.push(c.ranks.join("-"));
   if (c.suit) parts.push(c.suit);
   return parts.join(":");

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { fetchChallenges, fetchNotificationSummary, type NotificationSummary } from "./api";
+import { fetchChallenges, fetchNotificationSummary, type ChallengeDto, type NotificationSummary } from "./api";
 import { countUnseenCompletedResults } from "./challengeResultSeen";
 import { isLoggedIn } from "./session";
 
@@ -22,7 +22,7 @@ export function useNotificationSummary(enabled: boolean) {
     try {
       const [next, challengePayload] = await Promise.all([
         fetchNotificationSummary(),
-        fetchChallenges().catch(() => ({ challenges: [] as const })),
+        fetchChallenges().catch(() => ({ challenges: [] as ChallengeDto[] })),
       ]);
       const unseenResults = countUnseenCompletedResults(
         challengePayload.challenges ?? [],

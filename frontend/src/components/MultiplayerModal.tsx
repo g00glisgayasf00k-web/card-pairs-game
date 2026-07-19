@@ -324,8 +324,8 @@ export function MultiplayerModal({
           if (r.status === "matched" && r.challenge) {
             setMatched(r.challenge);
             const oe =
-              typeof (r as { opponent_elo?: number }).opponent_elo === "number"
-                ? (r as { opponent_elo: number }).opponent_elo
+              typeof r.opponent_elo === "number"
+                ? r.opponent_elo
                 : opponentRating(r.challenge);
             setOpponentElo(oe);
             setStatus("matched");
@@ -376,14 +376,14 @@ export function MultiplayerModal({
     try {
       await leaveQuickMatch().catch(() => undefined);
       const r = await joinQuickMatch({ fresh: true });
-      if (typeof (r as { elo?: number }).elo === "number") {
-        setElo((r as { elo: number }).elo);
+      if (typeof r.elo === "number") {
+        setElo(r.elo);
       }
       if (r.status === "matched" && r.challenge) {
         setMatched(r.challenge);
         const oe =
-          typeof (r as { opponent_elo?: number }).opponent_elo === "number"
-            ? (r as { opponent_elo: number }).opponent_elo
+          typeof r.opponent_elo === "number"
+            ? r.opponent_elo
             : opponentRating(r.challenge);
         setOpponentElo(oe);
         setStatus("matched");

@@ -185,7 +185,7 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
   const handlePurchaseSuccess = (credits: number) => {
     const progress = loadProgress();
     if (progress) {
-      saveProgress({ ...progress, credits, updatedAt: Date.now() });
+      saveProgress({ ...progress, credits });
     }
     setCheckoutPack(null);
     refresh();

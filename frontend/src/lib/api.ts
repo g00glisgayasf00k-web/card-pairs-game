@@ -177,7 +177,7 @@ export async function fetchMyProgress() {
   return request<RemoteProgressResponse>("/api/progress/me");
 }
 
-export async function syncProgressToServer(progress: Record<string, unknown>) {
+export async function syncProgressToServer(progress: object & { updatedAt?: number }) {
   return request<RemoteProgressResponse & { saved: boolean }>("/api/progress/sync", {
     method: "POST",
     body: JSON.stringify({
@@ -554,8 +554,16 @@ export async function forfeitChallenge(id: number) {
 
 export type MatchmakingStatus = "idle" | "waiting" | "matched" | "settled";
 
+export type QuickMatchResponse = {
+  status: MatchmakingStatus;
+  ticket_id?: number;
+  challenge?: ChallengeDto;
+  elo?: number;
+  opponent_elo?: number;
+};
+
 export async function joinQuickMatch(opts?: { fresh?: boolean }) {
-  return request<{ status: MatchmakingStatus; ticket_id?: number; challenge?: ChallengeDto }>(
+  return request<QuickMatchResponse>(
     "/api/matchmaking/quick",
     {
       method: "POST",
@@ -566,7 +574,7 @@ export async function joinQuickMatch(opts?: { fresh?: boolean }) {
 
 
 export async function pollQuickMatch() {
-  return request<{ status: MatchmakingStatus; ticket_id?: number; challenge?: ChallengeDto }>(
+  return request<QuickMatchResponse>(
     "/api/matchmaking/quick"
   );
 }

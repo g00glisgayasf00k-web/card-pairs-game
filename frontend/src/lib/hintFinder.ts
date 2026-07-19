@@ -45,13 +45,15 @@ export function findHintPath(
   cols: number,
   goals: JokerGoalPrefer[] = []
 ): HintPath | null {
-  let best: {
+  type BestHint = {
     path: { row: number; col: number }[];
     hand: HandLabel;
     keyRanks: Rank[];
     flushSuit?: Suit;
     rank: number;
-  } | null = null;
+  };
+  // Mutable box — TS does not track assignments inside nested dfs/consider closures.
+  const state: { best: BestHint | null } = { best: null };
 
   const getCard = (r: number, c: number): Card | null => {
     if (isBlocked(blockers[r]?.[c])) return null;
@@ -81,8 +83,8 @@ export function findHintPath(
     // Prefer goal matches heavily; among equals prefer more points; tiny tie-break for path start
     const rank = goalScore * 1_000 + result.totalPoints;
 
-    if (!best || rank > best.rank) {
-      best = {
+    if (!state.best || rank > state.best.rank) {
+      state.best = {
         path: [...path],
         hand: result.hand,
         keyRanks: result.keyRanks,
@@ -120,6 +122,7 @@ export function findHintPath(
     }
   }
 
+  const best = state.best;
   if (!best) return null;
   const goalScore = jokerGoalScore(
     {

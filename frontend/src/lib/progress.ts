@@ -241,13 +241,14 @@ export function importProgress(data: unknown): SavedProgress | null {
 }
 
 export function saveProgress(
-  data: Omit<SavedProgress, "v" | "updatedAt">,
+  data: Omit<SavedProgress, "v" | "updatedAt"> & { updatedAt?: number },
   options?: { skipSync?: boolean }
 ): void {
+  const { updatedAt: requestedAt, ...rest } = data;
   const payload: SavedProgress = {
     v: VERSION,
-    ...data,
-    updatedAt: Date.now(),
+    ...rest,
+    updatedAt: requestedAt ?? Date.now(),
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
   if (!options?.skipSync) {

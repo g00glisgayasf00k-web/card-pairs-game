@@ -1033,14 +1033,15 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
             const isBombOrigin = bombBurst?.row === r && bombBurst?.col === c;
             const isHinted =
               hintCell?.row === r && hintCell?.col === c && !locked && !blocked;
-            const cardStyle: CSSProperties | undefined =
+            const cardStyle = (
               drop > 0
-                ? { "--drop-n": drop }
+                ? ({ "--drop-n": drop } as CSSProperties)
                 : isNew
-                  ? { "--new-row": r }
+                  ? ({ "--new-row": r } as CSSProperties)
                   : isPopping || isBlasting
-                    ? { "--pop-order": popOrder.get(key) ?? 0 }
-                    : undefined;
+                    ? ({ "--pop-order": popOrder.get(key) ?? 0 } as CSSProperties)
+                    : undefined
+            );
 
             return (
               <div

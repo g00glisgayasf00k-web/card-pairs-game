@@ -1283,14 +1283,17 @@ export function GameScreen({
             </div>
             <button
               type="button"
-              className={`action-btn action-btn--goals game-goalbar__btn${pointsMet && !challengesComplete ? " action-btn--goals-alert" : ""}`}
+              className={`game-goalbar__open${pointsMet && !challengesComplete ? " game-goalbar__open--alert" : ""}`}
               onClick={() => setShowChallenges(true)}
               title="Mission goals — point target and hand challenges"
+              aria-label={`Goals ${challengesDone} of ${challengesTotal} complete`}
             >
-              <span className="action-btn__icon">🎯</span>
-              <span className="action-btn__label">Goals</span>
-              <span className="action-btn__cost">
+              <span className="game-goalbar__open-label">Goals</span>
+              <span className="game-goalbar__open-count">
                 {challengesDone}/{challengesTotal}
+              </span>
+              <span className="game-goalbar__open-chev" aria-hidden>
+                ›
               </span>
             </button>
             {goalBonusFlash && (

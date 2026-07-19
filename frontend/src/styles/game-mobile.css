@@ -2547,13 +2547,13 @@ html.native-shell .app.app--levels {
   padding: 0.15rem 0;
 }
 
-/* Vertical rail on the left — full height, buttons stacked from the bottom */
+/* Vertical rail on the left — full height, buttons stacked from the top */
 .action-bar--rail {
   order: 0;
   flex: 0 0 auto;
   flex-direction: column;
   flex-wrap: nowrap;
-  justify-content: flex-end;
+  justify-content: flex-start;
   align-items: stretch;
   align-self: stretch;
   width: 3.55rem;

@@ -292,7 +292,7 @@ html.native-shell .app.app--levels {
   min-height: 0;
   display: flex;
   flex-direction: row;
-  align-items: stretch;
+  align-items: flex-end;
   gap: 0.4rem;
   position: relative;
 }

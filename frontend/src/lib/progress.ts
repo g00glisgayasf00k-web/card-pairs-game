@@ -54,6 +54,10 @@ export interface SavedProgress {
   tutorialStep: number;
   /** Milestone gem chests already claimed (levels 10, 20, 30…). */
   milestoneChestsClaimed: number[];
+  /** Unlocked four-color suit cosmetic (gem shop). */
+  fourColorDeckOwned?: boolean;
+  /** Active suit coloring — classic red/black unless four-color owned & equipped. */
+  cardSuitStyle?: "classic" | "four_color";
   updatedAt: number;
 }
 
@@ -185,6 +189,10 @@ function parseProgress(raw: string | null): SavedProgress | null {
       (n) => n >= 10 && n % 10 === 0
     );
 
+    const fourColorDeckOwned = data.fourColorDeckOwned === true;
+    const cardSuitStyle: "classic" | "four_color" =
+      fourColorDeckOwned && data.cardSuitStyle === "four_color" ? "four_color" : "classic";
+
     let elo: number | undefined;
     if (typeof data.elo === "number" && Number.isFinite(data.elo)) {
       elo = Math.max(100, Math.floor(data.elo));
@@ -210,6 +218,8 @@ function parseProgress(raw: string | null): SavedProgress | null {
       streak: 0,
       tutorialStep,
       milestoneChestsClaimed,
+      fourColorDeckOwned,
+      cardSuitStyle,
       updatedAt: typeof data.updatedAt === "number" ? data.updatedAt : Date.now(),
     };
   } catch {
@@ -330,6 +340,8 @@ export function defaultProgress(): Omit<SavedProgress, "v" | "updatedAt"> {
     streak: 0,
     tutorialStep: 0,
     milestoneChestsClaimed: [],
+    fourColorDeckOwned: false,
+    cardSuitStyle: "classic",
   };
 }
 

@@ -9,6 +9,12 @@ import {
 import { clearGemRewardAd, mountGemRewardAd } from "../lib/adsense";
 import { nativeAdsAvailable, showRewardedEnergyAd, showRewardedGemAd } from "../lib/nativeAds";
 import { GEM_SHOP_PACKS } from "../lib/credits";
+import {
+  FOUR_COLOR_DECK_COST,
+  buyFourColorDeck,
+  getCardSuitStyle,
+  setCardSuitStyle,
+} from "../lib/cardStyle";
 import { fetchPaymentConfig, type PaymentConfig, type PaymentPack } from "../lib/payments";
 import { loadProgress, saveProgress } from "../lib/progress";
 import {
@@ -189,6 +195,20 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
     if (buyTenEnergy()) refresh();
   };
 
+  const fourColorOwned = Boolean(saved?.fourColorDeckOwned);
+  const fourColorEquipped = getCardSuitStyle() === "four_color";
+  const canBuyFourColor = Boolean(saved && !fourColorOwned && gems >= FOUR_COLOR_DECK_COST);
+
+  const handleFourColorDeck = () => {
+    if (fourColorOwned) {
+      setCardSuitStyle(fourColorEquipped ? "classic" : "four_color");
+      refresh();
+      return;
+    }
+    if (!buyFourColorDeck()) return;
+    refresh();
+  };
+
   const startAd = (kind: AdKind) => {
     if (kind === "gems" && !canWatchGemAd) return;
     if (kind === "energy" && !canWatchEnergyAd) return;
@@ -361,6 +381,54 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
     </section>
   );
 
+  const cosmeticsSection = (
+    <section className="hk-shop__section">
+      <h3 className="hk-shop__title">Cosmetics</h3>
+      <p className="hk-shop__note">Deck looks — default is classic red &amp; black.</p>
+      <div
+        className={`hk-shop-card hk-shop-card--row${!fourColorOwned && !canBuyFourColor ? " hk-shop-card--locked" : ""}`}
+        style={{ backgroundImage: `url(${green.base})` }}
+      >
+        <span className="hk-shop-card__glow" style={{ backgroundImage: `url(${green.glow})` }} aria-hidden />
+        <span className="hk-shop-card__icon-wrap" aria-hidden>
+          <span className="hk-shop-card__ring" style={{ backgroundImage: `url(${green.circle})` }} />
+          <span className="hk-shop-card__icon hk-shop-card__icon--emoji" aria-hidden>
+            ♥♦
+          </span>
+        </span>
+        <div className="hk-shop-card__body">
+          <span className="hk-shop-card__label">Four-color deck</span>
+          <span className="hk-shop-card__detail">
+            {fourColorOwned
+              ? fourColorEquipped
+                ? "Equipped — hearts red, diamonds blue, clubs green, spades black"
+                : "Owned — tap to equip four colors"
+              : "Unlock blue diamonds &amp; green clubs (classic red/black stays free)"}
+          </span>
+        </div>
+        <button
+          type="button"
+          className="hk-shop-card__cta"
+          onClick={handleFourColorDeck}
+          disabled={!fourColorOwned && !canBuyFourColor}
+        >
+          {fourColorOwned ? (
+            fourColorEquipped ? (
+              "Unequip"
+            ) : (
+              "Equip"
+            )
+          ) : (
+            <>
+              {FOUR_COLOR_DECK_COST}
+              <img src={gemsIcon} alt="" width={14} height={14} />
+            </>
+          )}
+        </button>
+      </div>
+    </section>
+  );
+
   const gemsSection = (
     <section className="hk-shop__section">
       <h3 className="hk-shop__title">Buy gems</h3>
@@ -411,8 +479,8 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
   );
 
   const sections = emphasizeEnergy
-    ? [energySection, freeRewardsSection, gemsSection]
-    : [freeRewardsSection, energySection, gemsSection];
+    ? [energySection, freeRewardsSection, cosmeticsSection, gemsSection]
+    : [freeRewardsSection, energySection, cosmeticsSection, gemsSection];
 
   return (
     <>

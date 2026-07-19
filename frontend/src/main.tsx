@@ -6,6 +6,8 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 import { PortraitGate } from "./components/PortraitGate";
 import { initProgressSync } from "./lib/progressSync";
 import { initNativeShell } from "./lib/nativeShell";
+import { applyCardSuitStyleToDocument } from "./lib/cardStyle";
+import { PROGRESS_IMPORTED_EVENT } from "./lib/progress";
 import { isLoggedIn } from "./lib/session";
 import "./index.css";
 import "./styles/home-design.css";
@@ -27,6 +29,8 @@ if (isAdminRoute) {
   );
 } else {
   void initNativeShell();
+  applyCardSuitStyleToDocument();
+  window.addEventListener(PROGRESS_IMPORTED_EVENT, () => applyCardSuitStyleToDocument());
   if (isLoggedIn()) initProgressSync();
 
   // Actively poll for a newer service worker so a fresh deploy is picked up

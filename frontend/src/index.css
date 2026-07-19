@@ -9,10 +9,10 @@
   --cream: #f5f0e6;
   --card-bg: #fffef8;
   --shadow: rgba(0, 0, 0, 0.45);
-  /* Four-color deck */
+  /* Classic two-color deck (default) */
   --suit-hearts: #e63946;
-  --suit-diamonds: #2962ff;
-  --suit-clubs: #2ecc71;
+  --suit-diamonds: #e63946;
+  --suit-clubs: #1b1b1b;
   --suit-spades: #1b1b1b;
   /* Extra inset beyond system safe-area so camera / nav never cover UI.
      On Android WebView, env(safe-area-inset-*) is often 0 — MainActivity injects
@@ -640,21 +640,37 @@ header h1 {
   color: var(--suit-spades);
 }
 
-/* Subtle suit tint on card border */
+/* Subtle suit tint on card border — classic red / black */
 .playing-card.suit-hearts {
   background: linear-gradient(145deg, #fff5f6 0%, #fce8ec 50%, #f5d0d8 100%);
 }
 
 .playing-card.suit-diamonds {
-  background: linear-gradient(145deg, #f5f8ff 0%, #e8effc 50%, #d0dcf5 100%);
+  background: linear-gradient(145deg, #fff5f6 0%, #fce8ec 50%, #f5d0d8 100%);
 }
 
 .playing-card.suit-clubs {
-  background: linear-gradient(145deg, #f4faf5 0%, #e5f2e8 50%, #cce5d4 100%);
+  background: linear-gradient(145deg, #f6f7f9 0%, #e8eaed 50%, #d1d5db 100%);
 }
 
 .playing-card.suit-spades {
   background: linear-gradient(145deg, #f6f7f9 0%, #e8eaed 50%, #d1d5db 100%);
+}
+
+/* Four-color deck (gem shop unlock) */
+html.deck-four-color {
+  --suit-hearts: #e63946;
+  --suit-diamonds: #2962ff;
+  --suit-clubs: #2ecc71;
+  --suit-spades: #1b1b1b;
+}
+
+html.deck-four-color .playing-card.suit-diamonds {
+  background: linear-gradient(145deg, #f5f8ff 0%, #e8effc 50%, #d0dcf5 100%);
+}
+
+html.deck-four-color .playing-card.suit-clubs {
+  background: linear-gradient(145deg, #f4faf5 0%, #e5f2e8 50%, #cce5d4 100%);
 }
 
 /* ── Card corners & pips ── */

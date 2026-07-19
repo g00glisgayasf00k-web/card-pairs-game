@@ -60,7 +60,7 @@ const CELL_ASPECT = 5 / 7;
 /** Room for border + outer glow so nothing clips */
 const GRID_VISUAL_INSET = 6;
 /** Felt frame border + padding to leave around the fitted grid */
-const FRAME_INSET = 12;
+const FRAME_INSET = 8;
 
 /** Keep in sync with CSS animation durations (game-mobile / index.css) */
 const ANIM = {

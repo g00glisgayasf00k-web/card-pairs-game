@@ -1,9 +1,13 @@
 import { isBlocked, type BlockerGrid } from "./blockers";
 import {
   evaluateHandFull,
+  jokerGoalScore,
   POKER_HAND_SIZE,
   type Card,
   type HandLabel,
+  type JokerGoalPrefer,
+  type Rank,
+  type Suit,
 } from "./pokerHands";
 
 const NEIGHBORS: [number, number][] = [
@@ -24,18 +28,30 @@ function isHintEligible(card: Card | null | undefined): card is Card {
 export interface HintPath {
   path: { row: number; col: number }[];
   hand: HandLabel;
+  keyRanks: Rank[];
+  flushSuit?: Suit;
+  /** True when this path credits an unmet level goal (including specific ranks). */
+  goalMatch: boolean;
 }
 
-/** Find a valid 5-card path; prefer unmet milestone hands, then highest points. */
+/**
+ * Find a valid 5-card path.
+ * Prefers paths that credit unmet goals (specific ranks/suits first), then highest points.
+ */
 export function findHintPath(
   board: (Card | null)[][],
   blockers: BlockerGrid,
   rows: number,
   cols: number,
-  priorityHands: HandLabel[]
+  goals: JokerGoalPrefer[] = []
 ): HintPath | null {
-  let best: { path: { row: number; col: number }[]; hand: HandLabel; rank: number } | null =
-    null;
+  let best: {
+    path: { row: number; col: number }[];
+    hand: HandLabel;
+    keyRanks: Rank[];
+    flushSuit?: Suit;
+    rank: number;
+  } | null = null;
 
   const getCard = (r: number, c: number): Card | null => {
     if (isBlocked(blockers[r]?.[c])) return null;
@@ -50,22 +66,33 @@ export function findHintPath(
       if (!card) return;
       cards.push(card);
     }
-    const result = evaluateHandFull(cards);
+    const result = evaluateHandFull(cards, goals);
     if (!result) return;
 
-    const priorityIdx = priorityHands.indexOf(result.hand);
-    const rank =
-      (priorityIdx >= 0 ? 1_000_000 - priorityIdx * 10_000 : 0) + result.totalPoints;
+    const goalScore = jokerGoalScore(
+      {
+        hand: result.hand,
+        points: result.totalPoints,
+        keyRanks: result.keyRanks,
+        flushSuit: result.flushSuit,
+      },
+      goals
+    );
+    // Prefer goal matches heavily; among equals prefer more points; tiny tie-break for path start
+    const rank = goalScore * 1_000 + result.totalPoints;
 
     if (!best || rank > best.rank) {
-      best = { path: [...path], hand: result.hand, rank };
+      best = {
+        path: [...path],
+        hand: result.hand,
+        keyRanks: result.keyRanks,
+        flushSuit: result.flushSuit,
+        rank,
+      };
     }
   };
 
-  const dfs = (
-    path: { row: number; col: number }[],
-    visited: Set<string>
-  ) => {
+  const dfs = (path: { row: number; col: number }[], visited: Set<string>) => {
     if (path.length === POKER_HAND_SIZE) {
       consider(path);
       return;
@@ -94,5 +121,20 @@ export function findHintPath(
   }
 
   if (!best) return null;
-  return { path: best.path, hand: best.hand };
+  const goalScore = jokerGoalScore(
+    {
+      hand: best.hand,
+      points: 0,
+      keyRanks: best.keyRanks,
+      flushSuit: best.flushSuit,
+    },
+    goals
+  );
+  return {
+    path: best.path,
+    hand: best.hand,
+    keyRanks: best.keyRanks,
+    flushSuit: best.flushSuit,
+    goalMatch: goalScore > 0,
+  };
 }

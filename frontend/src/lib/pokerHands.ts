@@ -438,16 +438,55 @@ function analysisMatchesGoal(result: HandAnalysis, g: JokerGoalPrefer): boolean 
   return true;
 }
 
+/** True when the evaluated hand credits this unmet goal (including specific ranks/suits). */
+export function handMatchesGoal(
+  result: Pick<HandAnalysis, "hand" | "keyRanks" | "flushSuit">,
+  g: JokerGoalPrefer
+): boolean {
+  return analysisMatchesGoal(
+    { hand: result.hand, points: 0, keyRanks: result.keyRanks, flushSuit: result.flushSuit },
+    g
+  );
+}
+
 /** Higher = better for unmet goals (specific ranks/suits beat generic hand goals). */
-function jokerGoalScore(result: HandAnalysis, goals: JokerGoalPrefer[] | undefined): number {
+export function jokerGoalScore(
+  result: HandAnalysis | Pick<HandAnalysis, "hand" | "points" | "keyRanks" | "flushSuit">,
+  goals: JokerGoalPrefer[] | undefined
+): number {
   if (!goals?.length) return 0;
+  const analysis: HandAnalysis = {
+    hand: result.hand,
+    points: "points" in result ? result.points : 0,
+    keyRanks: result.keyRanks,
+    flushSuit: result.flushSuit,
+  };
   let score = 0;
   for (const g of goals) {
-    if (!analysisMatchesGoal(result, g)) continue;
+    if (!analysisMatchesGoal(analysis, g)) continue;
     const specific = (g.ranks != null && g.ranks.length > 0) || g.suit != null;
     score += specific ? 100_000 : 10_000;
   }
   return score;
+}
+
+export function findMatchingGoal(
+  result: Pick<HandAnalysis, "hand" | "keyRanks" | "flushSuit">,
+  goals: JokerGoalPrefer[] | undefined
+): JokerGoalPrefer | null {
+  if (!goals?.length) return null;
+  let best: JokerGoalPrefer | null = null;
+  let bestScore = 0;
+  for (const g of goals) {
+    if (!handMatchesGoal(result, g)) continue;
+    const specific = (g.ranks != null && g.ranks.length > 0) || g.suit != null;
+    const score = specific ? 2 : 1;
+    if (!best || score > bestScore) {
+      best = g;
+      bestScore = score;
+    }
+  }
+  return best;
 }
 
 function preferWildResult(

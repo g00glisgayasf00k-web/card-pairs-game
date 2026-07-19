@@ -8,6 +8,7 @@ import {
   HAND_SCORE_LIST,
   SPECIALS_EARN_BY_HAND,
   SPECIALS_GUIDE,
+  findMatchingGoal,
   type FullHandResult,
   type HandLabel,
 } from "../lib/pokerHands";
@@ -467,8 +468,12 @@ export function GameScreen({
     const unmet = cfg.challenges.filter(
       (c) => challengeProgress(levelHandCounts, c) < c.minCount
     );
-    const priorityHands = unmet.map((c) => c.hand);
-    const result = boardRef.current?.revealHint(priorityHands);
+    const goals = unmet.map((c) => ({
+      hand: c.hand,
+      ranks: c.ranks,
+      suit: c.suit,
+    }));
+    const result = boardRef.current?.revealHint(goals);
     if (!result) {
       handleBoardFeedback(
         "No hint available — there’s no valid 5-card hand on the board right now. Try Shuffle.",
@@ -476,10 +481,24 @@ export function GameScreen({
       );
       return false;
     }
-    const target = unmet.find((c) => c.hand === result.hand);
-    const label = target
-      ? formatChallengeLabel(target)
+
+    // Only name a goal if this path actually credits it (ranks/suits must match).
+    const matchedGoal = findMatchingGoal(result, goals);
+    const matchedChallenge = matchedGoal
+      ? unmet.find(
+          (c) =>
+            c.hand === matchedGoal.hand &&
+            (matchedGoal.ranks == null ||
+              (c.ranks?.length === matchedGoal.ranks.length &&
+                c.ranks.every((r, i) => r === matchedGoal.ranks![i]))) &&
+            (matchedGoal.suit == null || c.suit === matchedGoal.suit)
+        )
+      : undefined;
+
+    const label = matchedChallenge
+      ? formatChallengeLabel(matchedChallenge)
       : HAND_DISPLAY[result.hand] ?? result.hand.replace(/_/g, " ");
+
     handleBoardFeedback(`Start here for ${label}`, true);
     return true;
   }, [cfg.challenges, levelHandCounts, handleBoardFeedback]);

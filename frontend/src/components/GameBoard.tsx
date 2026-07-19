@@ -115,7 +115,7 @@ function computeGridFit(availW: number, availH: number): { width: number; height
 
 export interface GameBoardHandle {
   shuffle: () => void;
-  revealHint: (priorityHands: HandLabel[]) => HintPath | null;
+  revealHint: (goals?: JokerGoalPrefer[]) => HintPath | null;
   clearHint: () => void;
 }
 
@@ -447,9 +447,9 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
           return next;
         });
       },
-      revealHint: (priorityHands: HandLabel[]) => {
+      revealHint: (goals = []) => {
         if (busy || locked) return null;
-        const result = findHintPath(board, blockers, ROWS, COLS, priorityHands);
+        const result = findHintPath(board, blockers, ROWS, COLS, goals);
         if (!result) return null;
         const first = result.path[0]!;
         setHintCell({ row: first.row, col: first.col });

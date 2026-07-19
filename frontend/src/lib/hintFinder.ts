@@ -13,6 +13,14 @@ const NEIGHBORS: [number, number][] = [
   [0, 1],
 ];
 
+/** Cards the player can include in a swipe hand — only plain cards + jokers. */
+function isHintEligible(card: Card | null | undefined): card is Card {
+  if (!card) return false;
+  const sp = card.special;
+  if (!sp) return true;
+  return sp === "joker";
+}
+
 export interface HintPath {
   path: { row: number; col: number }[];
   hand: HandLabel;
@@ -31,7 +39,8 @@ export function findHintPath(
 
   const getCard = (r: number, c: number): Card | null => {
     if (isBlocked(blockers[r]?.[c])) return null;
-    return board[r]?.[c] ?? null;
+    const card = board[r]?.[c] ?? null;
+    return isHintEligible(card) ? card : null;
   };
 
   const consider = (path: { row: number; col: number }[]) => {

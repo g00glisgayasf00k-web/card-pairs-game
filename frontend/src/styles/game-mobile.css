@@ -2543,14 +2543,14 @@ html.native-shell .app.app--levels {
   padding: 0.15rem 0;
 }
 
-/* Bottom action bar — full width under the board, wraps to rows */
+/* Bottom action bar — single compact row under the board */
 .action-bar--bottom {
   order: 2;
   flex-shrink: 0;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 0.3rem;
-  padding: 0.15rem max(0, env(safe-area-inset-left)) max(0.15rem, env(safe-area-inset-bottom));
+  flex-wrap: nowrap;
+  justify-content: stretch;
+  gap: 0.22rem;
+  padding: 0.1rem max(0, env(safe-area-inset-left)) max(0.1rem, env(safe-area-inset-bottom));
 }
 
 .board-stage {
@@ -2558,27 +2558,33 @@ html.native-shell .app.app--levels {
 }
 
 .action-bar--bottom .action-btn {
-  flex: 1 1 calc(33.333% - 0.3rem);
+  flex: 1 1 0;
   min-width: 0;
-  max-width: calc(33.333% - 0.2rem);
-  padding: 0.42rem 0.2rem 0.36rem;
+  max-width: none;
+  padding: 0.28rem 0.08rem 0.22rem;
+  border-radius: 10px;
+  gap: 0.02rem;
 }
 
 .action-bar--bottom .action-btn__icon {
-  font-size: 1.25rem;
+  font-size: 0.95rem;
 }
 
 .action-bar--bottom .action-btn__label {
-  font-size: 0.6rem;
-  letter-spacing: 0.02em;
-  line-height: 1.1;
+  font-size: 0.48rem;
+  letter-spacing: 0.01em;
+  line-height: 1.05;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .action-bar--bottom .action-btn__cost {
-  top: 0.15rem;
-  right: 0.22rem;
-  font-size: 0.55rem;
-  padding: 0.05rem 0.24rem;
+  top: 0.08rem;
+  right: 0.1rem;
+  font-size: 0.48rem;
+  padding: 0.02rem 0.16rem;
 }
 
 .action-btn {

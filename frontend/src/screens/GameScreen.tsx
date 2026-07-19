@@ -470,7 +470,10 @@ export function GameScreen({
     const priorityHands = unmet.map((c) => c.hand);
     const result = boardRef.current?.revealHint(priorityHands);
     if (!result) {
-      handleBoardFeedback("No helpful hand found — try shuffle", true);
+      handleBoardFeedback(
+        "No hint available — there’s no valid 5-card hand on the board right now. Try Shuffle.",
+        true
+      );
       return false;
     }
     const target = unmet.find((c) => c.hand === result.hand);

@@ -363,11 +363,14 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
       if (!embedded) return;
       const el = fitRef.current;
       if (!el) return;
-      // Measure the stage (stable available area); the frame now shrink-wraps the grid.
-      const stage = (el.closest(".board-stage") as HTMLElement | null) ?? el;
+      // Size the grid to the board stage (inside the play arena, beside the rail).
+      const frame =
+        (el.closest(".board-stage") as HTMLElement | null) ??
+        (el.closest(".board-stage__frame") as HTMLElement | null) ??
+        el;
 
       const measure = () => {
-        const { width, height } = stage.getBoundingClientRect();
+        const { width, height } = frame.getBoundingClientRect();
         const next = computeGridFit(width - FRAME_INSET, height - FRAME_INSET);
         setGridFit((prev) => {
           if (!next) return prev;
@@ -378,7 +381,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
 
       measure();
       const ro = new ResizeObserver(measure);
-      ro.observe(stage);
+      ro.observe(frame);
       window.addEventListener("resize", measure);
       const vv = window.visualViewport;
       vv?.addEventListener("resize", measure);

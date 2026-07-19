@@ -169,24 +169,10 @@ html.native-shell .app.app--levels {
   background: radial-gradient(ellipse at 50% 50%, rgba(108, 43, 217, 0.18) 0%, transparent 70%);
 }
 
-.app--theme-solo .board-stage__frame {
-  border-radius: 18px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 35%),
-    linear-gradient(165deg, rgba(108, 43, 217, 0.55) 0%, rgba(59, 14, 145, 0.7) 50%, #061a17 100%);
-  box-shadow:
-    0 0 28px rgba(108, 43, 217, 0.25),
-    inset 0 1px 0 rgba(255, 255, 255, 0.12),
-    inset 0 -3px 8px rgba(0, 0, 0, 0.35);
-}
-
 .app--theme-solo .action-bar--rail {
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(6, 26, 23, 0.92));
-  box-shadow:
-    0 0 20px rgba(108, 43, 217, 0.16),
-    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  border: none;
+  background: transparent;
+  box-shadow: none;
 }
 
 .app--theme-solo .action-btn {
@@ -291,10 +277,45 @@ html.native-shell .app.app--levels {
   flex: 1 1 0;
   min-height: 0;
   display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  position: relative;
+}
+
+/* Shared frame: left rail + board, pinned to the top */
+.play-arena {
+  flex: 1 1 0;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
   flex-direction: row;
   align-items: stretch;
-  gap: 0.35rem;
-  position: relative;
+  gap: 0.3rem;
+  padding: 0.25rem;
+  border-radius: 20px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, transparent 30%),
+    linear-gradient(165deg, #1a6040 0%, var(--mg-mid) 50%, #0a3522 100%);
+  border: 2px solid rgba(245, 208, 96, 0.4);
+  box-shadow:
+    var(--mg-shadow),
+    inset 0 2px 12px rgba(0, 0, 0, 0.45),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.08),
+    0 0 40px rgba(26, 107, 69, 0.25);
+  overflow: hidden;
+}
+
+.app--theme-solo .play-arena {
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, transparent 35%),
+    linear-gradient(165deg, rgba(108, 43, 217, 0.55) 0%, rgba(59, 14, 145, 0.7) 50%, #061a17 100%);
+  box-shadow:
+    0 0 28px rgba(108, 43, 217, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12),
+    inset 0 -3px 8px rgba(0, 0, 0, 0.35);
 }
 
 /* Tutorial tips float over the board — does not shrink the flex layout */
@@ -2333,7 +2354,7 @@ html.native-shell .app.app--levels {
   flex: 1 1 0;
   display: flex;
   align-items: stretch;
-  justify-content: center;
+  justify-content: stretch;
   position: relative;
   min-height: 0;
   min-width: 0;
@@ -2342,12 +2363,7 @@ html.native-shell .app.app--levels {
 }
 
 .board-stage__glow {
-  position: absolute;
-  inset: 5% 8%;
-  border-radius: 24px;
-  background: radial-gradient(ellipse at 50% 50%, rgba(125, 255, 186, 0.12) 0%, transparent 70%);
-  pointer-events: none;
-  z-index: 0;
+  display: none;
 }
 
 .board-stage__frame {
@@ -2363,21 +2379,15 @@ html.native-shell .app.app--levels {
   display: flex;
   flex-direction: column;
   align-items: stretch;
-  justify-content: center;
-  padding: 0.2rem;
-  border-radius: 20px;
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.06) 0%, transparent 30%),
-    linear-gradient(165deg, #1a6040 0%, var(--mg-mid) 50%, #0a3522 100%);
-  border: 2px solid rgba(245, 208, 96, 0.4);
-  box-shadow:
-    var(--mg-shadow),
-    inset 0 2px 12px rgba(0, 0, 0, 0.45),
-    inset 0 -1px 0 rgba(255, 255, 255, 0.08),
-    0 0 40px rgba(26, 107, 69, 0.25);
+  justify-content: flex-start;
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+  box-shadow: none;
 }
 
-/* Embedded board — fills the felt frame; JS sizes the grid to the stage */
+/* Embedded board — fills the board stage; JS sizes the grid to available space */
 .game-panel--embedded {
   flex: 1 1 auto;
   width: 100%;
@@ -2397,8 +2407,8 @@ html.native-shell .app.app--levels {
   width: 100%;
   height: 100%;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: flex-start;
+  justify-content: flex-start;
   overflow: hidden;
 }
 
@@ -2547,7 +2557,7 @@ html.native-shell .app.app--levels {
   padding: 0.15rem 0;
 }
 
-/* Vertical rail on the left — full height, buttons stacked from the top */
+/* Vertical rail inside the play arena — stacked from the top */
 .action-bar--rail {
   order: 0;
   flex: 0 0 auto;
@@ -2556,12 +2566,15 @@ html.native-shell .app.app--levels {
   justify-content: flex-start;
   align-items: stretch;
   align-self: stretch;
-  width: 3.55rem;
+  width: 3.45rem;
   height: auto;
-  max-height: none;
-  gap: 0.28rem;
-  padding: 0.15rem 0.1rem;
-  border-radius: 14px;
+  max-height: 100%;
+  gap: 0.22rem;
+  padding: 0.05rem 0.05rem 0.1rem;
+  border-radius: 0;
+  border: none;
+  background: transparent;
+  box-shadow: none;
   overflow-y: auto;
   overflow-x: hidden;
   -webkit-overflow-scrolling: touch;

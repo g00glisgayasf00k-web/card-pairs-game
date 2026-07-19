@@ -1281,6 +1281,18 @@ export function GameScreen({
                   );
                 })}
             </div>
+            <button
+              type="button"
+              className={`action-btn action-btn--goals game-goalbar__btn${pointsMet && !challengesComplete ? " action-btn--goals-alert" : ""}`}
+              onClick={() => setShowChallenges(true)}
+              title="Mission goals — point target and hand challenges"
+            >
+              <span className="action-btn__icon">🎯</span>
+              <span className="action-btn__label">Goals</span>
+              <span className="action-btn__cost">
+                {challengesDone}/{challengesTotal}
+              </span>
+            </button>
             {goalBonusFlash && (
               <p className="game-goalbar__bonus" role="status">
                 Goal ×{goalBonusFlash.mult} · +{goalBonusFlash.points.toLocaleString()}
@@ -1342,82 +1354,6 @@ export function GameScreen({
           )}
 
           <div className="play-arena">
-            <nav className="action-bar action-bar--rail" aria-label="Game actions">
-              <button
-                type="button"
-                className="action-btn action-btn--restart"
-                onClick={() => setConfirmSpend("restart")}
-                disabled={boardLocked || tutorialActive}
-                title={
-                  tutorialActive
-                    ? "Finish the lesson first"
-                    : challengeEnergyFree
-                      ? "Restart this duel — free"
-                      : "Restart this level — costs 1 energy"
-                }
-              >
-                <span className="action-btn__icon">↺</span>
-                <span className="action-btn__label">Restart</span>
-                <span className="action-btn__cost action-btn__cost--energy">
-                  {challengeEnergyFree ? "Free" : "⚡1"}
-                </span>
-              </button>
-              <button
-                type="button"
-                className="action-btn action-btn--hint"
-                onClick={() => setConfirmSpend("hint")}
-                disabled={boardLocked || tutorialActive}
-                title={tutorialActive ? "Finish the lesson first" : `Show a card to start toward a goal hand — costs ${HINT_COST} gem`}
-              >
-                <span className="action-btn__icon">💡</span>
-                <span className="action-btn__label">Hint</span>
-                <span className="action-btn__cost action-btn__cost--gem">💎{HINT_COST}</span>
-              </button>
-              <button
-                type="button"
-                className="action-btn action-btn--shuffle"
-                onClick={() => setConfirmSpend("shuffle")}
-                disabled={boardLocked || tutorialActive}
-                title={tutorialActive ? "Finish the lesson first" : `Shuffle the board — costs ${SHUFFLE_COST} gem`}
-              >
-                <span className="action-btn__icon">🔀</span>
-                <span className="action-btn__label">Shuffle</span>
-                <span className="action-btn__cost action-btn__cost--gem">💎{SHUFFLE_COST}</span>
-              </button>
-              <button
-                type="button"
-                className="action-btn action-btn--specials"
-                onClick={() => setShowSpecials(true)}
-                title="How arrow, bomb, joker, and rainbow power-ups work"
-              >
-                <span className="action-btn__icon">✨</span>
-                <span className="action-btn__label">Powers</span>
-              </button>
-              <button
-                type="button"
-                className="action-btn action-btn--scores"
-                onClick={() => setShowScores(true)}
-                title="Points awarded for each poker hand"
-              >
-                <span className="action-btn__icon">📋</span>
-                <span className="action-btn__label">Payouts</span>
-              </button>
-              {showChallengeUi && (
-                <button
-                  type="button"
-                  className={`action-btn action-btn--goals${pointsMet && !challengesComplete ? " action-btn--goals-alert" : ""}`}
-                  onClick={() => setShowChallenges(true)}
-                  title="Mission goals — point target and hand challenges"
-                >
-                  <span className="action-btn__icon">🎯</span>
-                  <span className="action-btn__label">Goals</span>
-                  <span className="action-btn__cost">
-                    {challengesDone}/{challengesTotal}
-                  </span>
-                </button>
-              )}
-            </nav>
-
             <main className={`board-stage${boardLocked ? " board-stage--locked" : ""}`}>
               <div className="board-stage__glow" aria-hidden />
               <div className="board-stage__frame">
@@ -1464,6 +1400,68 @@ export function GameScreen({
               )}
             </main>
           </div>
+
+          <nav className="action-bar action-bar--bottom" aria-label="Game actions">
+            <button
+              type="button"
+              className="action-btn action-btn--restart"
+              onClick={() => setConfirmSpend("restart")}
+              disabled={boardLocked || tutorialActive}
+              title={
+                tutorialActive
+                  ? "Finish the lesson first"
+                  : challengeEnergyFree
+                    ? "Restart this duel — free"
+                    : "Restart this level — costs 1 energy"
+              }
+            >
+              <span className="action-btn__icon">↺</span>
+              <span className="action-btn__label">Restart</span>
+              <span className="action-btn__cost action-btn__cost--energy">
+                {challengeEnergyFree ? "Free" : "⚡1"}
+              </span>
+            </button>
+            <button
+              type="button"
+              className="action-btn action-btn--hint"
+              onClick={() => setConfirmSpend("hint")}
+              disabled={boardLocked || tutorialActive}
+              title={tutorialActive ? "Finish the lesson first" : `Show a card to start toward a goal hand — costs ${HINT_COST} gem`}
+            >
+              <span className="action-btn__icon">💡</span>
+              <span className="action-btn__label">Hint</span>
+              <span className="action-btn__cost action-btn__cost--gem">💎{HINT_COST}</span>
+            </button>
+            <button
+              type="button"
+              className="action-btn action-btn--shuffle"
+              onClick={() => setConfirmSpend("shuffle")}
+              disabled={boardLocked || tutorialActive}
+              title={tutorialActive ? "Finish the lesson first" : `Shuffle the board — costs ${SHUFFLE_COST} gem`}
+            >
+              <span className="action-btn__icon">🔀</span>
+              <span className="action-btn__label">Shuffle</span>
+              <span className="action-btn__cost action-btn__cost--gem">💎{SHUFFLE_COST}</span>
+            </button>
+            <button
+              type="button"
+              className="action-btn action-btn--specials"
+              onClick={() => setShowSpecials(true)}
+              title="How arrow, bomb, joker, and rainbow power-ups work"
+            >
+              <span className="action-btn__icon">✨</span>
+              <span className="action-btn__label">Powers</span>
+            </button>
+            <button
+              type="button"
+              className="action-btn action-btn--scores"
+              onClick={() => setShowScores(true)}
+              title="Points awarded for each poker hand"
+            >
+              <span className="action-btn__icon">📋</span>
+              <span className="action-btn__label">Payouts</span>
+            </button>
+          </nav>
         </div>
       </div>
 

@@ -5,39 +5,22 @@ interface Props {
   className?: string;
 }
 
-const SUIT_PIPS = [
-  { suit: "hearts", glyph: "♥" },
-  { suit: "diamonds", glyph: "♦" },
-  { suit: "clubs", glyph: "♣" },
-  { suit: "spades", glyph: "♠" },
-] as const;
+/** PixelLab / poker-themed power-up art paths. */
+const POWER_ART: Record<SpecialType, string> = {
+  arrow_h: "/assets/pixellab/power-arrow-h.png",
+  arrow_v: "/assets/pixellab/power-arrow-v.png",
+  bomb: "/assets/pixellab/power-bomb.png",
+  joker: "/assets/pixellab/power-joker.png",
+  rainbow: "/assets/pixellab/power-rainbow.png",
+};
 
 /** Renders power-up artwork for board cells and the guide modal */
 export function SpecialArt({ type, className }: Props) {
-  if (type === "rainbow") {
-    return (
-      <div
-        className={["special-art", "special-art--rainbow", "rainbow-suit", className]
-          .filter(Boolean)
-          .join(" ")}
-        aria-hidden
-      >
-        <span className="rainbow-suit__card">
-          {SUIT_PIPS.map(({ suit, glyph }) => (
-            <span
-              key={suit}
-              className={`rainbow-suit__pip rainbow-suit__pip--${suit}`}
-            >
-              {glyph}
-            </span>
-          ))}
-        </span>
-      </div>
-    );
-  }
-
   return (
-    <div
+    <img
+      src={POWER_ART[type]}
+      alt=""
+      draggable={false}
       className={["special-art", `special-art--${type}`, className].filter(Boolean).join(" ")}
       aria-hidden
     />

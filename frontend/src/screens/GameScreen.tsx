@@ -1452,7 +1452,7 @@ export function GameScreen({
               title="How arrow, bomb, joker, and rainbow power-ups work"
             >
               <span className="action-btn__powers-art" aria-hidden>
-                <span className="special-art special-art--joker special-art--btn" />
+                <SpecialArt type="joker" className="special-art--btn" />
               </span>
               <span className="action-btn__label">Powers</span>
             </button>

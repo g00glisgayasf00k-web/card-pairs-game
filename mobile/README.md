@@ -7,7 +7,7 @@ Native shells wrap the same React game via **Capacitor** and talk to the live AP
 | **Android** | this file (below) | `frontend/android/` |
 | **iOS** | **[IOS.md](./IOS.md)** | `frontend/ios/` |
 
-**App ID:** `com.royalmatch.poker`  
+**App ID:** `com.royalpokermatch`  
 **API:** `https://royal-match-poker.onrender.com`
 
 ---
@@ -25,7 +25,7 @@ This folder holds scripts and build output for the native Android app. The Capac
 | Mobile web build (API → Render) | `frontend/.env.capacitor` |
 | Debug APK (after build) | `mobile/output/royal-match-poker-debug.apk` |
 
-**App ID:** `com.royalmatch.poker`  
+**App ID:** `com.royalpokermatch`  
 **API:** `https://royal-match-poker.onrender.com`
 
 ## Prerequisites (one-time)
@@ -131,7 +131,7 @@ Do **not** upload the debug APK from GitHub Actions or `mobile/output/`.
 
 In-app badges work without Firebase. Device push needs:
 
-1. Create a Firebase project linked to app id `com.royalmatch.poker`.
+1. Create a Firebase project linked to app id `com.royalpokermatch`.
 2. Download `google-services.json` into `frontend/android/app/` (Gradle already applies the plugin when this file exists).
 3. On the Render backend, set:
    - `FCM_PROJECT_ID` — Firebase project id

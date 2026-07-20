@@ -5,7 +5,7 @@ You’ve never shipped to Play before — this guide is written for that. Your g
 | Item | Your value |
 |------|------------|
 | App name | Royal Poker Match |
-| Package / application ID | `com.royalmatch.poker` (**never change** after first upload) |
+| Package / application ID | `com.royalpokermatch` (**never change** after first upload) |
 | Android project | `frontend/android/` |
 | Live website / API | https://royal-match-poker.onrender.com |
 | Privacy policy URL | https://royal-match-poker.onrender.com/privacy.html |
@@ -72,7 +72,7 @@ Do this in parallel while you install Android Studio.
 
 You now have an empty listing. You still need a signed build before reviewers can install it.
 
-**Important:** When you later upload the first `.aab`, the package name inside it must be `com.royalmatch.poker`. That is already set in your project.
+**Important:** When you later upload the first `.aab`, the package name inside it must be `com.royalpokermatch`. That is already set in your project.
 
 ---
 
@@ -271,7 +271,7 @@ Build a new signed AAB again.
 | “You need a privacy policy” | Use the live URL above |
 | Data safety incomplete | Fill every section; save drafts carefully |
 | App crashes for reviewers | Give them a working test account |
-| Wrong package name | Must stay `com.royalmatch.poker` |
+| Wrong package name | Must stay `com.royalpokermatch` |
 | Uploaded APK instead of AAB | Build **Android App Bundle** |
 | Lost keystore | Avoid this — backup now; enroll Play App Signing |
 | Render asleep on first open | Cold start can take ~30–60s; note that for reviewers if needed |

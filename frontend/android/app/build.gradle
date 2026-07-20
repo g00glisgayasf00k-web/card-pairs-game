@@ -13,10 +13,10 @@ def resolvedVersionName = (
 ).toString()
 
 android {
-    namespace "com.royalmatch.poker"
+    namespace "com.royalpokermatch"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.royalmatch.poker"
+        applicationId "com.royalpokermatch"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode resolvedVersionCode

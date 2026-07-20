@@ -6,7 +6,7 @@ Yes — this game can ship as an iOS app. It already uses **Capacitor** (same ap
 
 | | |
 |--|--|
-| **App ID** | `com.royalmatch.poker` |
+| **App ID** | `com.royalpokermatch` |
 | **API** | `https://royal-match-poker.onrender.com` |
 | **Project** | `frontend/ios/` |
 | **Same as** | Android APK — one React game, native shell |
@@ -43,7 +43,7 @@ npm run cap:sync:ios   # or: npm run cap:sync  (Android + iOS)
 
 ### App Store / TestFlight (short)
 
-1. Apple Developer → App ID `com.royalmatch.poker`
+1. Apple Developer → App ID `com.royalpokermatch`
 2. App Store Connect → new app
 3. Xcode → **Product → Archive** → upload to App Store Connect
 4. Enable TestFlight, then submit for review

@@ -1,4 +1,4 @@
-package com.royalmatch.poker;
+package com.royalpokermatch;
 
 import android.os.Bundle;
 import android.webkit.WebView;

@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
-  appId: "com.royalmatch.poker",
+  appId: "com.royalpokermatch",
   appName: "Royal Poker Match",
   webDir: "dist",
   server: {

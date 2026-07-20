@@ -1,143 +1,313 @@
-# Google Play — upload guide (Royal Poker Match)
+# Google Play — beginner walkthrough (Royal Poker Match)
 
-This walkthrough is for shipping **`com.royalmatch.poker`** to Google Play Console.
+You’ve never shipped to Play before — this guide is written for that. Your game is **already wrapped** as an Android app with Capacitor. You are **not** starting from zero code.
 
-Play Console needs a **signed Android App Bundle (`.aab`)**, not the debug APK from GitHub Actions.
+| Item | Your value |
+|------|------------|
+| App name | Royal Poker Match |
+| Package / application ID | `com.royalmatch.poker` (**never change** after first upload) |
+| Android project | `frontend/android/` |
+| Live website / API | https://royal-match-poker.onrender.com |
+| Privacy policy URL | https://royal-match-poker.onrender.com/privacy.html |
 
-| Item | Value |
-|------|--------|
-| Package / application ID | `com.royalmatch.poker` |
-| Capacitor / Android project | `frontend/android/` |
-| Live API | `https://royal-match-poker.onrender.com` |
-| Privacy policy URL (for Play listing) | `https://royal-match-poker.onrender.com/privacy.html` |
+**Big picture (what you’re doing):**
 
----
-
-## 1. Create the app in Play Console
-
-1. Open [Google Play Console](https://play.google.com/console).
-2. Create the app (name, language, free/paid, declarations).
-3. Keep the package name **`com.royalmatch.poker`** — it is locked forever once you upload the first build.
-
-Complete later (before production):
-
-- Store listing (icon, screenshots, description)
-- Content rating questionnaire
-- Data safety form
-- Privacy policy URL → `https://royal-match-poker.onrender.com/privacy.html`
-- App access (test account if login is required)
+1. Install tools (Android Studio)  
+2. Pay once for a Google Play developer account  
+3. Create a secret signing key (like a password for updates)  
+4. Build a signed **`.aab`** file  
+5. Upload it to Play Console (Internal testing first)  
+6. Fill in listing / safety forms  
+7. Promote to Production when ready  
 
 ---
 
-## 2. Create a signing keystore (one-time — keep forever)
+## Phase 0 — What you need (one-time installs)
 
-Generate the keystore **outside** this repo (e.g. Documents). Never commit the `.jks` or passwords.
+### A. Android Studio (required)
+
+1. Download: https://developer.android.com/studio  
+2. Install with defaults.  
+3. Open Android Studio → **More Actions → SDK Manager** (or Settings → Languages & Frameworks → Android SDK).  
+4. Install:
+   - **Android SDK Platform** (API 34 or 35)
+   - **Android SDK Build-Tools**
+   - **Android SDK Platform-Tools**
+5. Accept licenses if prompted.
+
+Android Studio includes its own Java — you do **not** need a separate JDK install for most steps.
+
+### B. Node.js (you likely already have this)
+
+Needed to build the web app into the Android shell.
 
 ```powershell
-keytool -genkey -v -keystore royal-match-upload.jks -keyalg RSA -keysize 2048 -validity 10000 -alias royal-match
+node -v
 ```
 
-Save:
+If missing: https://nodejs.org/ (LTS).
 
-- the `.jks` file
-- keystore password
-- key alias (`royal-match`)
-- key password
+### C. A Google account + Play developer fee
 
-If you lose these and you are **not** enrolled in Play App Signing with a recoverable upload key, you cannot update the same listing.
+- Go to https://play.google.com/console  
+- Sign in with the Google account that will **own** the app forever  
+- Pay the **one-time** Google Play developer registration fee (currently USD $25)  
+- Complete identity verification if Google asks (can take hours–days)
 
-**Recommended:** when Play asks about **Play App Signing**, let Google hold the app signing key. You keep the upload keystore above for uploading new releases.
+Do this in parallel while you install Android Studio.
 
 ---
 
-## 3. Build a release AAB (Android Studio)
+## Phase 1 — Create the app listing in Play Console
 
-Debug APKs from Actions / `mobile\build.ps1` are for sideloading only. Do **not** upload those to Play.
+1. Open https://play.google.com/console  
+2. **Create app**  
+3. Fill in:
+   - **App name:** Royal Poker Match  
+   - **Default language:** English (United States) or your preference  
+   - **App or game:** Game  
+   - **Free or paid:** Free  
+4. Accept declarations → Create  
 
-1. Sync the web app into Capacitor:
+You now have an empty listing. You still need a signed build before reviewers can install it.
+
+**Important:** When you later upload the first `.aab`, the package name inside it must be `com.royalmatch.poker`. That is already set in your project.
+
+---
+
+## Phase 2 — Create your upload keystore (do this once, keep forever)
+
+This key proves future updates are from you. **Lose it = you can’t update the same app** (unless Play App Signing can recover — still treat it as sacred).
+
+### Where to put it
+
+Create a folder **outside** the git repo, e.g.:
+
+```
+C:\Users\g00gl\Documents\RoyalMatchKeys\
+```
+
+Never commit `.jks` / `.keystore` files or passwords to GitHub.
+
+### Generate the key (from Android Studio’s terminal)
+
+1. Open **Android Studio**  
+2. **View → Tool Windows → Terminal**  
+3. Run (adjust the path if needed):
+
+```powershell
+mkdir "$env:USERPROFILE\Documents\RoyalMatchKeys" -Force
+cd "$env:USERPROFILE\Documents\RoyalMatchKeys"
+
+& "$env:LOCALAPPDATA\Android\Sdk\..\..\Programs\Android\Android Studio\jbr\bin\keytool.exe" -genkey -v -keystore royal-match-upload.jks -keyalg RSA -keysize 2048 -validity 10000 -alias royal-match
+```
+
+If `keytool` isn’t found, use Android Studio’s JDK:
+
+```powershell
+# Common path on Windows:
+& "C:\Program Files\Android\Android Studio\jbr\bin\keytool.exe" -genkey -v -keystore royal-match-upload.jks -keyalg RSA -keysize 2048 -validity 10000 -alias royal-match
+```
+
+Answer the prompts (name/org can be yours). Remember:
+
+| Secret | Example |
+|--------|---------|
+| Keystore file | `royal-match-upload.jks` |
+| Keystore password | (you choose) |
+| Key alias | `royal-match` |
+| Key password | (often same as keystore) |
+
+**Backup** the `.jks` + passwords to a password manager / encrypted USB.
+
+When Play asks about **Play App Signing**, choose **Let Google manage** (recommended). You keep the upload keystore for uploading; Google holds the final signing key.
+
+---
+
+## Phase 3 — Build the signed App Bundle (`.aab`)
+
+Play wants an **Android App Bundle** (`.aab`), not a debug APK.
+
+### 3.1 Sync your latest game into Android
+
+In PowerShell:
 
 ```powershell
 cd "c:\Users\g00gl\OneDrive\Desktop\Games\Card Pairs Game\frontend"
 npm install
-npm run cap:sync
-npm run cap:open
+npm run cap:sync:android
+npm run cap:open:android
 ```
 
-2. In Android Studio: **Build → Generate Signed App Bundle / APK**
-3. Choose **Android App Bundle**
-4. Select your `.jks`, enter alias + passwords
-5. Build type: **release**
-6. Finish — output is typically:
+This builds the web game pointed at your live Render API and opens Android Studio.
+
+### 3.2 Generate signed bundle in Android Studio
+
+1. Wait for Gradle sync to finish (bottom progress bar).  
+2. Menu: **Build → Generate Signed App Bundle or APK…**  
+3. Choose **Android App Bundle** → Next  
+4. Select your `royal-match-upload.jks`  
+5. Enter passwords + alias `royal-match` → Next  
+6. Build variant: **release** → Create  
+
+Output is usually:
+
+```
+frontend\android\app\build\outputs\bundle\release\app-release.aab
+```
+
+or
 
 ```
 frontend\android\app\release\app-release.aab
 ```
 
-(or under `app\build\outputs\bundle\release\app-release.aab`)
+That `.aab` is what you upload.
+
+### Do **not** upload
+
+- `mobile\output\royal-match-poker-debug.apk`  
+- GitHub Actions debug APKs  
+- Unsigned / debug builds  
 
 ---
 
-## 4. Upload the package
+## Phase 4 — Upload to Internal testing (safest first release)
 
-Best path for a first upload:
+1. Play Console → your app  
+2. **Test and release → Testing → Internal testing**  
+3. **Create new release**  
+4. Upload `app-release.aab`  
+5. Release name / notes (e.g. `1.2.0 — first internal build`)  
+6. **Next → Save → Review release → Start rollout to Internal testing**  
 
-1. Play Console → **Testing → Internal testing**
-2. **Create new release**
-3. Upload the `.aab`
-4. Add short release notes
-5. **Review release → Start rollout to Internal testing**
+### Add yourself as a tester
 
-Install via the internal testing link on a device signed into a tester Google account before promoting to Closed / Open / Production.
+1. Internal testing → **Testers** tab  
+2. Create an email list with your Gmail  
+3. Copy the **join link**, open it on your phone while signed into that Google account  
+4. Accept → Install from Play (may say “Internal test”)
 
-### Do not upload
-
-- `mobile\output\royal-match-poker-debug.apk`
-- GitHub Actions debug APK artifacts
-- Unsigned builds
+Confirm the game loads, login works, and talks to https://royal-match-poker.onrender.com.
 
 ---
 
-## 5. Version codes
+## Phase 5 — Store listing assets (required before production)
+
+Prepare these (can use Canva / your existing brand art):
+
+| Asset | Spec |
+|-------|------|
+| App icon | **512×512** PNG (no alpha for Play high-res icon) |
+| Feature graphic | **1024×500** PNG |
+| Phone screenshots | At least **2** (usually 1080×1920 or similar portrait) |
+| Short description | ≤ 80 characters |
+| Full description | Longer pitch (you already wrote a Reddit blurb) |
+
+Also set:
+
+- **Privacy policy URL:** `https://royal-match-poker.onrender.com/privacy.html`  
+- Category: Game → Card / Casino-style (pick closest)  
+- Contact email  
+
+---
+
+## Phase 6 — Policy forms Google will block you without
+
+Complete these in Play Console (left menu under **Policy** / **App content**):
+
+1. **Privacy policy** — URL above  
+2. **Data safety** — declare account login, cloud progress, optional email, ads (AdMob), purchases/gems if applicable  
+3. **Content rating** — IARC questionnaire (honest answers for card game / mild competition)  
+4. **Target audience** — typically 13+ or 18+ depending on your answers  
+5. **App access** — if reviewers must sign in, provide a **test username + password**  
+
+Until these are done, Production stays blocked even if the AAB uploaded fine.
+
+---
+
+## Phase 7 — Promote toward Production
+
+Typical path:
+
+**Internal testing** → (optional) **Closed testing** → **Open testing** → **Production**
+
+For a first solo game, many people:
+
+1. Stabilize on Internal testing  
+2. Complete all policy forms + listing  
+3. Create a **Production** release with the same (or newer) AAB  
+4. Submit for review (often 1–7+ days the first time)
+
+Every new upload must bump **`versionCode`** in `frontend/android/app/build.gradle` (currently `6` / name `1.2.0`). Example next upload: `versionCode 7`, `versionName "1.2.1"`.
+
+---
+
+## Version codes (when you update later)
 
 | Field | Meaning |
 |-------|--------|
-| `versionCode` | Integer Play uses for updates (must increase every upload) |
-| `versionName` | User-visible string (e.g. `1.2.0`) |
+| `versionCode` | Integer Play uses — **must increase** every upload |
+| `versionName` | What users see (`1.2.1`) |
 
-Set in `frontend/android/app/build.gradle` (`versionCode` / `versionName`), or via Gradle properties / env:
+Edit `frontend/android/app/build.gradle`, then:
 
-- `VERSION_CODE`
-- `VERSION_NAME`
+```powershell
+cd frontend
+npm run cap:sync:android
+```
 
-Bump **`versionCode`** for every new Play upload.
-
----
-
-## 6. Common first-upload blockers
-
-| Blocker | What to do |
-|---------|------------|
-| Privacy policy | Use `https://royal-match-poker.onrender.com/privacy.html` |
-| Data safety | Declare account data, progress, optional email, ads, purchases as applicable |
-| Content rating | Complete the questionnaire |
-| App access | Provide a test username/password if reviewers must sign in |
-| Target API | Use Android Studio’s release checks; fix any SDK warnings before production |
+Build a new signed AAB again.
 
 ---
 
-## 7. Checklist before Production
+## Common first-time blockers
 
-- [ ] Signed `.aab` uploaded and stable on Internal testing
-- [ ] Store listing complete (icon 512, feature graphic, screenshots)
-- [ ] Privacy policy URL live
-- [ ] Data safety completed
-- [ ] Content rating completed
-- [ ] Test account documented for reviewers (if needed)
-- [ ] Keystore backed up safely offline
+| Problem | Fix |
+|---------|-----|
+| “You need a privacy policy” | Use the live URL above |
+| Data safety incomplete | Fill every section; save drafts carefully |
+| App crashes for reviewers | Give them a working test account |
+| Wrong package name | Must stay `com.royalmatch.poker` |
+| Uploaded APK instead of AAB | Build **Android App Bundle** |
+| Lost keystore | Avoid this — backup now; enroll Play App Signing |
+| Render asleep on first open | Cold start can take ~30–60s; note that for reviewers if needed |
+
+---
+
+## Checklist before Production
+
+- [ ] Play developer account paid + verified  
+- [ ] Keystore backed up offline  
+- [ ] Signed `.aab` installs via Internal testing  
+- [ ] Login + gameplay works on a real phone  
+- [ ] Store listing (icon, feature graphic, screenshots, descriptions)  
+- [ ] Privacy policy URL live  
+- [ ] Data safety completed  
+- [ ] Content rating completed  
+- [ ] Reviewer test account (if login required)  
+- [ ] `versionCode` / `versionName` set  
+
+---
+
+## Commands cheat sheet
+
+```powershell
+# Build web → sync into Android → open Android Studio
+cd "c:\Users\g00gl\OneDrive\Desktop\Games\Card Pairs Game\frontend"
+npm run cap:sync:android
+npm run cap:open:android
+
+# Optional: regenerate launcher icons
+npm run icons:android
+```
+
+Sideload / debug only (not for Play): see [README.md](./README.md).
 
 ---
 
 ## Related
 
-- Sideload / debug APK: see [README.md](./README.md)
-- In-app privacy acceptance: users must accept the policy when creating an account (Sign up / Google Sign-up)
+- Debug APK / device install: [README.md](./README.md)  
+- iOS / App Store: [IOS.md](./IOS.md)  
+- In-app privacy acceptance already exists on account signup  

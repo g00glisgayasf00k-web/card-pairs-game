@@ -208,13 +208,13 @@ export const SPECIALS_GUIDE: {
 }[] = [
   {
     type: "arrow_h",
-    name: "Row arrow ↔",
+    name: "Row arrow",
     earn: "Clear Three of a Kind, Straight, or Full House",
     effect: "Tap to wipe the row (+45 pts per card). Hitting another arrow or a bomb triggers it too.",
   },
   {
     type: "arrow_v",
-    name: "Column arrow ↕",
+    name: "Column arrow",
     earn: "Clear Three of a Kind, Straight, or Full House",
     effect: "Tap to wipe the column (+45 pts per card). Hitting another arrow or a bomb triggers it too.",
   },

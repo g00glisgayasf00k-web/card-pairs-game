@@ -725,12 +725,13 @@ html.deck-four-color .playing-card.suit-clubs {
   filter: drop-shadow(0 1px 3px rgba(0,0,0,0.3));
 }
 
-/* Power-up artwork (sprite: bomb | joker | star) */
+/* Power-up artwork (sprite sheet: bomb | joker | star) */
 .special-art {
   background-image: url("/images/power-ups.png");
   background-repeat: no-repeat;
   background-size: 300% 100%;
   image-rendering: auto;
+  flex-shrink: 0;
 }
 
 .special-art--bomb {
@@ -739,6 +740,12 @@ html.deck-four-color .playing-card.suit-clubs {
 
 .special-art--joker {
   background-position: 50% center;
+}
+
+/* Rainbow suit uses the gold star from the same sheet */
+.special-art--rainbow,
+.special-art--star {
+  background-position: 100% center;
 }
 
 .special-art--arrow_h,
@@ -750,11 +757,8 @@ html.deck-four-color .playing-card.suit-clubs {
 }
 
 .special-art--arrow_v {
-  transform: rotate(90deg);
-}
-
-.special-art--star {
-  background-position: 100% center;
+  background-image: url("/assets/pixellab/arrow-v.png");
+  transform: none;
 }
 
 .special-art--card {
@@ -772,13 +776,45 @@ html.deck-four-color .playing-card.suit-clubs {
 .special-art--guide {
   width: 3.25rem;
   height: 3.25rem;
-  flex-shrink: 0;
+}
+
+.special-art--btn {
+  width: 1.55rem;
+  height: 1.55rem;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
+}
+
+.special-art--hero {
+  width: 3.4rem;
+  height: 3.4rem;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.45));
+}
+
+.special-art--hero-main {
+  width: 4.1rem;
+  height: 4.1rem;
+  z-index: 1;
+}
+
+.special-art--tile {
+  width: 3.5rem;
+  height: 3.5rem;
+  filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.4));
 }
 
 .special-art--tiny {
   width: 1.65rem;
   height: 1.65rem;
-  flex-shrink: 0;
+}
+
+.special-art--arrow_h.special-art--tile,
+.special-art--arrow_v.special-art--tile,
+.special-art--arrow_h.special-art--hero,
+.special-art--arrow_v.special-art--hero,
+.special-art--arrow_h.special-art--tiny,
+.special-art--arrow_v.special-art--tiny {
+  background-color: rgba(0, 0, 0, 0.25);
+  border-radius: 10px;
 }
 
 .special-glyph {

@@ -1451,7 +1451,9 @@ export function GameScreen({
               onClick={() => setShowSpecials(true)}
               title="How arrow, bomb, joker, and rainbow power-ups work"
             >
-              <span className="action-btn__icon">✨</span>
+              <span className="action-btn__powers-art" aria-hidden>
+                <span className="special-art special-art--joker special-art--btn" />
+              </span>
               <span className="action-btn__label">Powers</span>
             </button>
             <button
@@ -2194,51 +2196,68 @@ export function GameScreen({
 
       {showSpecials && (
         <div
-          className="modal-overlay scores-overlay"
+          className="modal-overlay scores-overlay powers-overlay"
           onClick={() => setShowSpecials(false)}
           role="presentation"
         >
           <div
-            className="modal scores-modal specials-modal"
+            className="modal powers-modal"
             onClick={(e) => e.stopPropagation()}
             role="dialog"
             aria-labelledby="specials-title"
           >
-            <h2 id="specials-title">Power-ups</h2>
-            <p className="scores-note">Earned by clearing big hands — spawn where you started the swipe</p>
+            <header className="powers-modal__hero">
+              <div className="powers-modal__hero-art" aria-hidden>
+                <SpecialArt type="bomb" className="special-art--hero" />
+                <SpecialArt type="joker" className="special-art--hero special-art--hero-main" />
+                <SpecialArt type="rainbow" className="special-art--hero" />
+              </div>
+              <h2 id="specials-title">Power-ups</h2>
+              <p className="powers-modal__lead">
+                Earn them on big hands — they spawn where your swipe started
+              </p>
+            </header>
+
             {(cfg.blockers || cfg.fixedObstacles.length > 0) && (
-              <p className="scores-note scores-note--blockers">
-                🧊 {blockersGuideText(cfg.fixedObstacles.length > 0)}
+              <p className="powers-modal__tip">
+                Glass breaks in one hit. Crates need two — or one bomb blast.
               </p>
             )}
-            <ul className="specials-list">
+
+            <ul className="powers-grid">
               {SPECIALS_GUIDE.map((sp) => (
-                <li key={sp.name} className="specials-card">
-                  <div className="specials-card__head">
-                    <SpecialArt type={sp.type} className="special-art--guide" />
-                    <span className="specials-card__name">{sp.name}</span>
+                <li key={sp.name} className={`powers-tile powers-tile--${sp.type}`}>
+                  <div className="powers-tile__art">
+                    <SpecialArt type={sp.type} className="special-art--tile" />
                   </div>
-                  <p className="specials-card__earn">{sp.earn}</p>
-                  <p className="specials-card__effect">{sp.effect}</p>
+                  <div className="powers-tile__body">
+                    <h3 className="powers-tile__name">{sp.name}</h3>
+                    <p className="powers-tile__earn">{sp.earn}</p>
+                    <p className="powers-tile__effect">{sp.effect}</p>
+                  </div>
                 </li>
               ))}
             </ul>
-            <h3 className="specials-subtitle">Rewards by hand</h3>
-            <ul className="scores-list">
-              {SPECIALS_EARN_BY_HAND.map(({ hand, types }) => (
-                <li key={hand} className="scores-row">
-                  <span className="scores-hand">{HAND_DISPLAY[hand]}</span>
-                  <span className="specials-icons">
-                    {types.map((t, i) => (
-                      <SpecialArt key={`${hand}-${i}`} type={t} className="special-art--tiny" />
-                    ))}
-                  </span>
-                </li>
-              ))}
-            </ul>
+
+            <section className="powers-rewards" aria-label="Rewards by hand">
+              <h3 className="powers-rewards__title">Rewards by hand</h3>
+              <ul className="powers-rewards__list">
+                {SPECIALS_EARN_BY_HAND.map(({ hand, types }) => (
+                  <li key={hand} className="powers-rewards__row">
+                    <span className="powers-rewards__hand">{HAND_DISPLAY[hand]}</span>
+                    <span className="powers-rewards__icons">
+                      {types.map((t, i) => (
+                        <SpecialArt key={`${hand}-${i}`} type={t} className="special-art--tiny" />
+                      ))}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+
             <button
               type="button"
-              className="btn scores-close"
+              className="btn scores-close powers-modal__close"
               onClick={() => setShowSpecials(false)}
             >
               Close

@@ -1451,8 +1451,18 @@ export function GameScreen({
               onClick={() => setShowSpecials(true)}
               title="How arrow, bomb, joker, and rainbow power-ups work"
             >
-              <span className="action-btn__powers-art" aria-hidden>
-                <span className="special-art special-art--joker special-art--btn" />
+              <span className="powers-flip" aria-hidden>
+                <span className="powers-flip__card">
+                  <span className="powers-flip__face powers-flip__face--bomb">
+                    <span className="special-art special-art--bomb special-art--btn" />
+                  </span>
+                  <span className="powers-flip__face powers-flip__face--joker">
+                    <span className="special-art special-art--joker special-art--btn" />
+                  </span>
+                  <span className="powers-flip__face powers-flip__face--star">
+                    <span className="special-art special-art--rainbow special-art--btn" />
+                  </span>
+                </span>
               </span>
               <span className="action-btn__label">Powers</span>
             </button>

@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#0D2B22" />
+    <title>Request account deletion — Royal Poker Match</title>
+    <link rel="icon" type="image/png" href="/favicon-64.png" />
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #061a17;
+        --panel: #0e2f28;
+        --text: #f5f0e6;
+        --muted: #a8b5b2;
+        --gold: #ffd700;
+        --danger: #fca5a5;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        min-height: 100dvh;
+        font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+        background: linear-gradient(180deg, var(--panel), var(--bg));
+        color: var(--text);
+        line-height: 1.55;
+      }
+      main {
+        max-width: 42rem;
+        margin: 0 auto;
+        padding: 1.5rem 1.1rem 3rem;
+      }
+      h1 {
+        margin: 0 0 0.35rem;
+        font-size: 1.55rem;
+        color: var(--gold);
+      }
+      .meta {
+        margin: 0 0 1.25rem;
+        color: var(--muted);
+        font-size: 0.92rem;
+      }
+      h2 {
+        margin: 1.5rem 0 0.5rem;
+        font-size: 1.08rem;
+        color: var(--gold);
+      }
+      p,
+      li {
+        color: rgba(245, 240, 230, 0.92);
+      }
+      ul {
+        padding-left: 1.2rem;
+      }
+      a {
+        color: #ffe9a0;
+      }
+      .back {
+        display: inline-block;
+        margin-bottom: 1rem;
+        color: #ffe9a0;
+        text-decoration: none;
+        font-weight: 700;
+      }
+      .card {
+        margin: 1.1rem 0;
+        padding: 1rem 1rem 1.05rem;
+        border-radius: 14px;
+        background: rgba(0, 0, 0, 0.28);
+        border: 1px solid rgba(245, 208, 96, 0.22);
+      }
+      label {
+        display: block;
+        margin: 0.65rem 0 0.28rem;
+        font-size: 0.82rem;
+        font-weight: 700;
+        letter-spacing: 0.03em;
+        text-transform: uppercase;
+        color: rgba(255, 233, 160, 0.85);
+      }
+      input,
+      textarea {
+        width: 100%;
+        padding: 0.65rem 0.75rem;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.14);
+        background: rgba(0, 0, 0, 0.35);
+        color: var(--text);
+        font: inherit;
+      }
+      textarea {
+        min-height: 5.5rem;
+        resize: vertical;
+      }
+      .check {
+        display: flex;
+        gap: 0.55rem;
+        align-items: flex-start;
+        margin: 0.9rem 0 0.35rem;
+        font-size: 0.92rem;
+        text-transform: none;
+        letter-spacing: 0;
+        font-weight: 500;
+        color: rgba(245, 240, 230, 0.92);
+        cursor: pointer;
+      }
+      .check input {
+        width: auto;
+        margin-top: 0.2rem;
+      }
+      button {
+        margin-top: 0.85rem;
+        width: 100%;
+        padding: 0.75rem 1rem;
+        border: none;
+        border-radius: 999px;
+        background: linear-gradient(180deg, #c45c5c, #8f2f2f);
+        color: #fff;
+        font: inherit;
+        font-weight: 800;
+        cursor: pointer;
+      }
+      button:disabled {
+        opacity: 0.45;
+        cursor: not-allowed;
+      }
+      .ok {
+        margin: 0.75rem 0 0;
+        color: #86efac;
+        font-weight: 700;
+      }
+      .err {
+        margin: 0.75rem 0 0;
+        color: var(--danger);
+        font-weight: 700;
+      }
+      .note {
+        font-size: 0.88rem;
+        color: var(--muted);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <a class="back" href="/">← Back to game</a>
+      <h1>Request account deletion</h1>
+      <p class="meta">
+        Royal Poker Match · Use this page to ask us to delete your account and associated personal
+        data.
+      </p>
+
+      <p>
+        Google Play and privacy laws require a clear way to request deletion. Submit the form below
+        (or use <strong>Settings → Support</strong> in the app). We aim to process verified requests
+        within <strong>30 days</strong>.
+      </p>
+
+      <h2>What we delete</h2>
+      <ul>
+        <li>Your account login (username / password hash / linked Google sign-in)</li>
+        <li>Cloud save / progress synced to your account</li>
+        <li>Scores, challenge history, and support tickets tied to your account</li>
+        <li>Push notification tokens for your devices</li>
+      </ul>
+
+      <h2>What we may keep briefly</h2>
+      <ul>
+        <li>
+          Limited purchase or fraud-prevention records required by law or payment providers (kept
+          only as long as necessary, then removed or anonymised)
+        </li>
+        <li>Aggregated / anonymised analytics that cannot identify you</li>
+      </ul>
+
+      <div class="card">
+        <h2 style="margin-top: 0">Submit a deletion request</h2>
+        <p class="note">
+          Enter the username on the account you want deleted, plus an email we can use to confirm
+          the request.
+        </p>
+        <form id="deletion-form">
+          <label for="username">Account username</label>
+          <input id="username" name="username" autocomplete="username" required maxlength="40" />
+
+          <label for="email">Contact email</label>
+          <input
+            id="email"
+            name="email"
+            type="email"
+            autocomplete="email"
+            required
+            maxlength="120"
+            placeholder="you@example.com"
+          />
+
+          <label for="details">Optional details</label>
+          <textarea
+            id="details"
+            name="details"
+            maxlength="2000"
+            placeholder="Anything that helps us verify the account (e.g. approximate signup date)."
+          ></textarea>
+
+          <label class="check">
+            <input id="confirm" type="checkbox" required />
+            <span>
+              I request permanent deletion of this Royal Poker Match account and associated personal
+              data. I understand this cannot be undone.
+            </span>
+          </label>
+
+          <button type="submit" id="submit-btn">Send deletion request</button>
+          <p id="form-ok" class="ok" hidden></p>
+          <p id="form-err" class="err" hidden></p>
+        </form>
+      </div>
+
+      <h2>Already signed in?</h2>
+      <p>
+        Open the game → <strong>Settings</strong> → <strong>Request account deletion</strong>, or
+        send a Support message with the subject “Account deletion request”.
+      </p>
+
+      <p class="note">
+        Related:
+        <a href="/privacy.html">Privacy Policy</a>
+      </p>
+    </main>
+    <script>
+      const form = document.getElementById("deletion-form");
+      const okEl = document.getElementById("form-ok");
+      const errEl = document.getElementById("form-err");
+      const btn = document.getElementById("submit-btn");
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        okEl.hidden = true;
+        errEl.hidden = true;
+        btn.disabled = true;
+        try {
+          const res = await fetch("/api/account/deletion-request", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              username: document.getElementById("username").value.trim(),
+              contact_email: document.getElementById("email").value.trim(),
+              details: document.getElementById("details").value.trim(),
+              confirm: document.getElementById("confirm").checked,
+            }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            throw new Error(data.error || res.statusText || "Request failed");
+          }
+          okEl.textContent =
+            data.message ||
+            "Request received. We’ll process verified deletions within 30 days.";
+          okEl.hidden = false;
+          form.reset();
+        } catch (err) {
+          errEl.textContent = err instanceof Error ? err.message : "Request failed";
+          errEl.hidden = false;
+        } finally {
+          btn.disabled = false;
+        }
+      });
+    </script>
+  </body>
+</html>

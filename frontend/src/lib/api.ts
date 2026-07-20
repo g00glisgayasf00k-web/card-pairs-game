@@ -724,6 +724,13 @@ export async function createSupportTicket(subject: string, message: string) {
   });
 }
 
+export async function requestMyAccountDeletion(details?: string) {
+  return request<{ ok: boolean; message: string }>("/api/account/deletion-request/me", {
+    method: "POST",
+    body: JSON.stringify({ details: details ?? "" }),
+  });
+}
+
 export async function fetchAdminSupport(status = "all") {
   const q = status && status !== "all" ? `?status=${encodeURIComponent(status)}` : "";
   return request<{ tickets: SupportTicket[]; open_count: number }>(`/api/admin/support${q}`);

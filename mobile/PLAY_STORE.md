@@ -9,6 +9,7 @@ You’ve never shipped to Play before — this guide is written for that. Your g
 | Android project | `frontend/android/` |
 | Live website / API | https://royal-match-poker.onrender.com |
 | Privacy policy URL | https://royal-match-poker.onrender.com/privacy.html |
+| **Account deletion URL** (Data safety) | https://royal-match-poker.onrender.com/delete-account.html |
 
 **Big picture (what you’re doing):**
 
@@ -207,6 +208,7 @@ Prepare these (can use Canva / your existing brand art):
 Also set:
 
 - **Privacy policy URL:** `https://royal-match-poker.onrender.com/privacy.html`  
+- **Account deletion URL** (Data safety form): `https://royal-match-poker.onrender.com/delete-account.html`  
 - Category: Game → Card / Casino-style (pick closest)  
 - Contact email  
 
@@ -217,7 +219,8 @@ Also set:
 Complete these in Play Console (left menu under **Policy** / **App content**):
 
 1. **Privacy policy** — URL above  
-2. **Data safety** — declare account login, cloud progress, optional email, ads (AdMob), purchases/gems if applicable  
+2. **Data safety** — declare account login, cloud progress, optional email, ads (AdMob), purchases/gems if applicable. When asked how users can request deletion, paste: `https://royal-match-poker.onrender.com/delete-account.html`  
+
 3. **Content rating** — IARC questionnaire (honest answers for card game / mild competition)  
 4. **Target audience** — typically 13+ or 18+ depending on your answers  
 5. **App access** — if reviewers must sign in, provide a **test username + password**  

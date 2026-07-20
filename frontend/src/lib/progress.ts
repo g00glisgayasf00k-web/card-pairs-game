@@ -241,10 +241,10 @@ export function importProgress(data: unknown): SavedProgress | null {
 }
 
 export function saveProgress(
-  data: Omit<SavedProgress, "v" | "updatedAt"> & { updatedAt?: number },
+  data: Omit<SavedProgress, "v" | "updatedAt"> & { updatedAt?: number; v?: number },
   options?: { skipSync?: boolean }
 ): void {
-  const { updatedAt: requestedAt, ...rest } = data;
+  const { updatedAt: requestedAt, v: _v, ...rest } = data;
   const payload: SavedProgress = {
     v: VERSION,
     ...rest,
@@ -259,9 +259,61 @@ export function saveProgress(
 export function applyImportedProgress(data: unknown): boolean {
   const parsed = importProgress(data);
   if (!parsed) return false;
-  saveProgress(parsed, { skipSync: true });
+  const local = loadProgress();
+  const merged = local ? mergeProgressUnlocks(parsed, local) : parsed;
+  saveProgress(merged, { skipSync: true });
   notifyProgressImported();
   return true;
+}
+
+/**
+ * Never lose purchased unlocks / campaign progress across devices.
+ * Base keeps the "authoritative" copy (usually the newer one); other contributes OR-merges.
+ */
+export function mergeProgressUnlocks(base: SavedProgress, other: SavedProgress): SavedProgress {
+  const fourColorDeckOwned = Boolean(base.fourColorDeckOwned || other.fourColorDeckOwned);
+  const styleSource =
+    base.updatedAt >= other.updatedAt
+      ? base.fourColorDeckOwned
+        ? base
+        : other.fourColorDeckOwned
+          ? other
+          : base
+      : other.fourColorDeckOwned
+        ? other
+        : base.fourColorDeckOwned
+          ? base
+          : other;
+  const cardSuitStyle: "classic" | "four_color" =
+    fourColorDeckOwned && styleSource.cardSuitStyle === "four_color" ? "four_color" : "classic";
+
+  const completedLevels = Array.from(
+    new Set([...(base.completedLevels ?? []), ...(other.completedLevels ?? [])])
+  ).sort((a, b) => a - b);
+
+  const milestoneChestsClaimed = Array.from(
+    new Set([...(base.milestoneChestsClaimed ?? []), ...(other.milestoneChestsClaimed ?? [])])
+  )
+    .filter((n) => n >= 10 && n % 10 === 0)
+    .sort((a, b) => a - b);
+
+  const levelStars: Record<number, number> = { ...other.levelStars };
+  for (const [key, val] of Object.entries(base.levelStars ?? {})) {
+    const level = Number(key);
+    if (!Number.isFinite(level)) continue;
+    levelStars[level] = Math.max(levelStars[level] ?? 0, val);
+  }
+
+  return {
+    ...base,
+    highestUnlocked: Math.max(base.highestUnlocked, other.highestUnlocked),
+    completedLevels,
+    levelStars,
+    milestoneChestsClaimed,
+    tutorialStep: Math.max(base.tutorialStep, other.tutorialStep),
+    fourColorDeckOwned,
+    cardSuitStyle,
+  };
 }
 
 /** Apply server-authoritative gem balance without clobbering the cloud save. */

@@ -60,13 +60,24 @@ def sync_progress():
         ), 200
 
     # Elo is written by ranked Quick Play settles — never let a client sync wipe it.
+    # Cosmetic unlocks must survive last-write-wins from another device.
     if row and row.payload:
         try:
             existing = json.loads(row.payload)
         except json.JSONDecodeError:
             existing = None
-        if isinstance(existing, dict) and "elo" in existing:
-            progress["elo"] = existing["elo"]
+        if isinstance(existing, dict):
+            if "elo" in existing:
+                progress["elo"] = existing["elo"]
+            existing_owned = bool(existing.get("fourColorDeckOwned"))
+            incoming_owned = bool(progress.get("fourColorDeckOwned"))
+            if existing_owned or incoming_owned:
+                progress["fourColorDeckOwned"] = True
+                if incoming_owned:
+                    style = progress.get("cardSuitStyle")
+                else:
+                    style = existing.get("cardSuitStyle")
+                progress["cardSuitStyle"] = "four_color" if style == "four_color" else "classic"
 
     payload_text = json.dumps(progress)
     if not row:

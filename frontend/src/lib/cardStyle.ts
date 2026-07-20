@@ -1,4 +1,5 @@
 import { loadProgress, saveProgress } from "./progress";
+import { flushProgressSync } from "./progressSync";
 
 export type CardSuitStyle = "classic" | "four_color";
 
@@ -25,13 +26,15 @@ export function buyFourColorDeck(): boolean {
   if (saved.fourColorDeckOwned) return false;
   if (saved.credits < FOUR_COLOR_DECK_COST) return false;
 
+  const { v: _v, updatedAt: _updatedAt, ...rest } = saved;
   saveProgress({
-    ...saved,
+    ...rest,
     credits: saved.credits - FOUR_COLOR_DECK_COST,
     fourColorDeckOwned: true,
     cardSuitStyle: "four_color",
   });
   applyCardSuitStyleToDocument("four_color");
+  void flushProgressSync();
   return true;
 }
 
@@ -41,10 +44,12 @@ export function setCardSuitStyle(style: CardSuitStyle): boolean {
   if (!saved) return false;
   if (style === "four_color" && !saved.fourColorDeckOwned) return false;
 
+  const { v: _v, updatedAt: _updatedAt, ...rest } = saved;
   saveProgress({
-    ...saved,
+    ...rest,
     cardSuitStyle: style,
   });
   applyCardSuitStyleToDocument(style);
+  void flushProgressSync();
   return true;
 }

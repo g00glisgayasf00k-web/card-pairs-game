@@ -9,8 +9,10 @@ import {
   clearProgress,
   defaultProgress,
   getProgressOwner,
+  importProgress,
   isFreshAccountProgress,
   loadProgress,
+  mergeProgressUnlocks,
   saveProgress,
   setProgressOwner,
   setProgressSyncHook,
@@ -98,7 +100,13 @@ export async function pullRemoteProgress(): Promise<boolean> {
     }
 
     if (localTs > remoteTs && !isPullStale(generation)) {
-      await pushProgress(local);
+      // Local is newer, but never clobber cloud unlocks (e.g. four-color deck bought elsewhere).
+      const remoteParsed = importProgress(remote.progress);
+      const toPush = remoteParsed ? mergeProgressUnlocks(local, remoteParsed) : local;
+      if (toPush !== local) {
+        saveProgress(toPush, { skipSync: true });
+      }
+      await pushProgress(toPush);
     }
     return false;
   } catch {

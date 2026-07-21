@@ -740,14 +740,14 @@ html.deck-four-color .playing-card.suit-clubs {
 
 .special-art--arrow_h,
 .special-art--arrow_v {
-  image-rendering: auto;
-  filter: drop-shadow(0 0 8px rgba(74, 222, 128, 0.55));
+  image-rendering: pixelated;
+  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.65));
 }
 
 .special-art--bomb,
 .special-art--joker,
 .special-art--rainbow {
-  filter: drop-shadow(0 2px 6px rgba(168, 85, 247, 0.35)) drop-shadow(0 2px 5px rgba(0, 0, 0, 0.4));
+  filter: drop-shadow(0 2px 5px rgba(0, 0, 0, 0.45));
 }
 
 .special-art--card {
@@ -808,8 +808,8 @@ html.deck-four-color .playing-card.suit-clubs {
 .special-art--arrow_v.special-art--arrow {
   background: none;
   border-radius: 0;
-  filter: drop-shadow(0 0 8px rgba(74, 222, 128, 0.55));
-  image-rendering: auto;
+  filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.65));
+  image-rendering: pixelated;
 }
 
 /* Powers guide — arrows match board (icon-only, cyan glow, no framed box) */
@@ -829,7 +829,7 @@ html.deck-four-color .playing-card.suit-clubs {
 
 .powers-modal__hero-art .special-art--arrow_h.special-art--hero,
 .powers-modal__hero-art .special-art--arrow_v.special-art--hero {
-  filter: drop-shadow(0 0 10px rgba(74, 222, 128, 0.65));
+  filter: drop-shadow(0 0 10px rgba(56, 189, 248, 0.7));
 }
 
 .special-glyph {

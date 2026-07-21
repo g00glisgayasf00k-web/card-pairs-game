@@ -208,33 +208,33 @@ export const SPECIALS_GUIDE: {
 }[] = [
   {
     type: "arrow_h",
-    name: "Arrow — Horizontal",
+    name: "Row arrow",
     earn: "Clear Three of a Kind, Straight, or Full House",
-    effect: "Clears a row. Tap to shoot horizontally (+45 pts per card). Chains with other arrows or bombs.",
+    effect: "Tap to wipe the row (+45 pts per card). Hitting another arrow or a bomb triggers it too.",
   },
   {
     type: "arrow_v",
-    name: "Arrow — Vertical",
+    name: "Column arrow",
     earn: "Clear Three of a Kind, Straight, or Full House",
-    effect: "Clears a column. Tap to shoot vertically (+45 pts per card). Chains with other arrows or bombs.",
+    effect: "Tap to wipe the column (+45 pts per card). Hitting another arrow or a bomb triggers it too.",
   },
   {
     type: "bomb",
     name: "Bomb",
     earn: "Clear Four of a Kind or Straight Flush",
-    effect: "Blasts and clears a 3×3 area (+50 pts each). Chains with other bombs or arrows.",
+    effect: "Tap to blast all 8 surrounding cards (+50 pts each). Hitting another bomb or an arrow triggers it too.",
   },
   {
     type: "joker",
     name: "Joker",
     earn: "Clear Flush, Full House, or Straight Flush",
-    effect: "Wild card. Swipe into a 5-card hand — matches any rank or suit.",
+    effect: "Swipe into a 5-card hand — counts as any rank or suit",
   },
   {
     type: "rainbow",
-    name: "Suit Spin",
+    name: "Rainbow suit",
     earn: "Clear a Royal Flush only",
-    effect: "Drag onto any card to clear every card of that suit (+55 pts each).",
+    effect: "Drag onto any card to clear every card of that suit (+55 pts each)",
   },
 ];
 

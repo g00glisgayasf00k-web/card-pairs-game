@@ -5,7 +5,7 @@ interface Props {
   className?: string;
 }
 
-/** PixelLab / poker-themed power-up art paths. */
+/** Power-up art from the concept sheet (in-game + Powers tab). */
 const POWER_ART: Record<SpecialType, string> = {
   arrow_h: "/assets/pixellab/power-arrow-h.png",
   arrow_v: "/assets/pixellab/power-arrow-v.png",

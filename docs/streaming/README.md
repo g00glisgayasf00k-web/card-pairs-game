@@ -150,6 +150,69 @@ Privacy reminder: don’t show passwords, emails, or admin screens on stream.
 
 ---
 
+## 7. Stream title, description & Android testers
+
+### Twitch stream info (before you go live)
+Creator Dashboard → **Stream Manager** (or **Content → Stream title**):
+
+**Title example:**
+```
+NEW game: Royal Poker Match — need Android Play testers!
+```
+
+**Category:** Mobile Games (or Just Chatting / Indie Games)
+
+**Tags (optional):** Mobile Game, Indie, Android, Puzzle, Poker
+
+Twitch doesn’t give a long “description” on the live title itself — put the pitch in:
+1. The **overlay subtitle** (already set in `main.html`)
+2. A **panel** under your channel (About / panels)
+3. What you **say on mic** + paste in **chat**
+
+**Chat paste (copy when live):**
+```
+Royal Poker Match is a brand-new Android game (swipe real poker hands). Looking for Google Play internal testers — drop a comment if you want the join link and I’ll DM / post it here.
+```
+
+**Panel text (Channel → About → add a panel):**
+```
+ROYAL POKER MATCH
+New Android puzzle game — swipe adjacent cards to make real poker hands.
+
+Want to test on Android?
+1) Comment or whisper me on Twitch
+2) I’ll send the Google Play internal testing join link
+3) Opt in with the same Google account as your phone, then install from Play
+
+Privacy: https://royal-match-poker.onrender.com/privacy.html
+```
+
+Only share your **internal testing join link** with people you trust / who opt in (don’t need thousands of random installs for a first test).
+
+---
+
+## 8. Add Twitch chat in OBS
+
+### Option A — Twitch pop-out chat (free, simple)
+1. On Twitch (while logged in): open your channel → **Chat** → gear / **Popout chat**  
+   Or go to: `https://www.twitch.tv/popout/YOUR_USERNAME/chat?popout=`
+2. In OBS **Gameplay** scene: **+ → Window Capture** → select that chat window  
+3. Resize it to sit inside the gold **Chat** frame (bottom-right of `main.html`)  
+4. Crop black edges: hold **Alt** and drag the edges
+
+### Option B — Transparent chat (looks cleaner)
+1. Sign up at https://streamelements.com/ or https://streamlabs.com/ (free)  
+2. Create an **Overlay → Chat widget** → copy the browser widget URL  
+3. OBS: **+ → Browser** → paste that URL  
+4. Width ~360, Height ~280 → place inside the Chat frame  
+5. Keep `main.html` **above** or **below** depending on whether you want the gold frame on top (usually overlay on top, chat slightly smaller inside the frame)
+
+### Talk to chat while streaming
+- Read messages on your second monitor / phone Twitch app  
+- Or keep the pop-out chat visible on your desktop next to OBS  
+
+---
+
 ## Quick path (minimal)
 
 1. Install OBS → connect Twitch  

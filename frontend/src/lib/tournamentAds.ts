@@ -8,6 +8,15 @@ const STORAGE_KEY = "royalMatchTournamentAds";
 
 /** Free ad entries per scoring period (matches cup reset windows). */
 export const TOURNAMENT_FREE_AD_LIMITS: Record<string, number> = {
+  daily_low: 5,
+  daily_medium: 3,
+  daily_high: 2,
+  weekly_low: 3,
+  weekly_medium: 2,
+  weekly_high: 1,
+  monthly_low: 2,
+  monthly_medium: 1,
+  monthly_high: 1,
   bronze: 5,
   silver: 3,
   gold: 1,

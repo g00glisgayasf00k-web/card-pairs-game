@@ -156,8 +156,34 @@ SCORE_RACE_GOAL_PAYOUT_MULT = SCORE_RACE_GOAL_PAYOUT_MULT_MAX
 SCORE_RACE_GOAL_BONUS_PCT = 5
 
 # Cup hand limits + goal ranges (Quick Play uses SCORE_RACE_HAND_LIMIT + 3–5).
-TOURNAMENT_HAND_LIMITS = {"bronze": 10, "silver": 20, "gold": 30}
-TOURNAMENT_GOAL_RANGES = {"bronze": (2, 3), "silver": (3, 4), "gold": (5, 6)}
+TOURNAMENT_HAND_LIMITS = {
+    "daily_low": 10,
+    "daily_medium": 10,
+    "daily_high": 12,
+    "weekly_low": 20,
+    "weekly_medium": 20,
+    "weekly_high": 24,
+    "monthly_low": 30,
+    "monthly_medium": 30,
+    "monthly_high": 36,
+    "bronze": 10,
+    "silver": 20,
+    "gold": 30,
+}
+TOURNAMENT_GOAL_RANGES = {
+    "daily_low": (2, 3),
+    "daily_medium": (2, 3),
+    "daily_high": (3, 4),
+    "weekly_low": (3, 4),
+    "weekly_medium": (3, 4),
+    "weekly_high": (4, 5),
+    "monthly_low": (5, 6),
+    "monthly_medium": (5, 6),
+    "monthly_high": (6, 7),
+    "bronze": (2, 3),
+    "silver": (3, 4),
+    "gold": (5, 6),
+}
 
 
 def generate_score_race_mission(

@@ -9,13 +9,29 @@ from sqlalchemy import distinct
 from app.models import TournamentPrize, TournamentRun, db
 from app.tournament_periods import period_key, period_sort_key
 
-VALID_TIERS = ("bronze", "silver", "gold")
+VALID_TIERS = (
+    "daily_low",
+    "daily_medium",
+    "daily_high",
+    "weekly_low",
+    "weekly_medium",
+    "weekly_high",
+    "monthly_low",
+    "monthly_medium",
+    "monthly_high",
+)
 
 # Keep in sync with frontend tournamentTiers.TOURNAMENT_TIERS rewardPool.
 TIER_REWARD_POOL = {
-    "bronze": 500,
-    "silver": 2500,
-    "gold": 12_500,
+    "daily_low": 250,
+    "daily_medium": 500,
+    "daily_high": 1_250,
+    "weekly_low": 1_250,
+    "weekly_medium": 2_500,
+    "weekly_high": 5_000,
+    "monthly_low": 5_000,
+    "monthly_medium": 12_500,
+    "monthly_high": 25_000,
 }
 
 # 1st / 2nd / 3rd shares.
@@ -168,7 +184,16 @@ def acknowledge_prizes(user_id: int, prize_ids: list[int] | None = None) -> int:
 
 def tier_display_name(tier_id: str) -> str:
     return {
-        "bronze": "Bronze Cup",
-        "silver": "Silver Cup",
-        "gold": "Gold Cup",
-    }.get(tier_id, tier_id.title())
+        "daily_low": "Daily · Low",
+        "daily_medium": "Daily · Medium",
+        "daily_high": "Daily · High",
+        "weekly_low": "Weekly · Low",
+        "weekly_medium": "Weekly · Medium",
+        "weekly_high": "Weekly · High",
+        "monthly_low": "Monthly · Low",
+        "monthly_medium": "Monthly · Medium",
+        "monthly_high": "Monthly · High",
+        "bronze": "Daily · Medium",
+        "silver": "Weekly · Medium",
+        "gold": "Monthly · Medium",
+    }.get(tier_id, tier_id.replace("_", " · ").title())

@@ -19,7 +19,17 @@ from app.tournament_prizes import (
 
 tournaments_bp = Blueprint("tournaments", __name__)
 
-VALID_TIERS = {"bronze", "silver", "gold"}
+VALID_TIERS = {
+    "daily_low",
+    "daily_medium",
+    "daily_high",
+    "weekly_low",
+    "weekly_medium",
+    "weekly_high",
+    "monthly_low",
+    "monthly_medium",
+    "monthly_high",
+}
 
 
 def _rank_key(score: int, duration_ms: int | None) -> tuple[int, int]:

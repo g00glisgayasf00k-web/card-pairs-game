@@ -1,15 +1,15 @@
 apply plugin: 'com.android.application'
 
-def resolvedVersionCode = 8
+def resolvedVersionCode = 9
 try {
-    def raw = project.findProperty("versionCode") ?: System.getenv("VERSION_CODE") ?: "8"
+    def raw = project.findProperty("versionCode") ?: System.getenv("VERSION_CODE") ?: "9"
     resolvedVersionCode = Integer.parseInt(raw.toString())
 } catch (Exception ignored) {
-    resolvedVersionCode = 8
+    resolvedVersionCode = 9
 }
 
 def resolvedVersionName = (
-    project.findProperty("versionName") ?: System.getenv("VERSION_NAME") ?: "1.2.2"
+    project.findProperty("versionName") ?: System.getenv("VERSION_NAME") ?: "1.2.3"
 ).toString()
 
 android {

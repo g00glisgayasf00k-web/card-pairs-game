@@ -29,6 +29,16 @@ export function rollGoalPayoutMult(
 
 /** Tournament cup hand budgets (Quick Play stays at SCORE_RACE_HAND_LIMIT). */
 export const TOURNAMENT_HAND_LIMITS: Record<string, number> = {
+  daily_low: 10,
+  daily_medium: 10,
+  daily_high: 12,
+  weekly_low: 20,
+  weekly_medium: 20,
+  weekly_high: 24,
+  monthly_low: 30,
+  monthly_medium: 30,
+  monthly_high: 36,
+  // Legacy ids (pre-stakes rename)
   bronze: 10,
   silver: 20,
   gold: 30,
@@ -36,6 +46,15 @@ export const TOURNAMENT_HAND_LIMITS: Record<string, number> = {
 
 /** Goal count ranges per cup. */
 export const TOURNAMENT_GOAL_RANGES: Record<string, [number, number]> = {
+  daily_low: [2, 3],
+  daily_medium: [2, 3],
+  daily_high: [3, 4],
+  weekly_low: [3, 4],
+  weekly_medium: [3, 4],
+  weekly_high: [4, 5],
+  monthly_low: [5, 6],
+  monthly_medium: [5, 6],
+  monthly_high: [6, 7],
   bronze: [2, 3],
   silver: [3, 4],
   gold: [5, 6],

@@ -5,10 +5,17 @@ import { generateScoreRaceMission, scoreRaceLevelConfig, tournamentGoalRange, to
 
 /** UI world ids are 0-based (0-10 = first world’s final stage). */
 export type TournamentReset = "daily" | "weekly" | "monthly";
+export type TournamentStake = "low" | "medium" | "high";
 
 export interface TournamentTier {
   id: string;
+  /** Period label shown in UI: Daily / Weekly / Monthly */
+  periodName: string;
+  /** Stake label: Low / Medium / High */
+  stakeName: string;
+  /** Full name e.g. "Daily · Medium" */
   name: string;
+  stake: TournamentStake;
   /** Display world number (0-based) required cleared through this stage. */
   unlockDisplayWorld: number;
   unlockStage: number;
@@ -23,44 +30,63 @@ export interface TournamentTier {
   reset: TournamentReset;
 }
 
+function makeTier(
+  reset: TournamentReset,
+  stake: TournamentStake,
+  entryGems: number,
+  rewardPool: number,
+  unlockDisplayWorld: number,
+  boardDisplayWorld: number
+): TournamentTier {
+  const periodName = reset === "daily" ? "Daily" : reset === "weekly" ? "Weekly" : "Monthly";
+  const stakeName = stake === "low" ? "Low" : stake === "medium" ? "Medium" : "High";
+  return {
+    id: `${reset}_${stake}`,
+    periodName,
+    stakeName,
+    name: `${periodName} · ${stakeName}`,
+    stake,
+    unlockDisplayWorld,
+    unlockStage: 10,
+    entryGems,
+    rewardPool,
+    boardDisplayWorld,
+    boardStageFrom: 1,
+    boardStageTo: 10,
+    reset,
+  };
+}
+
+/**
+ * Daily / Weekly / Monthly cups, each with Low · Medium · High stakes.
+ * Medium stakes match the old Bronze / Silver / Gold entry + pool values.
+ */
 export const TOURNAMENT_TIERS: TournamentTier[] = [
-  {
-    id: "bronze",
-    name: "Bronze Cup",
-    unlockDisplayWorld: 0,
-    unlockStage: 10,
-    entryGems: 10,
-    rewardPool: 500,
-    boardDisplayWorld: 0,
-    boardStageFrom: 1,
-    boardStageTo: 10,
-    reset: "daily",
-  },
-  {
-    id: "silver",
-    name: "Silver Cup",
-    unlockDisplayWorld: 2,
-    unlockStage: 10,
-    entryGems: 50,
-    rewardPool: 2500,
-    boardDisplayWorld: 2,
-    boardStageFrom: 1,
-    boardStageTo: 10,
-    reset: "weekly",
-  },
-  {
-    id: "gold",
-    name: "Gold Cup",
-    unlockDisplayWorld: 4,
-    unlockStage: 10,
-    entryGems: 250,
-    rewardPool: 12_500,
-    boardDisplayWorld: 4,
-    boardStageFrom: 1,
-    boardStageTo: 10,
-    reset: "monthly",
-  },
+  // Daily — Solo world 0 boards
+  makeTier("daily", "low", 5, 250, 0, 0),
+  makeTier("daily", "medium", 10, 500, 0, 0),
+  makeTier("daily", "high", 25, 1_250, 0, 0),
+  // Weekly — Solo world 2 boards
+  makeTier("weekly", "low", 25, 1_250, 2, 2),
+  makeTier("weekly", "medium", 50, 2_500, 2, 2),
+  makeTier("weekly", "high", 100, 5_000, 2, 2),
+  // Monthly — Solo world 4 boards
+  makeTier("monthly", "low", 100, 5_000, 4, 4),
+  makeTier("monthly", "medium", 250, 12_500, 4, 4),
+  makeTier("monthly", "high", 500, 25_000, 4, 4),
 ];
+
+export const TOURNAMENT_PERIODS: TournamentReset[] = ["daily", "weekly", "monthly"];
+
+export function tournamentPeriodTitle(reset: TournamentReset): string {
+  if (reset === "daily") return "Daily";
+  if (reset === "weekly") return "Weekly";
+  return "Monthly";
+}
+
+export function tiersForPeriod(reset: TournamentReset): TournamentTier[] {
+  return TOURNAMENT_TIERS.filter((t) => t.reset === reset);
+}
 
 const LONDON_TZ = "Europe/London";
 

@@ -142,7 +142,7 @@ export function WelcomeOnboarding({ onAuthSuccess }: Props) {
                 <div className="welcome-mode__body">
                   <img className="welcome-mode__label" src={HOME_ASSETS.cards.green.label} alt="Tournament" />
                   <strong>Enter a cup</strong>
-                  <span>Bronze, Silver &amp; Gold prize pools</span>
+                  <span>Daily, Weekly &amp; Monthly · Low / Medium / High stakes</span>
                 </div>
                 <span className="welcome-mode__icon-wrap">
                   <img src={HOME_ASSETS.cards.green.circle} alt="" aria-hidden />

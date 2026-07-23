@@ -27,13 +27,14 @@
 }
 
 html.native-shell {
+  /* Extra breathing room so camera cutout / gesture nav don’t cover HUD. */
   --safe-top: max(
-    env(safe-area-inset-top, 0px),
-    var(--android-safe-top, 28px)
+    calc(env(safe-area-inset-top, 0px) + 0.55rem),
+    calc(var(--android-safe-top, 28px) + 0.55rem)
   );
   --safe-bottom: max(
-    env(safe-area-inset-bottom, 0px),
-    var(--android-safe-bottom, 24px)
+    calc(env(safe-area-inset-bottom, 0px) + 0.7rem),
+    calc(var(--android-safe-bottom, 24px) + 0.7rem)
   );
   --safe-left: max(0px, env(safe-area-inset-left, 0px), var(--android-safe-left, 0px));
   --safe-right: max(0px, env(safe-area-inset-right, 0px), var(--android-safe-right, 0px));

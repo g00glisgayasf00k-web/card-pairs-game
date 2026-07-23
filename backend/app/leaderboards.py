@@ -20,9 +20,15 @@ HAND_LABELS = [
 DEFAULT_ELO = 1000
 
 TOURNAMENT_CUP_NAMES = {
-    "bronze": "Bronze Cup",
-    "silver": "Silver Cup",
-    "gold": "Gold Cup",
+    "daily_low": "Daily · Low",
+    "daily_medium": "Daily · Medium",
+    "daily_high": "Daily · High",
+    "weekly_low": "Weekly · Low",
+    "weekly_medium": "Weekly · Medium",
+    "weekly_high": "Weekly · High",
+    "monthly_low": "Monthly · Low",
+    "monthly_medium": "Monthly · Medium",
+    "monthly_high": "Monthly · High",
 }
 
 

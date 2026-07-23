@@ -11,8 +11,18 @@ except ZoneInfoNotFoundError:
     # Windows/dev without IANA DB — install tzdata. Fall back to UTC (no DST).
     LONDON = timezone.utc
 
-# bronze: every day · silver: every ISO week · gold: every calendar month
+# Daily / Weekly / Monthly · each with Low / Medium / High stakes.
+# Legacy bronze/silver/gold kept as aliases → medium stake of that period.
 TIER_RESET: dict[str, str] = {
+    "daily_low": "daily",
+    "daily_medium": "daily",
+    "daily_high": "daily",
+    "weekly_low": "weekly",
+    "weekly_medium": "weekly",
+    "weekly_high": "weekly",
+    "monthly_low": "monthly",
+    "monthly_medium": "monthly",
+    "monthly_high": "monthly",
     "bronze": "daily",
     "silver": "weekly",
     "gold": "monthly",

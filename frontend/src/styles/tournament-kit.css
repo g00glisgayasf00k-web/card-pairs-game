@@ -479,6 +479,50 @@
   height: 0.95rem;
 }
 
+.tn-cup__stakes {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.4rem;
+  margin: 0.15rem 0 0.35rem;
+}
+
+.tn-cup__stake {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.15rem;
+  padding: 0.45rem 0.35rem;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 233, 160, 0.28);
+  background: rgba(0, 0, 0, 0.28);
+  color: rgba(245, 240, 230, 0.88);
+  font: inherit;
+  cursor: pointer;
+}
+
+.tn-cup__stake span {
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  opacity: 0.85;
+}
+
+.tn-cup__stake strong {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.88rem;
+  font-weight: 800;
+  color: #fff3b0;
+}
+
+.tn-cup__stake--on {
+  border-color: rgba(255, 215, 0, 0.75);
+  background: rgba(232, 197, 71, 0.22);
+  box-shadow: 0 0 0 1px rgba(255, 215, 0, 0.25);
+}
+
 .tn-cup__payouts {
   display: grid;
   grid-template-columns: repeat(3, 1fr);

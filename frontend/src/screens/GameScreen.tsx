@@ -263,6 +263,7 @@ export function GameScreen({
     level: number;
     gems: number;
     opened: boolean;
+    opening: boolean;
   } | null>(null);
   const [showScores, setShowScores] = useState(false);
   const [showSpecials, setShowSpecials] = useState(false);
@@ -534,7 +535,15 @@ export function GameScreen({
   }, []);
 
   const openMilestoneChest = useCallback(() => {
-    setChestReward((prev) => (prev && !prev.opened ? { ...prev, opened: true } : prev));
+    setChestReward((prev) => {
+      if (!prev || prev.opened || prev.opening) return prev;
+      return { ...prev, opening: true };
+    });
+    window.setTimeout(() => {
+      setChestReward((prev) =>
+        prev && prev.opening ? { ...prev, opening: false, opened: true } : prev
+      );
+    }, 850);
   }, []);
 
   const claimMilestoneChestReward = useCallback(() => {
@@ -755,6 +764,7 @@ export function GameScreen({
           level,
           gems: rollMilestoneChestGems(level),
           opened: false,
+          opening: false,
         });
       }
 
@@ -1741,16 +1751,28 @@ export function GameScreen({
               <p className="levelup-label">
                 {chestReward.opened
                   ? "Gems added to your balance"
-                  : "Tap the chest to open your reward"}
+                  : chestReward.opening
+                    ? "Opening…"
+                    : "Tap the chest to open your reward"}
               </p>
               <button
                 type="button"
-                className={`milestone-chest${chestReward.opened ? " milestone-chest--open" : ""}`}
+                className={`milestone-chest${
+                  chestReward.opened
+                    ? " milestone-chest--open"
+                    : chestReward.opening
+                      ? " milestone-chest--opening"
+                      : ""
+                }`}
                 onClick={() => {
-                  if (!chestReward.opened) openMilestoneChest();
+                  if (!chestReward.opened && !chestReward.opening) openMilestoneChest();
                 }}
+                disabled={chestReward.opening}
                 aria-label={chestReward.opened ? `${chestReward.gems} gems` : "Open chest"}
               >
+                <span className="milestone-chest__burst" aria-hidden>
+                  <span /><span /><span /><span /><span /><span />
+                </span>
                 <img
                   src="/assets/pixellab/star-chest.png"
                   alt=""
@@ -1768,8 +1790,13 @@ export function GameScreen({
                   Collect &amp; continue
                 </button>
               ) : (
-                <button type="button" className="btn" onClick={openMilestoneChest}>
-                  Open chest
+                <button
+                  type="button"
+                  className="btn"
+                  onClick={openMilestoneChest}
+                  disabled={chestReward.opening}
+                >
+                  {chestReward.opening ? "Opening…" : "Open chest"}
                 </button>
               )}
             </div>

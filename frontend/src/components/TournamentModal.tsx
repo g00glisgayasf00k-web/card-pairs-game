@@ -18,17 +18,22 @@ import {
   tournamentFreeAdsRemaining,
 } from "../lib/tournamentAds";
 import {
+  TOURNAMENT_PERIODS,
   TOURNAMENT_TIERS,
   formatTournamentPeriodLabel,
   formatTournamentResetCountdown,
   isTournamentUnlocked,
   payoutAmounts,
   pickTournamentBoard,
+  tiersForPeriod,
   tournamentPeriodEndsAt,
   tournamentPeriodKey,
+  tournamentPeriodTitle,
   tournamentResetLabel,
   unlockLabel,
   type TournamentBoardPick,
+  type TournamentReset,
+  type TournamentStake,
   type TournamentTier,
 } from "../lib/tournamentTiers";
 import { tournamentGoalRange, tournamentHandLimit } from "../lib/scoreRaceMission";
@@ -78,6 +83,11 @@ export function TournamentModal({
   const [webAdTier, setWebAdTier] = useState<TournamentTier | null>(null);
   const [webAdProgress, setWebAdProgress] = useState(0);
   const [showRules, setShowRules] = useState(false);
+  const [stakeByPeriod, setStakeByPeriod] = useState<Record<TournamentReset, TournamentStake>>({
+    daily: "medium",
+    weekly: "medium",
+    monthly: "medium",
+  });
 
   void tick;
   const gems = loadProgress()?.credits ?? 0;
@@ -278,14 +288,18 @@ export function TournamentModal({
               <img className="tn-kit__hero-chips" src={a.hero.chipsStack} alt="" />
               <div className="tn-kit__hero-copy">
                 <h2 id="tournament-title">Tournament</h2>
-                <p>Pick a cup · race for the highest score</p>
+                <p>Daily · Weekly · Monthly — pick Low, Medium, or High stakes</p>
               </div>
             </div>
 
             <div className="tn-kit__body">
               {error && <p className="tn-kit__error">{error}</p>}
 
-              {TOURNAMENT_TIERS.map((tier) => {
+              {TOURNAMENT_PERIODS.map((period) => {
+                const periodTiers = tiersForPeriod(period);
+                const stake = stakeByPeriod[period];
+                const tier =
+                  periodTiers.find((t) => t.stake === stake) ?? periodTiers[1] ?? periodTiers[0]!;
                 const unlocked = isTournamentUnlocked(tier);
                 const payouts = payoutAmounts(tier.rewardPool);
                 const canAfford = gems >= tier.entryGems;
@@ -295,7 +309,7 @@ export function TournamentModal({
                 const rows = standings[tier.id] ?? [];
                 return (
                   <article
-                    key={tier.id}
+                    key={period}
                     className={`tn-cup${unlocked ? "" : " tn-cup--locked"}`}
                     style={{ backgroundImage: `url(${green.base})` }}
                   >
@@ -314,11 +328,11 @@ export function TournamentModal({
                       </span>
                       <div className="tn-cup__copy">
                         <span className="tn-cup__name-row">
-                          <span className="tn-cup__name">{tier.name}</span>
+                          <span className="tn-cup__name">{tournamentPeriodTitle(period)}</span>
                           <ModeInfoButton
                             className="tn-cup__info"
                             onClick={() => setShowRules(true)}
-                            label={`${tier.name} rules`}
+                            label={`${tournamentPeriodTitle(period)} rules`}
                           />
                         </span>
                         <span className="tn-cup__unlock">
@@ -348,6 +362,28 @@ export function TournamentModal({
                           {tier.rewardPool.toLocaleString()}
                         </span>
                       </div>
+                    </div>
+
+                    <div className="tn-cup__stakes" role="group" aria-label={`${tournamentPeriodTitle(period)} stakes`}>
+                      {periodTiers.map((t) => {
+                        const on = t.stake === stake;
+                        return (
+                          <button
+                            key={t.id}
+                            type="button"
+                            className={`tn-cup__stake${on ? " tn-cup__stake--on" : ""}`}
+                            onClick={() =>
+                              setStakeByPeriod((prev) => ({ ...prev, [period]: t.stake }))
+                            }
+                          >
+                            <span>{t.stakeName}</span>
+                            <strong>
+                              {t.entryGems}
+                              <img src={a.header.gems} alt="" width={12} height={12} />
+                            </strong>
+                          </button>
+                        );
+                      })}
                     </div>
 
                     <ul className="tn-cup__payouts">
@@ -401,14 +437,14 @@ export function TournamentModal({
                       <p className="tn-cup__empty">No past periods yet — check back after the next reset.</p>
                     ) : (
                       <div className="tn-cup__history">
-                        {(history[tier.id] ?? []).map((period) => (
-                          <div key={period.period_key} className="tn-cup__history-block">
+                        {(history[tier.id] ?? []).map((periodRow) => (
+                          <div key={periodRow.period_key} className="tn-cup__history-block">
                             <span className="tn-cup__history-label">
-                              {formatTournamentPeriodLabel(period.period_key, tier.reset)}
+                              {formatTournamentPeriodLabel(periodRow.period_key, tier.reset)}
                             </span>
                             <ol className="tn-cup__standings">
-                              {period.standings.map((r) => (
-                                <li key={`${period.period_key}-${r.id}`}>
+                              {periodRow.standings.map((r) => (
+                                <li key={`${periodRow.period_key}-${r.id}`}>
                             <span>
                               #{r.place ?? "—"} {r.username}
                             </span>
@@ -432,7 +468,7 @@ export function TournamentModal({
                             setConfirmTier(tier);
                           }}
                         >
-                          Enter · {tier.entryGems}
+                          Enter {tier.stakeName} · {tier.entryGems}
                           <img src={a.header.gems} alt="" width={14} height={14} />
                         </button>
                       ) : (
@@ -610,16 +646,16 @@ export function TournamentModal({
               normal hands stay at base rates.
             </p>
             <p>
-              <strong>Bronze</strong> — 10 hands, 2–3 goals.
+              <strong>Daily</strong> — shorter races, resets every UK midnight.
               <br />
-              <strong>Silver</strong> — 20 hands, 3–4 goals.
+              <strong>Weekly</strong> — mid races, resets Monday UK midnight.
               <br />
-              <strong>Gold</strong> — 30 hands, 5–6 goals.
+              <strong>Monthly</strong> — longer races, resets on the 1st UK midnight.
             </p>
             <p>
-              Enter with gems or a free video (limits reset with each cup). Cups reset at{" "}
-              <strong>UK midnight</strong> — top 3 earn the prize gems when the cup ends (you'll get
-              a popup next time you open the game).
+              Each cup has <strong>Low / Medium / High</strong> stakes (entry gems + prize pool).
+              Higher stakes use tougher goal counts. Enter with gems or a free video (limits reset
+              with each cup). Top 3 earn prize gems when the period ends.
             </p>
             <div className="tn-confirm__actions">
               <button type="button" className="tn-kit__cta" onClick={() => setShowRules(false)}>

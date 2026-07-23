@@ -31,7 +31,7 @@ You’ve never shipped to Play before — this guide is written for that. Your g
 2. Install with defaults.  
 3. Open Android Studio → **More Actions → SDK Manager** (or Settings → Languages & Frameworks → Android SDK).  
 4. Install:
-   - **Android SDK Platform** (API 34 or 35)
+   - **Android SDK Platform** (API 36 — required for Play target SDK)
    - **Android SDK Build-Tools**
    - **Android SDK Platform-Tools**
 5. Accept licenses if prompted.

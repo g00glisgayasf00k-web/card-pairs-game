@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920" />
+    <title>Royal Poker Match — Main Overlay</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="overlay.css" />
+  </head>
+  <body>
+    <!--
+      OBS tip: Add this as a Browser Source (1920×1080) ABOVE your game capture.
+      Put Webcam under the bottom-left frame, and (optional) Chat under the right frame.
+      Edit the text below to match your stream title.
+    -->
+    <div class="overlay-main" aria-hidden="true">
+      <div class="overlay-main__top">
+        <div class="overlay-main__brand">
+          <img src="assets/logo-horizontal.png" alt="Royal Poker Match" />
+          <span class="badge-live">Live</span>
+        </div>
+        <p class="overlay-main__tag">Swipe real poker hands · Solo · Quick Play · Cups</p>
+      </div>
+
+      <span class="suit-deco suit-deco--tl">♠</span>
+      <span class="suit-deco suit-deco--tr">♥</span>
+
+      <div class="overlay-main__bottom">
+        <div class="frame cam-frame">
+          <span class="cam-frame__label">Cam</span>
+        </div>
+
+        <div class="info-bar">
+          <div class="info-bar__title">Royal Poker Match</div>
+          <div class="info-bar__sub">
+            <!-- Change this line per stream -->
+            First Play Store build · Come say hi in chat
+          </div>
+        </div>
+
+        <div class="frame chat-frame">
+          <span class="chat-frame__label">Chat</span>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>

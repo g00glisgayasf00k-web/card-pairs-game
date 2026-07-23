@@ -1,0 +1,451 @@
+/* Royal Poker Match — Twitch / OBS overlay
+   Designed for 1920×1080 Browser Sources.
+*/
+
+:root {
+  --felt: #0a2e22;
+  --felt-deep: #041510;
+  --felt-mid: #0f3d2e;
+  --gold: #e8c547;
+  --gold-bright: #ffe9a0;
+  --gold-dim: #a8842a;
+  --cream: #f5f0e6;
+  --ink: #06140f;
+  --live: #ef4444;
+  --frame: rgba(232, 197, 71, 0.85);
+  --glass: rgba(6, 26, 18, 0.72);
+  font-family: "Cinzel", "Times New Roman", Georgia, serif;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: transparent;
+  color: var(--cream);
+}
+
+body {
+  position: relative;
+}
+
+/* ── Shared chrome ─────────────────────────────────────────── */
+
+.gold-line {
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    var(--gold-dim) 15%,
+    var(--gold-bright) 50%,
+    var(--gold-dim) 85%,
+    transparent 100%
+  );
+  box-shadow: 0 0 12px rgba(232, 197, 71, 0.45);
+}
+
+.badge-live {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(127, 29, 29, 0.85);
+  border: 1px solid rgba(252, 165, 165, 0.45);
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: #fee2e2;
+}
+
+.badge-live::before {
+  content: "";
+  width: 0.55rem;
+  height: 0.55rem;
+  border-radius: 50%;
+  background: var(--live);
+  box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  animation: pulse-live 1.6s ease-out infinite;
+}
+
+@keyframes pulse-live {
+  0% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(239, 68, 68, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(239, 68, 68, 0);
+  }
+}
+
+/* ── MAIN OVERLAY (transparent — sits on top of game) ─────── */
+
+.overlay-main {
+  width: 1920px;
+  height: 1080px;
+  position: relative;
+}
+
+.overlay-main__top {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.1rem 1.6rem 0.85rem;
+  background: linear-gradient(
+    180deg,
+    rgba(4, 21, 16, 0.92) 0%,
+    rgba(4, 21, 16, 0.55) 70%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+.overlay-main__brand {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.overlay-main__brand img {
+  height: 52px;
+  width: auto;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.55));
+}
+
+.overlay-main__tag {
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 0.85rem;
+  letter-spacing: 0.06em;
+  color: rgba(245, 240, 230, 0.78);
+  max-width: 18rem;
+}
+
+.overlay-main__bottom {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 0.9rem 1.5rem 1.15rem;
+  display: grid;
+  grid-template-columns: 340px 1fr 360px;
+  gap: 1.1rem;
+  align-items: end;
+  background: linear-gradient(
+    0deg,
+    rgba(4, 21, 16, 0.94) 0%,
+    rgba(4, 21, 16, 0.55) 65%,
+    transparent 100%
+  );
+  pointer-events: none;
+}
+
+.frame {
+  border: 2px solid var(--frame);
+  border-radius: 14px;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.5),
+    0 0 24px rgba(232, 197, 71, 0.18),
+    inset 0 0 0 1px rgba(255, 233, 160, 0.15);
+  background: var(--glass);
+  position: relative;
+}
+
+.frame::before,
+.frame::after {
+  content: "";
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--gold-bright);
+  opacity: 0.85;
+}
+
+.frame::before {
+  top: -2px;
+  left: -2px;
+  border-right: none;
+  border-bottom: none;
+  border-radius: 6px 0 0 0;
+}
+
+.frame::after {
+  bottom: -2px;
+  right: -2px;
+  border-left: none;
+  border-top: none;
+  border-radius: 0 0 6px 0;
+}
+
+.cam-frame {
+  width: 340px;
+  height: 220px;
+  /* Transparent center — webcam source sits underneath in OBS */
+  background: transparent;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.5),
+    0 0 28px rgba(232, 197, 71, 0.22);
+}
+
+.cam-frame__label {
+  position: absolute;
+  top: -0.7rem;
+  left: 0.85rem;
+  padding: 0.15rem 0.55rem;
+  background: var(--felt-deep);
+  border: 1px solid var(--gold-dim);
+  border-radius: 6px;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold-bright);
+}
+
+.info-bar {
+  justify-self: center;
+  align-self: end;
+  text-align: center;
+  padding: 0.65rem 1.4rem 0.75rem;
+  min-width: 28rem;
+  border-radius: 999px;
+  border: 1px solid rgba(232, 197, 71, 0.45);
+  background: rgba(6, 26, 18, 0.82);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35);
+}
+
+.info-bar__title {
+  font-size: 1.05rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold-bright);
+}
+
+.info-bar__sub {
+  margin-top: 0.2rem;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  color: rgba(245, 240, 230, 0.72);
+}
+
+.chat-frame {
+  width: 360px;
+  height: 280px;
+  background: transparent;
+}
+
+.chat-frame__label {
+  position: absolute;
+  top: -0.7rem;
+  right: 0.85rem;
+  padding: 0.15rem 0.55rem;
+  background: var(--felt-deep);
+  border: 1px solid var(--gold-dim);
+  border-radius: 6px;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold-bright);
+}
+
+.suit-deco {
+  position: absolute;
+  opacity: 0.12;
+  color: var(--gold);
+  font-size: 2.4rem;
+  pointer-events: none;
+  animation: float-suit 6s ease-in-out infinite;
+}
+
+.suit-deco--tl {
+  top: 5.5rem;
+  left: 1.4rem;
+}
+.suit-deco--tr {
+  top: 5.5rem;
+  right: 1.4rem;
+  animation-delay: -2s;
+}
+
+@keyframes float-suit {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
+}
+
+/* ── FULLSCREEN SCENES (starting / BRB / ending) ──────────── */
+
+.scene {
+  width: 1920px;
+  height: 1080px;
+  display: grid;
+  place-items: center;
+  position: relative;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 80% 60% at 50% 40%, rgba(26, 107, 69, 0.35), transparent 70%),
+    linear-gradient(160deg, var(--felt-mid) 0%, var(--felt-deep) 55%, #020a08 100%);
+}
+
+.scene__felt {
+  position: absolute;
+  inset: 0;
+  opacity: 0.18;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  pointer-events: none;
+}
+
+.scene__card {
+  position: relative;
+  z-index: 1;
+  width: min(920px, 86%);
+  padding: 2.5rem 3rem 2.75rem;
+  text-align: center;
+  border-radius: 22px;
+  border: 2px solid rgba(232, 197, 71, 0.55);
+  background: linear-gradient(180deg, rgba(15, 61, 46, 0.92), rgba(4, 21, 16, 0.94));
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.5),
+    0 24px 80px rgba(0, 0, 0, 0.55),
+    0 0 60px rgba(232, 197, 71, 0.12);
+}
+
+.scene__logo {
+  height: 88px;
+  width: auto;
+  margin: 0 auto 1.4rem;
+  display: block;
+  filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.5));
+  animation: logo-shine 4.5s ease-in-out infinite;
+}
+
+@keyframes logo-shine {
+  0%,
+  100% {
+    filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.5));
+  }
+  50% {
+    filter: drop-shadow(0 8px 28px rgba(232, 197, 71, 0.45));
+  }
+}
+
+.scene__eyebrow {
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--gold);
+  margin-bottom: 0.65rem;
+}
+
+.scene__title {
+  font-size: clamp(2.4rem, 5vw, 3.6rem);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--gold-bright);
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.35);
+  margin-bottom: 0.75rem;
+}
+
+.scene__sub {
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 1.15rem;
+  line-height: 1.5;
+  color: rgba(245, 240, 230, 0.82);
+  max-width: 34rem;
+  margin: 0 auto 1.5rem;
+}
+
+.scene__pips {
+  display: flex;
+  justify-content: center;
+  gap: 1.25rem;
+  font-size: 1.6rem;
+  opacity: 0.85;
+  margin-top: 0.5rem;
+}
+
+.scene__pips .h,
+.scene__pips .d {
+  color: #e11d48;
+}
+.scene__pips .c {
+  color: #22c55e;
+}
+.scene__pips .s {
+  color: #e2e8f0;
+}
+
+.scene__countdown {
+  margin-top: 1.25rem;
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 0.95rem;
+  letter-spacing: 0.08em;
+  color: rgba(255, 233, 160, 0.75);
+}
+
+.scene__corner {
+  position: absolute;
+  width: 120px;
+  height: 120px;
+  border: 2px solid rgba(232, 197, 71, 0.35);
+  pointer-events: none;
+}
+.scene__corner--tl {
+  top: 28px;
+  left: 28px;
+  border-right: none;
+  border-bottom: none;
+}
+.scene__corner--tr {
+  top: 28px;
+  right: 28px;
+  border-left: none;
+  border-bottom: none;
+}
+.scene__corner--bl {
+  bottom: 28px;
+  left: 28px;
+  border-right: none;
+  border-top: none;
+}
+.scene__corner--br {
+  bottom: 28px;
+  right: 28px;
+  border-left: none;
+  border-top: none;
+}
+
+.edit-hint {
+  position: absolute;
+  bottom: 1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: "Segoe UI", system-ui, sans-serif;
+  font-size: 0.7rem;
+  color: rgba(245, 240, 230, 0.35);
+  letter-spacing: 0.06em;
+}

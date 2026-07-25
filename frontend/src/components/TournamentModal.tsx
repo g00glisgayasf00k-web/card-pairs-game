@@ -11,6 +11,7 @@ import { formatChallenge } from "../lib/levels";
 import { nativeAdsAvailable, showRewardedTournamentAd } from "../lib/nativeAds";
 import { loadProgress, saveProgress } from "../lib/progress";
 import { VIDEO_AD_DURATION_MS } from "../lib/treasuryAds";
+import { trackAdWatch } from "../lib/reportAdWatch";
 import {
   maxTournamentFreeAds,
   recordTournamentFreeAd,
@@ -202,6 +203,7 @@ export function TournamentModal({
       setBusyId(null);
       return;
     }
+    trackAdWatch("tournament");
     setBusyId(null);
     startBriefing(tier);
   };

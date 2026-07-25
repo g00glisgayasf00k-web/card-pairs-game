@@ -269,6 +269,24 @@ class GameSession(db.Model):
     user = db.relationship("User", foreign_keys=[user_id])
 
 
+class AdWatchRecord(db.Model):
+    """Rewarded ad completion — used for admin monetization metrics."""
+
+    __tablename__ = "ad_watch_records"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    kind = db.Column(db.String(32), nullable=False, index=True)  # gem | energy | tournament
+    platform = db.Column(db.String(32), nullable=True)
+    # Estimated revenue credit (eCPM-based); not AdMob payout truth.
+    estimated_cents = db.Column(db.Integer, nullable=False, default=0)
+    created_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False, index=True
+    )
+
+    user = db.relationship("User", foreign_keys=[user_id])
+
+
 class SupportTicket(db.Model):
     """Player contact-support message for the admin inbox."""
 

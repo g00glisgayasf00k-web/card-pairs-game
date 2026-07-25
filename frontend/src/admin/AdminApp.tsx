@@ -25,6 +25,7 @@ type SupportFilter = "all" | "open" | "answered" | "closed";
 type AdminStats = Awaited<ReturnType<typeof fetchAdminStats>>;
 type AdminUserDetail = Awaited<ReturnType<typeof fetchAdminUserDetail>>;
 type RevenuePurchase = Awaited<ReturnType<typeof fetchAdminRevenue>>["purchases"][number];
+type RevenueAd = Awaited<ReturnType<typeof fetchAdminRevenue>>["ads"][number];
 type SessionRow = Awaited<ReturnType<typeof fetchAdminSessions>>["sessions"][number];
 
 const PAGE_SIZE = 25;
@@ -79,6 +80,9 @@ export function AdminApp() {
   const [purchases, setPurchases] = useState<RevenuePurchase[]>([]);
   const [revenueTotal, setRevenueTotal] = useState(0);
   const [revenueOffset, setRevenueOffset] = useState(0);
+  const [adWatches, setAdWatches] = useState<RevenueAd[]>([]);
+  const [adsTotal, setAdsTotal] = useState(0);
+  const [adsOffset, setAdsOffset] = useState(0);
   const [sessions, setSessions] = useState<SessionRow[]>([]);
 
   const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
@@ -105,11 +109,14 @@ export function AdminApp() {
     setUserOffset(data.offset);
   }, []);
 
-  const loadRevenue = useCallback(async (offset: number) => {
-    const data = await fetchAdminRevenue(offset, REVENUE_PAGE);
+  const loadRevenue = useCallback(async (offset: number, nextAdsOffset = 0) => {
+    const data = await fetchAdminRevenue(offset, REVENUE_PAGE, nextAdsOffset);
     setPurchases(data.purchases);
     setRevenueTotal(data.total);
     setRevenueOffset(data.offset);
+    setAdWatches(data.ads ?? []);
+    setAdsTotal(data.ads_total ?? 0);
+    setAdsOffset(data.ads_offset ?? 0);
   }, []);
 
   const loadSessions = useCallback(async () => {
@@ -534,6 +541,8 @@ export function AdminApp() {
   const currentPage = Math.floor(userOffset / PAGE_SIZE) + 1;
   const revenuePages = Math.max(1, Math.ceil(revenueTotal / REVENUE_PAGE));
   const revenuePage = Math.floor(revenueOffset / REVENUE_PAGE) + 1;
+  const adsPages = Math.max(1, Math.ceil(adsTotal / REVENUE_PAGE));
+  const adsPage = Math.floor(adsOffset / REVENUE_PAGE) + 1;
   const rev = stats?.revenue;
   const seriesMax = Math.max(1, ...(stats?.revenue_series.map((d) => d.cents) ?? [1]));
   const selectedTicket = supportTickets.find((t) => t.id === selectedTicketId) ?? null;
@@ -547,8 +556,8 @@ export function AdminApp() {
           ? `${totalUsers} accounts`
           : tab === "revenue"
             ? rev
-              ? `${fmtMoney(rev.all_cents)} lifetime · ${rev.purchases_all} purchases`
-              : "Purchase history & packs"
+              ? `${fmtMoney(rev.all_cents)} lifetime · ${rev.purchases_all} IAP · ${rev.ads_all ?? 0} ads`
+              : "Gem packs & rewarded ads"
             : tab === "engagement"
               ? stats
                 ? `${fmtDuration(stats.play_seconds_7d)} playtime · ${stats.sessions_7d} sessions (7d)`
@@ -669,16 +678,22 @@ export function AdminApp() {
                     <span className="admin-stat-card__val">{fmtMoney(stats.revenue.all_cents)}</span>
                     <span className="admin-stat-card__label">Revenue (all)</span>
                     <span className="admin-stat-card__sub">
-                      {fmtMoney(stats.revenue.cents_24h)} 24h · {fmtMoney(stats.revenue.cents_7d)} 7d ·{" "}
-                      {fmtMoney(stats.revenue.cents_30d)} 30d
+                      IAP {fmtMoney(stats.revenue.iap_cents ?? 0)} · Ads est.{" "}
+                      {fmtMoney(stats.revenue.ads_cents ?? 0)}
                     </span>
                   </div>
                   <div className="admin-stat-card">
                     <span className="admin-stat-card__val">{stats.revenue.purchases_all}</span>
-                    <span className="admin-stat-card__label">Purchases</span>
+                    <span className="admin-stat-card__label">Gem purchases</span>
                     <span className="admin-stat-card__sub">
-                      {stats.revenue.paying_users} paying · ARPU {fmtMoney(stats.revenue.arpu_cents)} ·
-                      ARPPU {fmtMoney(stats.revenue.arppu_cents)}
+                      {stats.revenue.paying_users} paying · ARPPU {fmtMoney(stats.revenue.arppu_cents)}
+                    </span>
+                  </div>
+                  <div className="admin-stat-card">
+                    <span className="admin-stat-card__val">{stats.revenue.ads_all ?? 0}</span>
+                    <span className="admin-stat-card__label">Ads watched</span>
+                    <span className="admin-stat-card__sub">
+                      Est. {fmtMoney(stats.revenue.ads_cents ?? 0)} · {stats.revenue.ads_7d ?? 0} (7d)
                     </span>
                   </div>
                   <div className="admin-stat-card">
@@ -696,7 +711,11 @@ export function AdminApp() {
                     ) : (
                       <div className="admin-bars" role="img" aria-label="Daily revenue">
                         {stats.revenue_series.map((d) => (
-                          <div key={d.date} className="admin-bars__col" title={`${d.date}: ${fmtMoney(d.cents)}`}>
+                          <div
+                            key={d.date}
+                            className="admin-bars__col"
+                            title={`${d.date}: ${fmtMoney(d.cents)} (IAP ${fmtMoney(d.iap_cents ?? 0)} · ads ${fmtMoney(d.ads_cents ?? 0)})`}
+                          >
                             <div
                               className="admin-bars__bar"
                               style={{ height: `${Math.max(4, (d.cents / seriesMax) * 100)}%` }}
@@ -709,7 +728,7 @@ export function AdminApp() {
                   </section>
 
                   <section className="admin-panel">
-                    <h2>Packs</h2>
+                    <h2>Gem packs</h2>
                     {stats.packs.length === 0 ? (
                       <p className="admin-muted">No pack sales yet.</p>
                     ) : (
@@ -736,6 +755,71 @@ export function AdminApp() {
                         </table>
                       </div>
                     )}
+                  </section>
+                </div>
+
+                <div className="admin-split">
+                  <section className="admin-panel">
+                    <h2>Ad kinds</h2>
+                    {!stats.ad_kinds || stats.ad_kinds.length === 0 ? (
+                      <p className="admin-muted">No ad watches logged yet.</p>
+                    ) : (
+                      <div className="admin-table-wrap admin-table-wrap--compact">
+                        <table className="admin-table">
+                          <thead>
+                            <tr>
+                              <th>Kind</th>
+                              <th>Watches</th>
+                              <th>Est. revenue</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {stats.ad_kinds.map((a) => (
+                              <tr key={a.kind}>
+                                <td>{a.kind}</td>
+                                <td className="admin-num">{a.count}</td>
+                                <td className="admin-num">{fmtMoney(a.cents)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </section>
+
+                  <section className="admin-panel">
+                    <h2>Recent ads</h2>
+                    <div className="admin-table-wrap admin-table-wrap--compact">
+                      <table className="admin-table">
+                        <thead>
+                          <tr>
+                            <th>User</th>
+                            <th>Kind</th>
+                            <th>Est.</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(stats.recent_ads ?? []).map((a) => (
+                            <tr key={a.id}>
+                              <td>
+                                <button
+                                  type="button"
+                                  className="admin-link"
+                                  onClick={() => void openUser(a.user_id)}
+                                >
+                                  {a.username}
+                                </button>
+                              </td>
+                              <td>{a.kind}</td>
+                              <td className="admin-num">{fmtMoney(a.estimated_cents)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      {(stats.recent_ads ?? []).length === 0 && (
+                        <p className="admin-muted">No ad watches yet.</p>
+                      )}
+                    </div>
                   </section>
                 </div>
 
@@ -991,6 +1075,17 @@ export function AdminApp() {
                       <span>Lifetime spend</span>
                       <strong>{fmtMoney(userDetail.lifetime_spend_cents)}</strong>
                     </div>
+                    <div className="admin-detail-tile">
+                      <span>Gem purchases</span>
+                      <strong>{fmtMoney(userDetail.lifetime_iap_cents ?? 0)}</strong>
+                    </div>
+                    <div className="admin-detail-tile">
+                      <span>Ads (est.)</span>
+                      <strong>
+                        {fmtMoney(userDetail.lifetime_ads_cents ?? 0)} · {userDetail.ads_watched ?? 0}{" "}
+                        watches
+                      </strong>
+                    </div>
                   </div>
 
                   <h3>Progress</h3>
@@ -1046,6 +1141,34 @@ export function AdminApp() {
                               <td className="admin-num">{fmtMoney(p.cents)}</td>
                               <td className="admin-num">{p.gems}</td>
                               <td>{fmtDate(p.created_at)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+
+                  <h3>Ad watches</h3>
+                  {!userDetail.ad_watches || userDetail.ad_watches.length === 0 ? (
+                    <p className="admin-muted">No ad watches.</p>
+                  ) : (
+                    <div className="admin-table-wrap admin-table-wrap--compact">
+                      <table className="admin-table">
+                        <thead>
+                          <tr>
+                            <th>Kind</th>
+                            <th>Platform</th>
+                            <th>Est.</th>
+                            <th>When</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {userDetail.ad_watches.map((a) => (
+                            <tr key={a.id}>
+                              <td>{a.kind}</td>
+                              <td>{a.platform ?? "—"}</td>
+                              <td className="admin-num">{fmtMoney(a.estimated_cents)}</td>
+                              <td>{fmtDate(a.created_at)}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -1286,19 +1409,28 @@ export function AdminApp() {
                   <div className="admin-stat-grid admin-stat-grid--compact">
                     <div className="admin-stat-card">
                       <span className="admin-stat-card__val">{fmtMoney(rev.all_cents)}</span>
-                      <span className="admin-stat-card__label">Lifetime</span>
+                      <span className="admin-stat-card__label">Lifetime (IAP + ads)</span>
+                      <span className="admin-stat-card__sub">
+                        {fmtMoney(rev.cents_7d)} 7d · {fmtMoney(rev.cents_30d)} 30d
+                      </span>
                     </div>
                     <div className="admin-stat-card">
-                      <span className="admin-stat-card__val">{fmtMoney(rev.cents_7d)}</span>
-                      <span className="admin-stat-card__label">7 days</span>
+                      <span className="admin-stat-card__val">{fmtMoney(rev.iap_cents ?? 0)}</span>
+                      <span className="admin-stat-card__label">Gem purchases</span>
+                      <span className="admin-stat-card__sub">
+                        {rev.purchases_all} sales · {rev.paying_users} paying
+                      </span>
                     </div>
                     <div className="admin-stat-card">
-                      <span className="admin-stat-card__val">{fmtMoney(rev.cents_30d)}</span>
-                      <span className="admin-stat-card__label">30 days</span>
+                      <span className="admin-stat-card__val">{fmtMoney(rev.ads_cents ?? 0)}</span>
+                      <span className="admin-stat-card__label">Ads (estimated)</span>
+                      <span className="admin-stat-card__sub">
+                        {rev.ads_all ?? 0} watches · ~{fmtMoney(rev.ads_cents_per_watch ?? 1)}/watch
+                      </span>
                     </div>
                     <div className="admin-stat-card">
-                      <span className="admin-stat-card__val">{rev.paying_users}</span>
-                      <span className="admin-stat-card__label">Paying users</span>
+                      <span className="admin-stat-card__val">{rev.gems_sold_all.toLocaleString()}</span>
+                      <span className="admin-stat-card__label">Gems sold</span>
                       <span className="admin-stat-card__sub">
                         ARPU {fmtMoney(rev.arpu_cents)} · ARPPU {fmtMoney(rev.arppu_cents)}
                       </span>
@@ -1314,7 +1446,11 @@ export function AdminApp() {
                     ) : (
                       <div className="admin-bars" role="img" aria-label="Daily revenue">
                         {stats.revenue_series.map((d) => (
-                          <div key={d.date} className="admin-bars__col" title={`${d.date}: ${fmtMoney(d.cents)}`}>
+                          <div
+                            key={d.date}
+                            className="admin-bars__col"
+                            title={`${d.date}: ${fmtMoney(d.cents)} (IAP ${fmtMoney(d.iap_cents ?? 0)} · ads ${fmtMoney(d.ads_cents ?? 0)})`}
+                          >
                             <div
                               className="admin-bars__bar"
                               style={{ height: `${Math.max(4, (d.cents / seriesMax) * 100)}%` }}
@@ -1327,7 +1463,7 @@ export function AdminApp() {
                   </section>
 
                   <section className="admin-panel">
-                    <h2>Packs</h2>
+                    <h2>Gem packs</h2>
                     {!stats || stats.packs.length === 0 ? (
                       <p className="admin-muted">No pack sales.</p>
                     ) : (
@@ -1357,8 +1493,46 @@ export function AdminApp() {
                   </section>
                 </div>
 
+                <div className="admin-split">
+                  <section className="admin-panel">
+                    <h2>Ad kinds</h2>
+                    {!stats || !stats.ad_kinds || stats.ad_kinds.length === 0 ? (
+                      <p className="admin-muted">No ad watches logged yet.</p>
+                    ) : (
+                      <div className="admin-table-wrap admin-table-wrap--compact">
+                        <table className="admin-table">
+                          <thead>
+                            <tr>
+                              <th>Kind</th>
+                              <th>Watches</th>
+                              <th>Est. revenue</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {stats.ad_kinds.map((a) => (
+                              <tr key={a.kind}>
+                                <td>{a.kind}</td>
+                                <td className="admin-num">{a.count}</td>
+                                <td className="admin-num">{fmtMoney(a.cents)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </section>
+                  <section className="admin-panel">
+                    <h2>Note</h2>
+                    <p className="admin-muted">
+                      Ad revenue is an estimate ({fmtMoney(rev?.ads_cents_per_watch ?? 1)} per rewarded
+                      completion). Tune with env <code>AD_REWARD_CENTS_PER_WATCH</code>. Gem pack totals
+                      are actual IAP amounts.
+                    </p>
+                  </section>
+                </div>
+
                 <section className="admin-panel">
-                  <h2>Purchases</h2>
+                  <h2>Gem purchases</h2>
                   {purchases.length === 0 ? (
                     <p className="admin-muted">No purchases yet.</p>
                   ) : (
@@ -1403,7 +1577,9 @@ export function AdminApp() {
                         type="button"
                         className="admin-btn admin-btn--ghost admin-btn--sm"
                         disabled={revenueOffset === 0 || loading}
-                        onClick={() => void loadRevenue(Math.max(0, revenueOffset - REVENUE_PAGE))}
+                        onClick={() =>
+                          void loadRevenue(Math.max(0, revenueOffset - REVENUE_PAGE), adsOffset)
+                        }
                       >
                         ← Prev
                       </button>
@@ -1414,7 +1590,72 @@ export function AdminApp() {
                         type="button"
                         className="admin-btn admin-btn--ghost admin-btn--sm"
                         disabled={revenueOffset + REVENUE_PAGE >= revenueTotal || loading}
-                        onClick={() => void loadRevenue(revenueOffset + REVENUE_PAGE)}
+                        onClick={() => void loadRevenue(revenueOffset + REVENUE_PAGE, adsOffset)}
+                      >
+                        Next →
+                      </button>
+                    </div>
+                  )}
+                </section>
+
+                <section className="admin-panel">
+                  <h2>Ad watches</h2>
+                  {adWatches.length === 0 ? (
+                    <p className="admin-muted">No ad watches logged yet.</p>
+                  ) : (
+                    <div className="admin-table-wrap">
+                      <table className="admin-table">
+                        <thead>
+                          <tr>
+                            <th>When</th>
+                            <th>User</th>
+                            <th>Kind</th>
+                            <th>Platform</th>
+                            <th>Est.</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {adWatches.map((a) => (
+                            <tr key={a.id}>
+                              <td>{fmtDate(a.created_at)}</td>
+                              <td>
+                                <button
+                                  type="button"
+                                  className="admin-link"
+                                  onClick={() => void openUser(a.user_id)}
+                                >
+                                  {a.username}
+                                </button>
+                              </td>
+                              <td>{a.kind}</td>
+                              <td>{a.platform ?? "—"}</td>
+                              <td className="admin-num">{fmtMoney(a.estimated_cents)}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                  {adsTotal > REVENUE_PAGE && (
+                    <div className="admin-pagination">
+                      <button
+                        type="button"
+                        className="admin-btn admin-btn--ghost admin-btn--sm"
+                        disabled={adsOffset === 0 || loading}
+                        onClick={() =>
+                          void loadRevenue(revenueOffset, Math.max(0, adsOffset - REVENUE_PAGE))
+                        }
+                      >
+                        ← Prev
+                      </button>
+                      <span className="admin-muted">
+                        Page {adsPage} of {adsPages}
+                      </span>
+                      <button
+                        type="button"
+                        className="admin-btn admin-btn--ghost admin-btn--sm"
+                        disabled={adsOffset + REVENUE_PAGE >= adsTotal || loading}
+                        onClick={() => void loadRevenue(revenueOffset, adsOffset + REVENUE_PAGE)}
                       >
                         Next →
                       </button>

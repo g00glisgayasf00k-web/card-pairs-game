@@ -214,18 +214,33 @@ export async function fetchAdminStats() {
       cents_24h: number;
       cents_7d: number;
       cents_30d: number;
+      iap_cents: number;
+      iap_cents_24h: number;
+      iap_cents_7d: number;
+      iap_cents_30d: number;
+      ads_cents: number;
+      ads_cents_24h: number;
+      ads_cents_7d: number;
+      ads_cents_30d: number;
+      ads_estimated: boolean;
+      ads_cents_per_watch: number;
       purchases_all: number;
       purchases_24h: number;
       purchases_7d: number;
       purchases_30d: number;
+      ads_all: number;
+      ads_24h: number;
+      ads_7d: number;
+      ads_30d: number;
       gems_sold_all: number;
       gems_sold_7d: number;
       paying_users: number;
       arpu_cents: number;
       arppu_cents: number;
     };
-    revenue_series: { date: string; cents: number }[];
+    revenue_series: { date: string; cents: number; iap_cents?: number; ads_cents?: number }[];
     packs: { pack_id: string; count: number; cents: number; gems: number }[];
+    ad_kinds: { kind: string; count: number; cents: number }[];
     recent_purchases: {
       id: number;
       username: string;
@@ -234,6 +249,15 @@ export async function fetchAdminStats() {
       cents: number;
       currency: string;
       gems: number;
+      created_at: string | null;
+    }[];
+    recent_ads: {
+      id: number;
+      username: string;
+      user_id: number;
+      kind: string;
+      platform: string | null;
+      estimated_cents: number;
       created_at: string | null;
     }[];
     recent_signups: {
@@ -259,7 +283,7 @@ export async function fetchAdminStats() {
   }>("/api/admin/stats");
 }
 
-export async function fetchAdminRevenue(offset = 0, limit = 50) {
+export async function fetchAdminRevenue(offset = 0, limit = 50, adsOffset = 0) {
   return request<{
     total: number;
     offset: number;
@@ -275,7 +299,35 @@ export async function fetchAdminRevenue(offset = 0, limit = 50) {
       status: string;
       created_at: string | null;
     }[];
-  }>(`/api/admin/revenue?offset=${offset}&limit=${limit}`);
+    ads_total: number;
+    ads_offset: number;
+    ads: {
+      id: number;
+      user_id: number;
+      username: string;
+      kind: string;
+      platform: string | null;
+      estimated_cents: number;
+      created_at: string | null;
+    }[];
+    summary: {
+      iap_cents: number;
+      ads_cents: number;
+      all_cents: number;
+      ads_estimated: boolean;
+    };
+  }>(`/api/admin/revenue?offset=${offset}&limit=${limit}&ads_offset=${adsOffset}`);
+}
+
+/** Log a completed rewarded ad for admin revenue metrics (fire-and-forget safe). */
+export async function reportAdWatch(kind: "gem" | "energy" | "tournament", platform?: string) {
+  return request<{ ok: boolean; id: number; kind: string; estimated_cents: number }>(
+    "/api/ads/watch",
+    {
+      method: "POST",
+      body: JSON.stringify({ kind, platform: platform ?? "web" }),
+    }
+  );
 }
 
 export async function fetchAdminSessions(limit = 40) {
@@ -349,6 +401,9 @@ export async function fetchAdminUserDetail(userId: number) {
     last_seen_at: string | null;
     total_play_seconds: number;
     lifetime_spend_cents: number;
+    lifetime_iap_cents?: number;
+    lifetime_ads_cents?: number;
+    ads_watched?: number;
     progress: Record<string, unknown> | null;
     progress_summary: AdminUserRow["progress"];
     client_updated_at: number;
@@ -358,6 +413,13 @@ export async function fetchAdminUserDetail(userId: number) {
       cents: number;
       currency: string;
       gems: number;
+      created_at: string | null;
+    }[];
+    ad_watches?: {
+      id: number;
+      kind: string;
+      platform: string | null;
+      estimated_cents: number;
       created_at: string | null;
     }[];
     sessions: {

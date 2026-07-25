@@ -8,7 +8,16 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 from sqlalchemy import desc, func
 
 from app.leaderboards import build_leaderboards
-from app.models import GameSession, PlayerProgress, PurchaseRecord, Score, SupportTicket, User, db
+from app.models import (
+    AdWatchRecord,
+    GameSession,
+    PlayerProgress,
+    PurchaseRecord,
+    Score,
+    SupportTicket,
+    User,
+    db,
+)
 from app.password_util import generate_temp_password, hash_password
 
 admin_bp = Blueprint("admin", __name__)
@@ -162,27 +171,58 @@ def admin_stats():
         gems = sum(int(r.gems_granted or 0) for r in rows)
         return len(rows), cents, gems
 
-    purchases_all, revenue_all_cents, gems_sold_all = _purchase_sum()
-    purchases_7d, revenue_7d_cents, gems_sold_7d = _purchase_sum(week_ago)
-    purchases_30d, revenue_30d_cents, gems_sold_30d = _purchase_sum(month_ago)
-    purchases_24h, revenue_24h_cents, _ = _purchase_sum(day_ago)
+    def _ad_sum(since: datetime | None = None) -> tuple[int, int]:
+        q = AdWatchRecord.query
+        if since is not None:
+            q = q.filter(AdWatchRecord.created_at >= since)
+        rows = q.all()
+        cents = sum(int(r.estimated_cents or 0) for r in rows)
+        return len(rows), cents
+
+    purchases_all, iap_all_cents, gems_sold_all = _purchase_sum()
+    purchases_7d, iap_7d_cents, gems_sold_7d = _purchase_sum(week_ago)
+    purchases_30d, iap_30d_cents, gems_sold_30d = _purchase_sum(month_ago)
+    purchases_24h, iap_24h_cents, _ = _purchase_sum(day_ago)
+
+    ads_all, ads_all_cents = _ad_sum()
+    ads_7d, ads_7d_cents = _ad_sum(week_ago)
+    ads_30d, ads_30d_cents = _ad_sum(month_ago)
+    ads_24h, ads_24h_cents = _ad_sum(day_ago)
+
+    revenue_all_cents = iap_all_cents + ads_all_cents
+    revenue_7d_cents = iap_7d_cents + ads_7d_cents
+    revenue_30d_cents = iap_30d_cents + ads_30d_cents
+    revenue_24h_cents = iap_24h_cents + ads_24h_cents
 
     open_tickets = SupportTicket.query.filter_by(status="open").count()
 
-    # Daily revenue last 14 days
-    revenue_by_day: dict[str, int] = {}
+    # Daily combined revenue last 14 days (IAP + estimated ads)
+    revenue_by_day: dict[str, dict[str, int]] = {}
     for r in PurchaseRecord.query.filter(
         PurchaseRecord.status == "completed",
         PurchaseRecord.created_at >= now - timedelta(days=14),
     ).all():
         key = r.created_at.strftime("%Y-%m-%d") if r.created_at else "unknown"
-        revenue_by_day[key] = revenue_by_day.get(key, 0) + int(r.amount_cents or 0)
-    revenue_series = [
-        {"date": (now - timedelta(days=i)).strftime("%Y-%m-%d"), "cents": 0}
-        for i in range(13, -1, -1)
-    ]
-    for row in revenue_series:
-        row["cents"] = revenue_by_day.get(row["date"], 0)
+        bucket = revenue_by_day.setdefault(key, {"iap": 0, "ads": 0})
+        bucket["iap"] += int(r.amount_cents or 0)
+    for r in AdWatchRecord.query.filter(
+        AdWatchRecord.created_at >= now - timedelta(days=14),
+    ).all():
+        key = r.created_at.strftime("%Y-%m-%d") if r.created_at else "unknown"
+        bucket = revenue_by_day.setdefault(key, {"iap": 0, "ads": 0})
+        bucket["ads"] += int(r.estimated_cents or 0)
+    revenue_series = []
+    for i in range(13, -1, -1):
+        date = (now - timedelta(days=i)).strftime("%Y-%m-%d")
+        bucket = revenue_by_day.get(date, {"iap": 0, "ads": 0})
+        revenue_series.append(
+            {
+                "date": date,
+                "cents": bucket["iap"] + bucket["ads"],
+                "iap_cents": bucket["iap"],
+                "ads_cents": bucket["ads"],
+            }
+        )
 
     # Pack breakdown
     pack_rows = (
@@ -207,11 +247,34 @@ def admin_stats():
         for pack_id, count, cents, gems in pack_rows
     ]
 
+    ad_kind_rows = (
+        db.session.query(
+            AdWatchRecord.kind,
+            func.count(AdWatchRecord.id),
+            func.coalesce(func.sum(AdWatchRecord.estimated_cents), 0),
+        )
+        .group_by(AdWatchRecord.kind)
+        .order_by(desc(func.count(AdWatchRecord.id)))
+        .all()
+    )
+    ad_kinds = [
+        {"kind": kind, "count": int(count), "cents": int(cents or 0)}
+        for kind, count, cents in ad_kind_rows
+    ]
+
     recent_purchases = (
         db.session.query(PurchaseRecord, User.username)
         .join(User, User.id == PurchaseRecord.user_id)
         .filter(PurchaseRecord.status == "completed")
         .order_by(desc(PurchaseRecord.created_at))
+        .limit(12)
+        .all()
+    )
+
+    recent_ads = (
+        db.session.query(AdWatchRecord, User.username)
+        .join(User, User.id == AdWatchRecord.user_id)
+        .order_by(desc(AdWatchRecord.created_at))
         .limit(12)
         .all()
     )
@@ -269,18 +332,33 @@ def admin_stats():
                 "cents_24h": revenue_24h_cents,
                 "cents_7d": revenue_7d_cents,
                 "cents_30d": revenue_30d_cents,
+                "iap_cents": iap_all_cents,
+                "iap_cents_24h": iap_24h_cents,
+                "iap_cents_7d": iap_7d_cents,
+                "iap_cents_30d": iap_30d_cents,
+                "ads_cents": ads_all_cents,
+                "ads_cents_24h": ads_24h_cents,
+                "ads_cents_7d": ads_7d_cents,
+                "ads_cents_30d": ads_30d_cents,
+                "ads_estimated": True,
+                "ads_cents_per_watch": int(current_app.config.get("AD_REWARD_CENTS_PER_WATCH", 1)),
                 "purchases_all": purchases_all,
                 "purchases_24h": purchases_24h,
                 "purchases_7d": purchases_7d,
                 "purchases_30d": purchases_30d,
+                "ads_all": ads_all,
+                "ads_24h": ads_24h,
+                "ads_7d": ads_7d,
+                "ads_30d": ads_30d,
                 "gems_sold_all": gems_sold_all,
                 "gems_sold_7d": gems_sold_7d,
                 "paying_users": int(paying_users),
                 "arpu_cents": int(revenue_all_cents / player_count) if player_count else 0,
-                "arppu_cents": int(revenue_all_cents / paying_users) if paying_users else 0,
+                "arppu_cents": int(iap_all_cents / paying_users) if paying_users else 0,
             },
             "revenue_series": revenue_series,
             "packs": packs,
+            "ad_kinds": ad_kinds,
             "recent_purchases": [
                 {
                     "id": p.id,
@@ -293,6 +371,18 @@ def admin_stats():
                     "created_at": p.created_at.isoformat() if p.created_at else None,
                 }
                 for p, username in recent_purchases
+            ],
+            "recent_ads": [
+                {
+                    "id": a.id,
+                    "username": username,
+                    "user_id": a.user_id,
+                    "kind": a.kind,
+                    "platform": a.platform,
+                    "estimated_cents": a.estimated_cents,
+                    "created_at": a.created_at.isoformat() if a.created_at else None,
+                }
+                for a, username in recent_ads
             ],
             "recent_signups": [
                 {
@@ -342,6 +432,25 @@ def admin_revenue():
         .limit(limit)
         .all()
     )
+    ads_total = AdWatchRecord.query.count()
+    ads_offset = max(int(request.args.get("ads_offset", 0)), 0)
+    ads_rows = (
+        db.session.query(AdWatchRecord, User.username)
+        .join(User, User.id == AdWatchRecord.user_id)
+        .order_by(desc(AdWatchRecord.created_at))
+        .offset(ads_offset)
+        .limit(limit)
+        .all()
+    )
+    iap_cents = (
+        db.session.query(func.coalesce(func.sum(PurchaseRecord.amount_cents), 0))
+        .filter(PurchaseRecord.status == "completed")
+        .scalar()
+        or 0
+    )
+    ads_cents = (
+        db.session.query(func.coalesce(func.sum(AdWatchRecord.estimated_cents), 0)).scalar() or 0
+    )
     return jsonify(
         {
             "total": total,
@@ -361,6 +470,26 @@ def admin_revenue():
                 }
                 for p, username in rows
             ],
+            "ads_total": ads_total,
+            "ads_offset": ads_offset,
+            "ads": [
+                {
+                    "id": a.id,
+                    "user_id": a.user_id,
+                    "username": username,
+                    "kind": a.kind,
+                    "platform": a.platform,
+                    "estimated_cents": a.estimated_cents,
+                    "created_at": a.created_at.isoformat() if a.created_at else None,
+                }
+                for a, username in ads_rows
+            ],
+            "summary": {
+                "iap_cents": int(iap_cents),
+                "ads_cents": int(ads_cents),
+                "all_cents": int(iap_cents) + int(ads_cents),
+                "ads_estimated": True,
+            },
         }
     )
 
@@ -456,6 +585,17 @@ def admin_users():
             .group_by(PurchaseRecord.user_id)
             .all()
         )
+        ads_map = dict(
+            db.session.query(
+                AdWatchRecord.user_id,
+                func.coalesce(func.sum(AdWatchRecord.estimated_cents), 0),
+            )
+            .filter(AdWatchRecord.user_id.in_(user_ids))
+            .group_by(AdWatchRecord.user_id)
+            .all()
+        )
+    else:
+        ads_map = {}
 
     users = []
     for u in rows:
@@ -479,7 +619,7 @@ def admin_users():
                 "last_login_at": u.last_login_at.isoformat() if u.last_login_at else None,
                 "last_seen_at": u.last_seen_at.isoformat() if u.last_seen_at else None,
                 "total_play_seconds": int(u.total_play_seconds or 0),
-                "lifetime_spend_cents": int(spend_map.get(u.id, 0)),
+                "lifetime_spend_cents": int(spend_map.get(u.id, 0)) + int(ads_map.get(u.id, 0)),
                 "progress": summary,
                 "has_synced": prog is not None,
             }
@@ -509,13 +649,27 @@ def admin_user_detail(user_id: int):
         .limit(50)
         .all()
     )
+    ad_watches = (
+        AdWatchRecord.query.filter_by(user_id=user.id)
+        .order_by(desc(AdWatchRecord.created_at))
+        .limit(50)
+        .all()
+    )
     sessions = (
         GameSession.query.filter_by(user_id=user.id)
         .order_by(desc(GameSession.started_at))
         .limit(30)
         .all()
     )
-    spend_cents = sum(int(p.amount_cents or 0) for p in purchases)
+    iap_cents = sum(int(p.amount_cents or 0) for p in purchases)
+    # Full lifetime ad estimate (not capped to the 50-row sample above)
+    ads_lifetime_cents = (
+        db.session.query(func.coalesce(func.sum(AdWatchRecord.estimated_cents), 0))
+        .filter(AdWatchRecord.user_id == user.id)
+        .scalar()
+        or 0
+    )
+    ads_count = AdWatchRecord.query.filter_by(user_id=user.id).count()
 
     return jsonify(
         {
@@ -528,7 +682,10 @@ def admin_user_detail(user_id: int):
             "last_login_at": user.last_login_at.isoformat() if user.last_login_at else None,
             "last_seen_at": user.last_seen_at.isoformat() if user.last_seen_at else None,
             "total_play_seconds": int(user.total_play_seconds or 0),
-            "lifetime_spend_cents": spend_cents,
+            "lifetime_spend_cents": iap_cents + int(ads_lifetime_cents),
+            "lifetime_iap_cents": iap_cents,
+            "lifetime_ads_cents": int(ads_lifetime_cents),
+            "ads_watched": ads_count,
             "progress": progress_payload,
             "progress_summary": _progress_summary(progress_payload),
             "client_updated_at": prog.client_updated_at if prog else 0,
@@ -542,6 +699,16 @@ def admin_user_detail(user_id: int):
                     "created_at": p.created_at.isoformat() if p.created_at else None,
                 }
                 for p in purchases
+            ],
+            "ad_watches": [
+                {
+                    "id": a.id,
+                    "kind": a.kind,
+                    "platform": a.platform,
+                    "estimated_cents": a.estimated_cents,
+                    "created_at": a.created_at.isoformat() if a.created_at else None,
+                }
+                for a in ad_watches
             ],
             "sessions": [
                 {

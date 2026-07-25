@@ -36,6 +36,10 @@ class Config:
     SQUARE_ENVIRONMENT = os.environ.get("SQUARE_ENVIRONMENT", "sandbox")
     SQUARE_WEBHOOK_SIGNATURE_KEY = os.environ.get("SQUARE_WEBHOOK_SIGNATURE_KEY", "")
 
+    # Estimated revenue per rewarded ad watch (cents). Tune from AdMob eCPM.
+    # Example: $8 eCPM ≈ 0.8¢/view → use 1 for a conservative whole-cent estimate.
+    AD_REWARD_CENTS_PER_WATCH = int(os.environ.get("AD_REWARD_CENTS_PER_WATCH", "1"))
+
     # Firebase Cloud Messaging (optional — badges work without this)
     FCM_PROJECT_ID = os.environ.get("FCM_PROJECT_ID", "")
     FCM_SERVICE_ACCOUNT_JSON = os.environ.get("FCM_SERVICE_ACCOUNT_JSON", "")

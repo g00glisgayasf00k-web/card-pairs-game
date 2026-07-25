@@ -28,6 +28,7 @@ import {
   recordEnergyVideoAd,
   recordGemVideoAd,
 } from "../lib/treasuryAds";
+import { trackAdWatch } from "../lib/reportAdWatch";
 import { ResourceBar } from "./ResourceBar";
 import { SquareCheckoutModal } from "./SquareCheckoutModal";
 import { HOME_ASSETS, HomeKitShell } from "./home";
@@ -149,9 +150,11 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
       if (kind === "gems") {
         if (!recordGemVideoAd()) return;
         saveProgress({ ...progress, credits: progress.credits + GEM_VIDEO_REWARD });
+        trackAdWatch("gem");
       } else {
         if (!recordEnergyVideoAd()) return;
         grantEnergyFromVideo(ENERGY_VIDEO_REWARD);
+        trackAdWatch("energy");
       }
       refresh();
     },
@@ -228,6 +231,7 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
           if (progress) {
             saveProgress({ ...progress, credits: progress.credits + GEM_VIDEO_REWARD });
           }
+          trackAdWatch("gem");
           refresh();
         }
       } finally {
@@ -247,6 +251,7 @@ export function GemShopModal({ onClose, onBalanceChange, emphasizeEnergy = false
         const rewarded = await showRewardedEnergyAd();
         if (rewarded && recordEnergyVideoAd()) {
           grantEnergyFromVideo(ENERGY_VIDEO_REWARD);
+          trackAdWatch("energy");
           refresh();
         }
       } finally {

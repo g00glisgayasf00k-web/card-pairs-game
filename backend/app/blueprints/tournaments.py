@@ -6,9 +6,8 @@ from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from sqlalchemy import distinct
 
-from app.models import TournamentRun, User, db
+from app.models import PlayerProgress, TournamentRun, User, db
 from app.progress_grants import load_progress_payload
-from app.models import PlayerProgress
 from app.tournament_periods import period_key, period_meta, period_sort_key
 from app.tournament_prizes import (
     acknowledge_prizes,
@@ -30,6 +29,44 @@ VALID_TIERS = {
     "monthly_medium",
     "monthly_high",
 }
+
+# Solo global level that must be cleared (0 = open from the start).
+# Mirrors frontend tournamentTiers: +1 world per stake up the ladder.
+TIER_UNLOCK_LEVEL = {
+    "daily_low": 0,
+    "daily_medium": 10,  # Solo 0-10
+    "daily_high": 20,  # Solo 1-10
+    "weekly_low": 30,  # Solo 2-10
+    "weekly_medium": 40,  # Solo 3-10
+    "weekly_high": 50,  # Solo 4-10
+    "monthly_low": 60,  # Solo 5-10
+    "monthly_medium": 70,  # Solo 6-10
+    "monthly_high": 80,  # Solo 7-10
+}
+
+
+def _unlock_label(need: int) -> str:
+    if need <= 0:
+        return "open"
+    display_world = (need - 1) // 10
+    stage = ((need - 1) % 10) + 1
+    return f"{display_world}-{stage}"
+
+
+def _tournament_unlocked(user_id: int, tier: str) -> bool:
+    need = int(TIER_UNLOCK_LEVEL.get(tier, 0))
+    if need <= 0:
+        return True
+    row = PlayerProgress.query.filter_by(user_id=user_id).first()
+    payload = load_progress_payload(row)
+    completed = payload.get("completedLevels") or []
+    if isinstance(completed, list) and need in completed:
+        return True
+    try:
+        highest = int(payload.get("highestUnlocked") or 1)
+    except (TypeError, ValueError):
+        highest = 1
+    return highest > need
 
 
 def _rank_key(score: int, duration_ms: int | None) -> tuple[int, int]:
@@ -203,6 +240,10 @@ def submit(tier_id: str):
         return jsonify({"error": "Invalid result values"}), 400
 
     me = int(get_jwt_identity())
+    if not _tournament_unlocked(me, tier):
+        need = int(TIER_UNLOCK_LEVEL.get(tier, 0))
+        return jsonify({"error": f"Clear Solo {_unlock_label(need)} to unlock this cup"}), 403
+
     pk = period_key(tier)
     existing = TournamentRun.query.filter_by(user_id=me, tier_id=tier, period_key=pk).first()
     improved = False

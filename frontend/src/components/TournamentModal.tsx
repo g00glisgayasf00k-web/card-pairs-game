@@ -475,7 +475,7 @@ export function TournamentModal({
                         </button>
                       ) : (
                         <button type="button" className="tn-kit__ghost" disabled>
-                          Locked
+                          Clear Solo {unlockLabel(tier)}
                         </button>
                       )}
                       {unlocked && !canAfford && adsLeft <= 0 && (

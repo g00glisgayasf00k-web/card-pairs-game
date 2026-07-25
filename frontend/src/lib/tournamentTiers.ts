@@ -35,7 +35,9 @@ function makeTier(
   stake: TournamentStake,
   entryGems: number,
   rewardPool: number,
+  /** Solo display-world to clear (0-based). Use stage 0 = open from the start. */
   unlockDisplayWorld: number,
+  unlockStage: number,
   boardDisplayWorld: number
 ): TournamentTier {
   const periodName = reset === "daily" ? "Daily" : reset === "weekly" ? "Weekly" : "Monthly";
@@ -47,7 +49,7 @@ function makeTier(
     name: `${periodName} · ${stakeName}`,
     stake,
     unlockDisplayWorld,
-    unlockStage: 10,
+    unlockStage,
     entryGems,
     rewardPool,
     boardDisplayWorld,
@@ -58,22 +60,30 @@ function makeTier(
 }
 
 /**
- * Daily / Weekly / Monthly cups, each with Low · Medium · High stakes.
- * Medium stakes match the old Bronze / Silver / Gold entry + pool values.
+ * Daily / Weekly / Monthly × Low / Medium / High.
+ *
+ * Entry unlocks climb one Solo world at a time (stage 10 of each world):
+ *   Daily Low     → open from the start
+ *   Daily Medium  → clear Solo 0-10
+ *   Daily High    → clear Solo 1-10
+ *   Weekly Low    → clear Solo 2-10
+ *   …and so on through Monthly High (7-10).
+ *
+ * Board difficulty still follows the period (Daily = world 0, Weekly = 2, Monthly = 4).
  */
 export const TOURNAMENT_TIERS: TournamentTier[] = [
   // Daily — Solo world 0 boards
-  makeTier("daily", "low", 5, 250, 0, 0),
-  makeTier("daily", "medium", 10, 500, 0, 0),
-  makeTier("daily", "high", 25, 1_250, 0, 0),
+  makeTier("daily", "low", 5, 250, 0, 0, 0),
+  makeTier("daily", "medium", 10, 500, 0, 10, 0),
+  makeTier("daily", "high", 25, 1_250, 1, 10, 0),
   // Weekly — Solo world 2 boards
-  makeTier("weekly", "low", 25, 1_250, 2, 2),
-  makeTier("weekly", "medium", 50, 2_500, 2, 2),
-  makeTier("weekly", "high", 100, 5_000, 2, 2),
+  makeTier("weekly", "low", 25, 1_250, 2, 10, 2),
+  makeTier("weekly", "medium", 50, 2_500, 3, 10, 2),
+  makeTier("weekly", "high", 100, 5_000, 4, 10, 2),
   // Monthly — Solo world 4 boards
-  makeTier("monthly", "low", 100, 5_000, 4, 4),
-  makeTier("monthly", "medium", 250, 12_500, 4, 4),
-  makeTier("monthly", "high", 500, 25_000, 4, 4),
+  makeTier("monthly", "low", 100, 5_000, 5, 10, 4),
+  makeTier("monthly", "medium", 250, 12_500, 6, 10, 4),
+  makeTier("monthly", "high", 500, 25_000, 7, 10, 4),
 ];
 
 export const TOURNAMENT_PERIODS: TournamentReset[] = ["daily", "weekly", "monthly"];
@@ -267,10 +277,13 @@ export interface TournamentBoardPick {
 }
 
 export function unlockGlobalLevel(tier: TournamentTier): number {
+  // Stage 0 = open from the start (Daily Low).
+  if (tier.unlockStage <= 0) return 0;
   return toGlobalLevel(tier.unlockDisplayWorld + 1, tier.unlockStage);
 }
 
 export function unlockLabel(tier: TournamentTier): string {
+  if (tier.unlockStage <= 0) return "open";
   return `${tier.unlockDisplayWorld}-${tier.unlockStage}`;
 }
 
@@ -286,6 +299,7 @@ export function isTournamentUnlocked(tier: TournamentTier): boolean {
   const saved = loadProgress();
   if (!saved) return false;
   const need = unlockGlobalLevel(tier);
+  if (need <= 0) return true;
   if (saved.completedLevels.includes(need)) return true;
   return saved.highestUnlocked > need;
 }

@@ -7,6 +7,7 @@ from flask import Blueprint, current_app, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
 from sqlalchemy import desc, func
 
+from app.db_util import utc_now, iso_utc
 from app.leaderboards import build_leaderboards
 from app.models import (
     AdWatchRecord,
@@ -368,7 +369,7 @@ def admin_stats():
                     "cents": p.amount_cents,
                     "currency": p.currency,
                     "gems": p.gems_granted,
-                    "created_at": p.created_at.isoformat() if p.created_at else None,
+                    "created_at": iso_utc(p.created_at),
                 }
                 for p, username in recent_purchases
             ],
@@ -380,7 +381,7 @@ def admin_stats():
                     "kind": a.kind,
                     "platform": a.platform,
                     "estimated_cents": a.estimated_cents,
-                    "created_at": a.created_at.isoformat() if a.created_at else None,
+                    "created_at": iso_utc(a.created_at),
                 }
                 for a, username in recent_ads
             ],
@@ -389,8 +390,8 @@ def admin_stats():
                     "id": u.id,
                     "username": u.username,
                     "email": u.email,
-                    "created_at": u.created_at.isoformat() if u.created_at else None,
-                    "last_login_at": u.last_login_at.isoformat() if u.last_login_at else None,
+                    "created_at": iso_utc(u.created_at),
+                    "last_login_at": iso_utc(u.last_login_at),
                 }
                 for u in recent_users
             ],
@@ -398,8 +399,8 @@ def admin_stats():
                 {
                     "id": u.id,
                     "username": u.username,
-                    "last_login_at": u.last_login_at.isoformat() if u.last_login_at else None,
-                    "last_seen_at": u.last_seen_at.isoformat() if u.last_seen_at else None,
+                    "last_login_at": iso_utc(u.last_login_at),
+                    "last_seen_at": iso_utc(u.last_seen_at),
                     "total_play_seconds": int(u.total_play_seconds or 0),
                 }
                 for u in recent_logins
@@ -409,7 +410,7 @@ def admin_stats():
                     "id": u.id,
                     "username": u.username,
                     "total_play_seconds": int(u.total_play_seconds or 0),
-                    "last_seen_at": u.last_seen_at.isoformat() if u.last_seen_at else None,
+                    "last_seen_at": iso_utc(u.last_seen_at),
                 }
                 for u in top_playtime
             ],
@@ -466,7 +467,7 @@ def admin_revenue():
                     "currency": p.currency,
                     "gems": p.gems_granted,
                     "status": p.status,
-                    "created_at": p.created_at.isoformat() if p.created_at else None,
+                    "created_at": iso_utc(p.created_at),
                 }
                 for p, username in rows
             ],
@@ -480,7 +481,7 @@ def admin_revenue():
                     "kind": a.kind,
                     "platform": a.platform,
                     "estimated_cents": a.estimated_cents,
-                    "created_at": a.created_at.isoformat() if a.created_at else None,
+                    "created_at": iso_utc(a.created_at),
                 }
                 for a, username in ads_rows
             ],
@@ -512,11 +513,9 @@ def admin_sessions():
                     "id": s.id,
                     "user_id": s.user_id,
                     "username": username,
-                    "started_at": s.started_at.isoformat() if s.started_at else None,
-                    "last_heartbeat_at": s.last_heartbeat_at.isoformat()
-                    if s.last_heartbeat_at
-                    else None,
-                    "ended_at": s.ended_at.isoformat() if s.ended_at else None,
+                    "started_at": iso_utc(s.started_at),
+                    "last_heartbeat_at": iso_utc(s.last_heartbeat_at),
+                    "ended_at": iso_utc(s.ended_at),
                     "duration_seconds": int(s.duration_seconds or 0),
                     "platform": s.platform,
                     "active": s.ended_at is None,
@@ -615,9 +614,9 @@ def admin_users():
                 "username": u.username,
                 "email": u.email,
                 "is_admin": bool(u.is_admin),
-                "created_at": u.created_at.isoformat() if u.created_at else None,
-                "last_login_at": u.last_login_at.isoformat() if u.last_login_at else None,
-                "last_seen_at": u.last_seen_at.isoformat() if u.last_seen_at else None,
+                "created_at": iso_utc(u.created_at),
+                "last_login_at": iso_utc(u.last_login_at),
+                "last_seen_at": iso_utc(u.last_seen_at),
                 "total_play_seconds": int(u.total_play_seconds or 0),
                 "lifetime_spend_cents": int(spend_map.get(u.id, 0)) + int(ads_map.get(u.id, 0)),
                 "progress": summary,
@@ -678,9 +677,9 @@ def admin_user_detail(user_id: int):
             "email": user.email,
             "has_google": bool(user.google_id),
             "is_admin": bool(user.is_admin),
-            "created_at": user.created_at.isoformat() if user.created_at else None,
-            "last_login_at": user.last_login_at.isoformat() if user.last_login_at else None,
-            "last_seen_at": user.last_seen_at.isoformat() if user.last_seen_at else None,
+            "created_at": iso_utc(user.created_at),
+            "last_login_at": iso_utc(user.last_login_at),
+            "last_seen_at": iso_utc(user.last_seen_at),
             "total_play_seconds": int(user.total_play_seconds or 0),
             "lifetime_spend_cents": iap_cents + int(ads_lifetime_cents),
             "lifetime_iap_cents": iap_cents,
@@ -696,7 +695,7 @@ def admin_user_detail(user_id: int):
                     "cents": p.amount_cents,
                     "currency": p.currency,
                     "gems": p.gems_granted,
-                    "created_at": p.created_at.isoformat() if p.created_at else None,
+                    "created_at": iso_utc(p.created_at),
                 }
                 for p in purchases
             ],
@@ -706,16 +705,16 @@ def admin_user_detail(user_id: int):
                     "kind": a.kind,
                     "platform": a.platform,
                     "estimated_cents": a.estimated_cents,
-                    "created_at": a.created_at.isoformat() if a.created_at else None,
+                    "created_at": iso_utc(a.created_at),
                 }
                 for a in ad_watches
             ],
             "sessions": [
                 {
                     "id": s.id,
-                    "started_at": s.started_at.isoformat() if s.started_at else None,
-                    "last_heartbeat_at": s.last_heartbeat_at.isoformat() if s.last_heartbeat_at else None,
-                    "ended_at": s.ended_at.isoformat() if s.ended_at else None,
+                    "started_at": iso_utc(s.started_at),
+                    "last_heartbeat_at": iso_utc(s.last_heartbeat_at),
+                    "ended_at": iso_utc(s.ended_at),
                     "duration_seconds": int(s.duration_seconds or 0),
                     "platform": s.platform,
                     "active": s.ended_at is None,
@@ -904,9 +903,9 @@ def _admin_ticket_dict(ticket: SupportTicket) -> dict:
         "message": ticket.message,
         "status": ticket.status,
         "admin_reply": ticket.admin_reply,
-        "created_at": ticket.created_at.isoformat() if ticket.created_at else None,
-        "updated_at": ticket.updated_at.isoformat() if ticket.updated_at else None,
-        "replied_at": ticket.replied_at.isoformat() if ticket.replied_at else None,
+        "created_at": iso_utc(ticket.created_at),
+        "updated_at": iso_utc(ticket.updated_at),
+        "replied_at": iso_utc(ticket.replied_at),
     }
 
 

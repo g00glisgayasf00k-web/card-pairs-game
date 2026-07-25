@@ -39,13 +39,20 @@ function fmtDuration(seconds: number): string {
   const s = Math.max(0, Math.floor(seconds || 0));
   const h = Math.floor(s / 3600);
   const m = Math.floor((s % 3600) / 60);
-  if (h > 0) return `${h}h ${m}m`;
-  return `${m}m`;
+  const sec = s % 60;
+  if (h > 0) return m > 0 ? `${h}h ${m}m` : `${h}h`;
+  if (m > 0) return sec > 0 ? `${m}m ${sec}s` : `${m}m`;
+  return `${sec}s`;
 }
 
+/** Admin dates are UTC on the server — show UK local (GMT/BST). */
 function fmtDate(iso: string | null | undefined): string {
   if (!iso) return "—";
-  return new Date(iso).toLocaleString(undefined, {
+  const normalized = /(?:Z|[+-]\d{2}:\d{2})$/.test(iso) ? iso : `${iso}Z`;
+  const d = new Date(normalized);
+  if (Number.isNaN(d.getTime())) return "—";
+  return d.toLocaleString("en-GB", {
+    timeZone: "Europe/London",
     dateStyle: "medium",
     timeStyle: "short",
   });

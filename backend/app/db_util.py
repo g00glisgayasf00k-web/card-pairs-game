@@ -288,3 +288,20 @@ def ensure_admin_user():
 
 def utc_now():
     return datetime.now(timezone.utc)
+
+
+def as_utc(dt: datetime | None) -> datetime | None:
+    """Normalize DB/app datetimes to timezone-aware UTC."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+
+def iso_utc(dt: datetime | None) -> str | None:
+    """ISO-8601 UTC with Z suffix so browsers don't treat naive stamps as local time."""
+    aware = as_utc(dt)
+    if aware is None:
+        return None
+    return aware.isoformat().replace("+00:00", "Z")

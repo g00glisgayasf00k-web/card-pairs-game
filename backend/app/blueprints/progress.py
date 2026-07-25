@@ -17,6 +17,11 @@ MAX_ENERGY = 12
 @jwt_required()
 def get_my_progress():
     user_id = int(get_jwt_identity())
+    user = db.session.get(User, user_id)
+    if user:
+        user.last_seen_at = utc_now().replace(tzinfo=None)
+        db.session.commit()
+
     row = PlayerProgress.query.filter_by(user_id=user_id).first()
     if not row:
         return jsonify({"progress": None, "client_updated_at": 0}), 200
@@ -37,6 +42,7 @@ def get_my_progress():
 @jwt_required()
 def sync_progress():
     user_id = int(get_jwt_identity())
+    user = db.session.get(User, user_id)
     data = request.get_json(silent=True) or {}
     progress = data.get("progress")
     client_updated_at = int(data.get("client_updated_at") or 0)
@@ -50,6 +56,9 @@ def sync_progress():
             payload = json.loads(row.payload)
         except json.JSONDecodeError:
             payload = {}
+        if user:
+            user.last_seen_at = utc_now().replace(tzinfo=None)
+            db.session.commit()
         return jsonify(
             {
                 "saved": False,
@@ -92,6 +101,9 @@ def sync_progress():
         row.payload = payload_text
         row.client_updated_at = client_updated_at
         row.updated_at = utc_now()
+
+    if user:
+        user.last_seen_at = utc_now().replace(tzinfo=None)
 
     db.session.commit()
     return jsonify({"saved": True, "client_updated_at": row.client_updated_at}), 200

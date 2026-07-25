@@ -53,7 +53,7 @@ def _unique_username(base: str) -> str:
 
 
 def _auth_response(user: User, status: int = 200):
-    now = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     user.last_login_at = now
     user.last_seen_at = now
     try:

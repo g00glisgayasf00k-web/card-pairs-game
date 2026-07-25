@@ -12,6 +12,7 @@ import {
   syncPushTokenAfterLogin,
 } from "./lib/nativePush";
 import { bindHardwareBackButton } from "./lib/nativeShell";
+import { startSessionHeartbeat } from "./lib/sessionHeartbeat";
 import type { ChallengeDto } from "./lib/api";
 import type { ChallengeMatch } from "./screens/GameScreen";
 import type { TournamentBoardPick } from "./lib/tournamentTiers";
@@ -49,7 +50,11 @@ export default function App() {
     }
     initProgressSync();
     void syncPushTokenAfterLogin();
-    return () => stopProgressSync();
+    const stopHeartbeat = startSessionHeartbeat();
+    return () => {
+      stopProgressSync();
+      stopHeartbeat();
+    };
   }, [loggedIn]);
 
   useEffect(() => {

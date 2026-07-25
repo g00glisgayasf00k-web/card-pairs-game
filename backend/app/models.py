@@ -18,6 +18,9 @@ class User(db.Model):
     reset_token_expires = db.Column(db.DateTime, nullable=True)
     privacy_accepted_at = db.Column(db.DateTime, nullable=True)
     privacy_policy_version = db.Column(db.String(16), nullable=True)
+    last_login_at = db.Column(db.DateTime, nullable=True, index=True)
+    last_seen_at = db.Column(db.DateTime, nullable=True, index=True)
+    total_play_seconds = db.Column(db.Integer, nullable=False, default=0)
     created_at = db.Column(
         db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )
@@ -242,6 +245,26 @@ class TournamentPrize(db.Model):
         db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
     )
     seen_at = db.Column(db.DateTime, nullable=True)
+
+    user = db.relationship("User", foreign_keys=[user_id])
+
+
+class GameSession(db.Model):
+    """Client heartbeat sessions for admin playtime / engagement metrics."""
+
+    __tablename__ = "game_sessions"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False, index=True)
+    started_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False, index=True
+    )
+    last_heartbeat_at = db.Column(
+        db.DateTime, default=lambda: datetime.now(timezone.utc), nullable=False
+    )
+    ended_at = db.Column(db.DateTime, nullable=True)
+    duration_seconds = db.Column(db.Integer, nullable=False, default=0)
+    platform = db.Column(db.String(32), nullable=True)
 
     user = db.relationship("User", foreign_keys=[user_id])
 

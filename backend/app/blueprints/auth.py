@@ -1,7 +1,7 @@
 import hashlib
 import re
 import secrets
-from datetime import timedelta, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from flask import Blueprint, current_app, jsonify, request
@@ -53,6 +53,13 @@ def _unique_username(base: str) -> str:
 
 
 def _auth_response(user: User, status: int = 200):
+    now = datetime.now(timezone.utc)
+    user.last_login_at = now
+    user.last_seen_at = now
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
     token = create_access_token(identity=str(user.id))
     payload = {"token": token, "username": user.username, "user_id": user.id}
     if user.email:

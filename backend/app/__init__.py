@@ -41,10 +41,12 @@ def create_app(config_class=Config):
     from app.blueprints.tournaments import tournaments_bp
     from app.blueprints.support import support_bp
     from app.blueprints.account import account_bp
+    from app.blueprints.sessions import sessions_bp
 
     app.register_blueprint(tournaments_bp, url_prefix="/api/tournaments")
     app.register_blueprint(support_bp, url_prefix="/api/support")
     app.register_blueprint(account_bp, url_prefix="/api/account")
+    app.register_blueprint(sessions_bp, url_prefix="/api/sessions")
 
     @app.route("/api/health")
     def health():

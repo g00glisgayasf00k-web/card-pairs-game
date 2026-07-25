@@ -34,6 +34,12 @@ def ensure_schema():
             "privacy_policy_version",
             "ALTER TABLE users ADD COLUMN privacy_policy_version VARCHAR(16)",
         ),
+        ("last_login_at", "ALTER TABLE users ADD COLUMN last_login_at TIMESTAMP"),
+        ("last_seen_at", "ALTER TABLE users ADD COLUMN last_seen_at TIMESTAMP"),
+        (
+            "total_play_seconds",
+            "ALTER TABLE users ADD COLUMN total_play_seconds INTEGER DEFAULT 0 NOT NULL",
+        ),
     ]
     if not is_sqlite:
         migrations[0] = (

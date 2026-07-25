@@ -8,7 +8,7 @@ from flask_jwt_extended import get_jwt_identity, jwt_required
 from sqlalchemy import desc, func
 
 from app.leaderboards import build_leaderboards
-from app.models import PlayerProgress, Score, SupportTicket, User, db
+from app.models import GameSession, PlayerProgress, PurchaseRecord, Score, SupportTicket, User, db
 from app.password_util import generate_temp_password, hash_password
 
 admin_bp = Blueprint("admin", __name__)
@@ -128,24 +128,108 @@ def admin_me():
 @admin_required
 def admin_stats():
     now = datetime.now(timezone.utc)
+    day_ago = now - timedelta(days=1)
     week_ago = now - timedelta(days=7)
+    month_ago = now - timedelta(days=30)
 
     user_count = User.query.count()
     player_count = User.query.filter(User.is_admin.is_(False)).count()
-    score_count = Score.query.count()
     synced_count = PlayerProgress.query.count()
     signups_7d = User.query.filter(User.created_at >= week_ago).count()
-    scores_7d = Score.query.filter(Score.created_at >= week_ago).count()
+    signups_24h = User.query.filter(User.created_at >= day_ago).count()
+    logins_24h = User.query.filter(User.last_login_at >= day_ago).count()
+    logins_7d = User.query.filter(User.last_login_at >= week_ago).count()
+    active_24h = User.query.filter(User.last_seen_at >= day_ago).count()
+    active_7d = User.query.filter(User.last_seen_at >= week_ago).count()
 
-    recent_scores = (
-        db.session.query(Score, User.username)
-        .join(User)
-        .order_by(desc(Score.created_at))
-        .limit(8)
+    play_seconds_total = (
+        db.session.query(func.coalesce(func.sum(User.total_play_seconds), 0)).scalar() or 0
+    )
+    play_seconds_7d = (
+        db.session.query(func.coalesce(func.sum(GameSession.duration_seconds), 0))
+        .filter(GameSession.started_at >= week_ago)
+        .scalar()
+        or 0
+    )
+    sessions_7d = GameSession.query.filter(GameSession.started_at >= week_ago).count()
+
+    def _purchase_sum(since: datetime | None = None) -> tuple[int, int, int]:
+        q = PurchaseRecord.query.filter(PurchaseRecord.status == "completed")
+        if since is not None:
+            q = q.filter(PurchaseRecord.created_at >= since)
+        rows = q.all()
+        cents = sum(int(r.amount_cents or 0) for r in rows)
+        gems = sum(int(r.gems_granted or 0) for r in rows)
+        return len(rows), cents, gems
+
+    purchases_all, revenue_all_cents, gems_sold_all = _purchase_sum()
+    purchases_7d, revenue_7d_cents, gems_sold_7d = _purchase_sum(week_ago)
+    purchases_30d, revenue_30d_cents, gems_sold_30d = _purchase_sum(month_ago)
+    purchases_24h, revenue_24h_cents, _ = _purchase_sum(day_ago)
+
+    open_tickets = SupportTicket.query.filter_by(status="open").count()
+
+    # Daily revenue last 14 days
+    revenue_by_day: dict[str, int] = {}
+    for r in PurchaseRecord.query.filter(
+        PurchaseRecord.status == "completed",
+        PurchaseRecord.created_at >= now - timedelta(days=14),
+    ).all():
+        key = r.created_at.strftime("%Y-%m-%d") if r.created_at else "unknown"
+        revenue_by_day[key] = revenue_by_day.get(key, 0) + int(r.amount_cents or 0)
+    revenue_series = [
+        {"date": (now - timedelta(days=i)).strftime("%Y-%m-%d"), "cents": 0}
+        for i in range(13, -1, -1)
+    ]
+    for row in revenue_series:
+        row["cents"] = revenue_by_day.get(row["date"], 0)
+
+    # Pack breakdown
+    pack_rows = (
+        db.session.query(
+            PurchaseRecord.pack_id,
+            func.count(PurchaseRecord.id),
+            func.coalesce(func.sum(PurchaseRecord.amount_cents), 0),
+            func.coalesce(func.sum(PurchaseRecord.gems_granted), 0),
+        )
+        .filter(PurchaseRecord.status == "completed")
+        .group_by(PurchaseRecord.pack_id)
+        .order_by(desc(func.sum(PurchaseRecord.amount_cents)))
+        .all()
+    )
+    packs = [
+        {
+            "pack_id": pack_id,
+            "count": int(count),
+            "cents": int(cents or 0),
+            "gems": int(gems or 0),
+        }
+        for pack_id, count, cents, gems in pack_rows
+    ]
+
+    recent_purchases = (
+        db.session.query(PurchaseRecord, User.username)
+        .join(User, User.id == PurchaseRecord.user_id)
+        .filter(PurchaseRecord.status == "completed")
+        .order_by(desc(PurchaseRecord.created_at))
+        .limit(12)
         .all()
     )
 
-    recent_users = User.query.order_by(desc(User.id)).limit(8).all()
+    recent_users = User.query.order_by(desc(User.id)).limit(10).all()
+    recent_logins = (
+        User.query.filter(User.last_login_at.isnot(None))
+        .order_by(desc(User.last_login_at))
+        .limit(10)
+        .all()
+    )
+
+    top_playtime = (
+        User.query.filter(User.is_admin.is_(False))
+        .order_by(desc(User.total_play_seconds))
+        .limit(10)
+        .all()
+    )
 
     db_uri = current_app.config.get("SQLALCHEMY_DATABASE_URI") or ""
     if "postgres" in db_uri:
@@ -155,34 +239,161 @@ def admin_stats():
     else:
         db_backend = "unknown"
 
+    paying_users = (
+        db.session.query(func.count(func.distinct(PurchaseRecord.user_id)))
+        .filter(PurchaseRecord.status == "completed")
+        .scalar()
+        or 0
+    )
+
     return jsonify(
         {
             "users": user_count,
             "players": player_count,
-            "scores": score_count,
             "db_backend": db_backend,
             "synced_players": synced_count,
             "users_pending_sync": max(0, user_count - synced_count),
+            "signups_24h": signups_24h,
             "signups_7d": signups_7d,
-            "scores_7d": scores_7d,
-            "recent_scores": [
+            "logins_24h": logins_24h,
+            "logins_7d": logins_7d,
+            "active_24h": active_24h,
+            "active_7d": active_7d,
+            "play_seconds_total": int(play_seconds_total),
+            "play_seconds_7d": int(play_seconds_7d),
+            "sessions_7d": sessions_7d,
+            "open_tickets": open_tickets,
+            "revenue": {
+                "currency": "USD",
+                "all_cents": revenue_all_cents,
+                "cents_24h": revenue_24h_cents,
+                "cents_7d": revenue_7d_cents,
+                "cents_30d": revenue_30d_cents,
+                "purchases_all": purchases_all,
+                "purchases_24h": purchases_24h,
+                "purchases_7d": purchases_7d,
+                "purchases_30d": purchases_30d,
+                "gems_sold_all": gems_sold_all,
+                "gems_sold_7d": gems_sold_7d,
+                "paying_users": int(paying_users),
+                "arpu_cents": int(revenue_all_cents / player_count) if player_count else 0,
+                "arppu_cents": int(revenue_all_cents / paying_users) if paying_users else 0,
+            },
+            "revenue_series": revenue_series,
+            "packs": packs,
+            "recent_purchases": [
                 {
+                    "id": p.id,
                     "username": username,
-                    "points": score.points,
-                    "hands_cleared": score.hands_cleared,
-                    "best_hand": score.best_hand,
-                    "played_at": score.created_at.isoformat(),
+                    "user_id": p.user_id,
+                    "pack_id": p.pack_id,
+                    "cents": p.amount_cents,
+                    "currency": p.currency,
+                    "gems": p.gems_granted,
+                    "created_at": p.created_at.isoformat() if p.created_at else None,
                 }
-                for score, username in recent_scores
+                for p, username in recent_purchases
             ],
             "recent_signups": [
                 {
                     "id": u.id,
                     "username": u.username,
-                    "created_at": u.created_at.isoformat(),
+                    "email": u.email,
+                    "created_at": u.created_at.isoformat() if u.created_at else None,
+                    "last_login_at": u.last_login_at.isoformat() if u.last_login_at else None,
                 }
                 for u in recent_users
             ],
+            "recent_logins": [
+                {
+                    "id": u.id,
+                    "username": u.username,
+                    "last_login_at": u.last_login_at.isoformat() if u.last_login_at else None,
+                    "last_seen_at": u.last_seen_at.isoformat() if u.last_seen_at else None,
+                    "total_play_seconds": int(u.total_play_seconds or 0),
+                }
+                for u in recent_logins
+            ],
+            "top_playtime": [
+                {
+                    "id": u.id,
+                    "username": u.username,
+                    "total_play_seconds": int(u.total_play_seconds or 0),
+                    "last_seen_at": u.last_seen_at.isoformat() if u.last_seen_at else None,
+                }
+                for u in top_playtime
+            ],
+        }
+    )
+
+
+@admin_bp.get("/revenue")
+@admin_required
+def admin_revenue():
+    limit = min(int(request.args.get("limit", 50)), 200)
+    offset = max(int(request.args.get("offset", 0)), 0)
+    total = PurchaseRecord.query.filter(PurchaseRecord.status == "completed").count()
+    rows = (
+        db.session.query(PurchaseRecord, User.username)
+        .join(User, User.id == PurchaseRecord.user_id)
+        .filter(PurchaseRecord.status == "completed")
+        .order_by(desc(PurchaseRecord.created_at))
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+    return jsonify(
+        {
+            "total": total,
+            "offset": offset,
+            "limit": limit,
+            "purchases": [
+                {
+                    "id": p.id,
+                    "user_id": p.user_id,
+                    "username": username,
+                    "pack_id": p.pack_id,
+                    "cents": p.amount_cents,
+                    "currency": p.currency,
+                    "gems": p.gems_granted,
+                    "status": p.status,
+                    "created_at": p.created_at.isoformat() if p.created_at else None,
+                }
+                for p, username in rows
+            ],
+        }
+    )
+
+
+@admin_bp.get("/sessions")
+@admin_required
+def admin_sessions():
+    limit = min(int(request.args.get("limit", 40)), 100)
+    rows = (
+        db.session.query(GameSession, User.username)
+        .join(User, User.id == GameSession.user_id)
+        .order_by(desc(GameSession.started_at))
+        .limit(limit)
+        .all()
+    )
+    return jsonify(
+        {
+            "sessions": [
+                {
+                    "id": s.id,
+                    "user_id": s.user_id,
+                    "username": username,
+                    "started_at": s.started_at.isoformat() if s.started_at else None,
+                    "last_heartbeat_at": s.last_heartbeat_at.isoformat()
+                    if s.last_heartbeat_at
+                    else None,
+                    "ended_at": s.ended_at.isoformat() if s.ended_at else None,
+                    "duration_seconds": int(s.duration_seconds or 0),
+                    "platform": s.platform,
+                    "active": s.ended_at is None,
+                }
+                for s, username in rows
+            ]
         }
     )
 
@@ -211,7 +422,10 @@ def admin_users():
 
     base_query = User.query
     if query_text:
-        base_query = base_query.filter(User.username.ilike(f"%{query_text}%"))
+        like = f"%{query_text}%"
+        base_query = base_query.filter(
+            db.or_(User.username.ilike(like), User.email.ilike(like))
+        )
 
     total = base_query.count()
     rows = (
@@ -222,18 +436,24 @@ def admin_users():
     )
 
     user_ids = [u.id for u in rows]
-    progress_map: dict[int, PlayerProgress] = {}
-    score_counts: dict[int, int] = {}
+    progress_map = {}
+    spend_map = {}
 
     if user_ids:
         progress_map = {
             p.user_id: p
             for p in PlayerProgress.query.filter(PlayerProgress.user_id.in_(user_ids)).all()
         }
-        score_counts = dict(
-            db.session.query(Score.user_id, func.count(Score.id))
-            .filter(Score.user_id.in_(user_ids))
-            .group_by(Score.user_id)
+        spend_map = dict(
+            db.session.query(
+                PurchaseRecord.user_id,
+                func.coalesce(func.sum(PurchaseRecord.amount_cents), 0),
+            )
+            .filter(
+                PurchaseRecord.user_id.in_(user_ids),
+                PurchaseRecord.status == "completed",
+            )
+            .group_by(PurchaseRecord.user_id)
             .all()
         )
 
@@ -253,9 +473,13 @@ def admin_users():
             {
                 "id": u.id,
                 "username": u.username,
+                "email": u.email,
                 "is_admin": bool(u.is_admin),
                 "created_at": u.created_at.isoformat() if u.created_at else None,
-                "score_count": score_counts.get(u.id, 0),
+                "last_login_at": u.last_login_at.isoformat() if u.last_login_at else None,
+                "last_seen_at": u.last_seen_at.isoformat() if u.last_seen_at else None,
+                "total_play_seconds": int(u.total_play_seconds or 0),
+                "lifetime_spend_cents": int(spend_map.get(u.id, 0)),
                 "progress": summary,
                 "has_synced": prog is not None,
             }
@@ -279,18 +503,19 @@ def admin_user_detail(user_id: int):
         except json.JSONDecodeError:
             progress_payload = None
 
-    scores = (
-        Score.query.filter_by(user_id=user.id)
-        .order_by(desc(Score.created_at))
+    purchases = (
+        PurchaseRecord.query.filter_by(user_id=user.id, status="completed")
+        .order_by(desc(PurchaseRecord.created_at))
         .limit(50)
         .all()
     )
-
-    best_score = (
-        Score.query.filter_by(user_id=user.id)
-        .order_by(desc(Score.points))
-        .first()
+    sessions = (
+        GameSession.query.filter_by(user_id=user.id)
+        .order_by(desc(GameSession.started_at))
+        .limit(30)
+        .all()
     )
+    spend_cents = sum(int(p.amount_cents or 0) for p in purchases)
 
     return jsonify(
         {
@@ -299,19 +524,36 @@ def admin_user_detail(user_id: int):
             "email": user.email,
             "has_google": bool(user.google_id),
             "is_admin": bool(user.is_admin),
-            "created_at": user.created_at.isoformat(),
+            "created_at": user.created_at.isoformat() if user.created_at else None,
+            "last_login_at": user.last_login_at.isoformat() if user.last_login_at else None,
+            "last_seen_at": user.last_seen_at.isoformat() if user.last_seen_at else None,
+            "total_play_seconds": int(user.total_play_seconds or 0),
+            "lifetime_spend_cents": spend_cents,
             "progress": progress_payload,
             "progress_summary": _progress_summary(progress_payload),
             "client_updated_at": prog.client_updated_at if prog else 0,
-            "best_score": best_score.points if best_score else None,
-            "scores": [
+            "purchases": [
                 {
-                    "points": s.points,
-                    "hands_cleared": s.hands_cleared,
-                    "best_hand": s.best_hand,
-                    "played_at": s.created_at.isoformat(),
+                    "id": p.id,
+                    "pack_id": p.pack_id,
+                    "cents": p.amount_cents,
+                    "currency": p.currency,
+                    "gems": p.gems_granted,
+                    "created_at": p.created_at.isoformat() if p.created_at else None,
                 }
-                for s in scores
+                for p in purchases
+            ],
+            "sessions": [
+                {
+                    "id": s.id,
+                    "started_at": s.started_at.isoformat() if s.started_at else None,
+                    "last_heartbeat_at": s.last_heartbeat_at.isoformat() if s.last_heartbeat_at else None,
+                    "ended_at": s.ended_at.isoformat() if s.ended_at else None,
+                    "duration_seconds": int(s.duration_seconds or 0),
+                    "platform": s.platform,
+                    "active": s.ended_at is None,
+                }
+                for s in sessions
             ],
         }
     )

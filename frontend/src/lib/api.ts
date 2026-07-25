@@ -195,39 +195,128 @@ export async function fetchAdminStats() {
   return request<{
     users: number;
     players: number;
-    scores: number;
     db_backend?: string;
     synced_players: number;
-    signups_7d: number;
-    scores_7d: number;
     users_pending_sync?: number;
-    recent_scores: {
+    signups_24h: number;
+    signups_7d: number;
+    logins_24h: number;
+    logins_7d: number;
+    active_24h: number;
+    active_7d: number;
+    play_seconds_total: number;
+    play_seconds_7d: number;
+    sessions_7d: number;
+    open_tickets: number;
+    revenue: {
+      currency: string;
+      all_cents: number;
+      cents_24h: number;
+      cents_7d: number;
+      cents_30d: number;
+      purchases_all: number;
+      purchases_24h: number;
+      purchases_7d: number;
+      purchases_30d: number;
+      gems_sold_all: number;
+      gems_sold_7d: number;
+      paying_users: number;
+      arpu_cents: number;
+      arppu_cents: number;
+    };
+    revenue_series: { date: string; cents: number }[];
+    packs: { pack_id: string; count: number; cents: number; gems: number }[];
+    recent_purchases: {
+      id: number;
       username: string;
-      points: number;
-      hands_cleared: number;
-      best_hand: string;
-      played_at: string;
+      user_id: number;
+      pack_id: string;
+      cents: number;
+      currency: string;
+      gems: number;
+      created_at: string | null;
     }[];
-    recent_signups: { id: number; username: string; created_at: string }[];
+    recent_signups: {
+      id: number;
+      username: string;
+      email: string | null;
+      created_at: string | null;
+      last_login_at: string | null;
+    }[];
+    recent_logins: {
+      id: number;
+      username: string;
+      last_login_at: string | null;
+      last_seen_at: string | null;
+      total_play_seconds: number;
+    }[];
+    top_playtime: {
+      id: number;
+      username: string;
+      total_play_seconds: number;
+      last_seen_at: string | null;
+    }[];
   }>("/api/admin/stats");
 }
 
-export async function fetchAdminLeaderboard(limit = 25) {
+export async function fetchAdminRevenue(offset = 0, limit = 50) {
   return request<{
-    leaderboard: LeaderboardScoreRow[];
-  }>(`/api/admin/leaderboard?limit=${limit}`);
+    total: number;
+    offset: number;
+    limit: number;
+    purchases: {
+      id: number;
+      user_id: number;
+      username: string;
+      pack_id: string;
+      cents: number;
+      currency: string;
+      gems: number;
+      status: string;
+      created_at: string | null;
+    }[];
+  }>(`/api/admin/revenue?offset=${offset}&limit=${limit}`);
 }
 
-export async function fetchAdminLeaderboards(limit = 10) {
-  return request<LeaderboardsPayload>(`/api/admin/leaderboards?limit=${limit}`);
+export async function fetchAdminSessions(limit = 40) {
+  return request<{
+    sessions: {
+      id: number;
+      user_id: number;
+      username: string;
+      started_at: string | null;
+      last_heartbeat_at: string | null;
+      ended_at: string | null;
+      duration_seconds: number;
+      platform: string | null;
+      active: boolean;
+    }[];
+  }>(`/api/admin/sessions?limit=${limit}`);
+}
+
+export async function pingGameSession(platform?: string) {
+  return request<{
+    ok: boolean;
+    session_id: number;
+    session_seconds: number;
+    total_play_seconds: number;
+    added_seconds: number;
+  }>("/api/sessions/ping", {
+    method: "POST",
+    body: JSON.stringify({ platform: platform ?? "web" }),
+  });
 }
 
 export interface AdminUserRow {
   id: number;
   username: string;
+  email?: string | null;
   is_admin: boolean;
   created_at: string | null;
-  score_count: number;
+  last_login_at?: string | null;
+  last_seen_at?: string | null;
+  total_play_seconds?: number;
+  lifetime_spend_cents?: number;
   has_synced?: boolean;
   progress: {
     level?: number;
@@ -255,16 +344,30 @@ export async function fetchAdminUserDetail(userId: number) {
     email: string | null;
     has_google: boolean;
     is_admin: boolean;
-    created_at: string;
+    created_at: string | null;
+    last_login_at: string | null;
+    last_seen_at: string | null;
+    total_play_seconds: number;
+    lifetime_spend_cents: number;
     progress: Record<string, unknown> | null;
     progress_summary: AdminUserRow["progress"];
     client_updated_at: number;
-    best_score: number | null;
-    scores: {
-      points: number;
-      hands_cleared: number;
-      best_hand: string;
-      played_at: string;
+    purchases: {
+      id: number;
+      pack_id: string;
+      cents: number;
+      currency: string;
+      gems: number;
+      created_at: string | null;
+    }[];
+    sessions: {
+      id: number;
+      started_at: string | null;
+      last_heartbeat_at: string | null;
+      ended_at: string | null;
+      duration_seconds: number;
+      platform: string | null;
+      active: boolean;
     }[];
   }>(`/api/admin/users/${userId}`);
 }

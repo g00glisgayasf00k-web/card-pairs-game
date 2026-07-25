@@ -404,10 +404,9 @@ export function GameScreen({
     const saved = loadProgress() ?? defaultProgress();
     const onFrontier = next.level === saved.highestUnlocked;
 
+    // Spread saved so cosmetics (four-color deck), elo, etc. are never dropped mid-run.
     saveProgress({
-      highestUnlocked: saved.highestUnlocked,
-      completedLevels: saved.completedLevels,
-      levelStars: saved.levelStars,
+      ...saved,
       level: onFrontier ? next.level : saved.level,
       levelScore: onFrontier ? next.levelScore : saved.levelScore,
       levelHands: onFrontier ? next.levelHands : saved.levelHands,
@@ -422,6 +421,8 @@ export function GameScreen({
       streak: 0,
       tutorialStep: next.level === 1 ? next.tutorialStep : saved.tutorialStep,
       milestoneChestsClaimed: saved.milestoneChestsClaimed ?? [],
+      fourColorDeckOwned: Boolean(saved.fourColorDeckOwned),
+      cardSuitStyle: saved.cardSuitStyle === "four_color" ? "four_color" : "classic",
     });
   }, []);
 

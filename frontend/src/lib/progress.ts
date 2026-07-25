@@ -245,9 +245,28 @@ export function saveProgress(
   options?: { skipSync?: boolean }
 ): void {
   const { updatedAt: requestedAt, v: _v, ...rest } = data;
+  // Never lose a purchased unlock if a caller omits the field (e.g. mid-run persist).
+  const previous = parseProgress(localStorage.getItem(STORAGE_KEY));
+  const fourColorDeckOwned = Boolean(rest.fourColorDeckOwned || previous?.fourColorDeckOwned);
+  const styleFromInput = rest.cardSuitStyle;
+  const cardSuitStyle: "classic" | "four_color" = !fourColorDeckOwned
+    ? "classic"
+    : styleFromInput === "four_color" || styleFromInput === "classic"
+      ? styleFromInput
+      : previous?.cardSuitStyle === "four_color"
+        ? "four_color"
+        : "classic";
+  const elo =
+    typeof rest.elo === "number" && Number.isFinite(rest.elo)
+      ? Math.max(100, Math.floor(rest.elo))
+      : previous?.elo;
+
   const payload: SavedProgress = {
     v: VERSION,
     ...rest,
+    fourColorDeckOwned,
+    cardSuitStyle,
+    ...(elo !== undefined ? { elo } : {}),
     updatedAt: requestedAt ?? Date.now(),
   };
   localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));

@@ -99,14 +99,19 @@ export async function pullRemoteProgress(): Promise<boolean> {
       return applyImportedProgress(remote.progress);
     }
 
-    if (localTs > remoteTs && !isPullStale(generation)) {
-      // Local is newer, but never clobber cloud unlocks (e.g. four-color deck bought elsewhere).
+    if (localTs >= remoteTs && !isPullStale(generation)) {
+      // Local is newer or tied — still merge cloud unlocks (e.g. four-color deck).
       const remoteParsed = importProgress(remote.progress);
       const toPush = remoteParsed ? mergeProgressUnlocks(local, remoteParsed) : local;
-      if (toPush !== local) {
-        saveProgress(toPush, { skipSync: true });
+      const unlockChanged =
+        Boolean(toPush.fourColorDeckOwned) !== Boolean(local.fourColorDeckOwned) ||
+        toPush.cardSuitStyle !== local.cardSuitStyle;
+      if (unlockChanged || localTs > remoteTs) {
+        if (unlockChanged) {
+          saveProgress(toPush, { skipSync: true });
+        }
+        await pushProgress(toPush);
       }
-      await pushProgress(toPush);
     }
     return false;
   } catch {

@@ -66,16 +66,20 @@ export const SPECIFIC_CHALLENGE_FROM_LEVEL = 40;
 /**
  * Realistic Solo average base points per hand (no multipliers).
  * Early boards lean pair/two-pair (~50–150); mid/late mixes pull this up.
- * Prefer {@link campaignAvgPtsForLevel} for level-aware pacing.
  */
-export const AVG_PTS_PER_MOVE = 150;
+export const AVG_PTS_PER_MOVE = 135;
+
+/** World N starts near N×base; gentle growth per stage. */
+const WORLD_BASE_POINTS = 900;
+const STAGE_TARGET_GROWTH = 1.08;
+const TARGET_POINT_BOOST = 1.2;
 
 /** Soft caps so late worlds stay finishable in one sitting. */
-const STAR_HAND_CAPS = { three: 42, two: 52, one: 65 } as const;
+const STAR_HAND_CAPS = { three: 28, two: 38, one: 48 } as const;
 
 /**
- * @deprecated Campaign uses hands-first budgets; kept for older call sites.
  * Hands allowed vs target ÷ avg pts/hand.
+ * 3★ needs slightly above average clears; 1★ is forgiving.
  */
 export const STAR_MOVE_MULTIPLIER = {
   threeStar: 1.35,
@@ -372,53 +376,16 @@ export function challengeMetrics(challenges: HandChallenge[]): {
   };
 }
 
-/** Expected pts/hand by Solo world — pair-heavy early, richer later. */
+/** Expected pts/hand for Solo — pairs early, stronger mixes later. */
 export function campaignAvgPtsForLevel(level: number): number {
   const world = worldForLevel(level);
-  if (world <= 2) return 110;
-  if (world <= 5) return 150;
-  if (world <= 12) return 190;
-  return 220;
+  if (world <= 2) return 120;
+  if (world <= 5) return 135;
+  if (world <= 12) return 165;
+  return 200;
 }
 
-/**
- * Hands-first Solo star budgets: grow slowly with world/stage, then cap.
- * 3★ is the solid-play band; 1★ (fail) is forgiving but not endless.
- */
-export function campaignStarHandBudgets(
-  level: number,
-  challengeHands = 0
-): { one: number; two: number; three: number } {
-  const world = Math.max(1, worldForLevel(level));
-  const step = stepInTier(level);
-  let three = Math.round(
-    8 + 12 * Math.log10(world) + (world - 1) * 0.55 + (step - 1) * 0.3
-  );
-  three = Math.min(STAR_HAND_CAPS.three, Math.max(challengeHands + 2, three));
-
-  let two = three + Math.max(3, Math.round(3 + world * 0.2));
-  two = Math.min(STAR_HAND_CAPS.two, Math.max(three + 1, two));
-
-  let one = two + Math.max(4, Math.round(4 + world * 0.3));
-  one = Math.min(STAR_HAND_CAPS.one, Math.max(two + 1, one));
-
-  return { three, two, one };
-}
-
-/** Point target from mid-band hand budget × world pace, floored by challenges. */
-export function campaignTargetPointsForLevel(
-  level: number,
-  budgets: { three: number; two: number },
-  challengeFloor: number
-): number {
-  const avgPts = campaignAvgPtsForLevel(level);
-  return Math.max(
-    challengeFloor + avgPts * 2,
-    Math.round(avgPts * ((budgets.three + budgets.two) / 2) * 0.9)
-  );
-}
-
-/** @deprecated Prefer campaignStarHandBudgets — points no longer drive Solo hands. */
+/** Hand budgets from point target ÷ realistic avg pts/hand. */
 export function movesBudgetForStars(
   stars: 1 | 2 | 3,
   targetPoints: number,
@@ -434,9 +401,8 @@ export function movesBudgetForStars(
   return Math.ceil((targetPoints / pace) * mult);
 }
 
-/** @deprecated Prefer campaignStarHandBudgets for Solo. */
 export function starMoveLimitsForTarget(
-  _targetPoints: number,
+  targetPoints: number,
   challengeHands = 0,
   level = 1
 ): {
@@ -444,7 +410,26 @@ export function starMoveLimitsForTarget(
   two: number;
   three: number;
 } {
-  return campaignStarHandBudgets(level, challengeHands);
+  const avg = campaignAvgPtsForLevel(level);
+  let three = Math.max(challengeHands + 1, movesBudgetForStars(3, targetPoints, avg));
+  let two = Math.max(three + 1, movesBudgetForStars(2, targetPoints, avg));
+  let one = Math.max(two + 1, movesBudgetForStars(1, targetPoints, avg));
+  three = Math.min(three, STAR_HAND_CAPS.three);
+  two = Math.min(Math.max(three + 1, two), STAR_HAND_CAPS.two);
+  one = Math.min(Math.max(two + 1, one), STAR_HAND_CAPS.one);
+  return { three, two, one };
+}
+
+function targetPointsForLevel(level: number): number {
+  const world = worldForLevel(level);
+  const stage = stepInTier(level);
+  const worldStart = world * WORLD_BASE_POINTS;
+  const scaled = Math.round(worldStart * STAGE_TARGET_GROWTH ** (stage - 1));
+  let pts = Math.round(scaled * TARGET_POINT_BOOST);
+  if (level > 50) {
+    pts = Math.round(pts * (1 + (level - 50) * 0.002));
+  }
+  return pts;
 }
 
 export function starMoveLimit(stars: 1 | 2 | 3, targetPoints: number): number {
@@ -452,9 +437,8 @@ export function starMoveLimit(stars: 1 | 2 | 3, targetPoints: number): number {
 }
 
 /** Theoretical minimum moves to reach the point target at avg pts/move. */
-export function baseMovesForTarget(targetPoints: number, level = 1): number {
-  const pace = Math.max(50, campaignAvgPtsForLevel(level));
-  return Math.max(1, Math.ceil(targetPoints / pace));
+export function baseMovesForTarget(targetPoints: number): number {
+  return Math.max(1, Math.ceil(targetPoints / AVG_PTS_PER_MOVE));
 }
 
 /**
@@ -462,19 +446,18 @@ export function baseMovesForTarget(targetPoints: number, level = 1): number {
  */
 export function computeEstimatedMoves(
   targetPoints: number,
-  _challenges: HandChallenge[] = [],
-  level = 1
+  _challenges: HandChallenge[] = []
 ): number {
-  return baseMovesForTarget(targetPoints, level);
+  return baseMovesForTarget(targetPoints);
 }
 
 /** Max hands before game over — 1★ budget. */
 export function computeMoveLimit(
-  _targetPoints: number,
+  targetPoints: number,
   _challenges: HandChallenge[] = [],
-  level: number = 1
+  _level: number = 1
 ): number {
-  return campaignStarHandBudgets(level).one;
+  return movesBudgetForStars(1, targetPoints);
 }
 
 export function movesRemaining(moveLimit: number, handsUsed: number): number {
@@ -485,10 +468,7 @@ export function outOfMoves(moveLimit: number, handsUsed: number): boolean {
   return handsUsed >= moveLimit;
 }
 
-/**
- * Dynamic estimate from current progress.
- * Uses actual pts/swipe when available; otherwise world-based {@link campaignAvgPtsForLevel}.
- */
+/** Dynamic estimate from current progress (uses your actual pts/swipe pace when available). */
 export function estimateRemainingSwipes(
   cfg: LevelConfig,
   levelScore: number,
@@ -668,12 +648,18 @@ export function challengeProgress(counts: HandCounts, c: HandChallenge): number 
 function buildLevelConfig(level: number): LevelConfig {
   const challenges = challengesForLevel(level);
   const { challengePoints, challengeHands } = challengeMetrics(challenges);
-  const starMoveLimits = campaignStarHandBudgets(level, challengeHands);
-  const targetPoints = campaignTargetPointsForLevel(
-    level,
-    starMoveLimits,
-    challengePoints
+  const avg = campaignAvgPtsForLevel(level);
+  let targetPoints = Math.max(
+    targetPointsForLevel(level),
+    challengePoints + avg * 3
   );
+  let starMoveLimits = starMoveLimitsForTarget(targetPoints, challengeHands, level);
+  // Cap ensures 3★ stays reachable with solid (~1.15× avg) play, not luck.
+  const reachable = Math.floor(avg * 1.15 * starMoveLimits.three);
+  if (targetPoints > reachable) {
+    targetPoints = Math.max(challengePoints + avg * 2, reachable);
+    starMoveLimits = starMoveLimitsForTarget(targetPoints, challengeHands, level);
+  }
   const fixedObstacles = fixedObstaclesForLevel(level);
   return {
     level,

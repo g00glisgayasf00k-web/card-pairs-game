@@ -150,10 +150,6 @@ export function createBoardFromSeed(
 
 // ── Specials earned as hand rewards ──────────────────────────────────────────
 
-function randomArrow(): "arrow_h" | "arrow_v" {
-  return Math.random() < 0.5 ? "arrow_h" : "arrow_v";
-}
-
 export function isTappableSpecial(type?: SpecialType): boolean {
   return type === "bomb" || type === "arrow_h" || type === "arrow_v";
 }
@@ -166,19 +162,19 @@ export function isSwipeOnlySpecial(type?: SpecialType): boolean {
 export function specialsEarnedForHand(hand: HandLabel): SpecialType[] {
   switch (hand) {
     case "three_of_a_kind":
-      return [randomArrow()];
+      return ["arrow_h"];
     case "straight":
-      return [randomArrow()];
+      return ["arrow_v"];
     case "four_of_a_kind":
       return ["bomb"];
     case "flush":
       return ["joker"];
     case "full_house":
-      return [randomArrow(), "joker"];
+      return ["arrow_h", "arrow_v"];
     case "straight_flush":
-      return ["joker", "bomb"];
+      return ["arrow_h", "arrow_v", "bomb", "joker"];
     case "royal_flush":
-      return ["rainbow"];
+      return ["arrow_h", "arrow_v", "bomb", "joker", "rainbow"];
     default:
       return [];
   }
@@ -209,44 +205,88 @@ export const SPECIALS_GUIDE: {
   {
     type: "arrow_h",
     name: "Row arrow",
-    earn: "Clear Three of a Kind, Straight, or Full House",
-    effect: "Tap to wipe the row (+45 pts per card). Hitting another arrow or a bomb triggers it too.",
+    earn: "Clear Three of a Kind, Full House, Straight Flush, or Royal Flush",
+    effect: "Tap to wipe the row. Hitting another arrow or bomb triggers it too.",
   },
   {
     type: "arrow_v",
     name: "Column arrow",
-    earn: "Clear Three of a Kind, Straight, or Full House",
-    effect: "Tap to wipe the column (+45 pts per card). Hitting another arrow or a bomb triggers it too.",
+    earn: "Clear Straight, Full House, Straight Flush, or Royal Flush",
+    effect: "Tap to wipe the column. Hitting another arrow or bomb triggers it too.",
   },
   {
     type: "bomb",
     name: "Bomb",
     earn: "Clear Four of a Kind or Straight Flush",
-    effect: "Tap to blast all 8 surrounding cards (+50 pts each). Hitting another bomb or an arrow triggers it too.",
+    effect: "Tap to blast all 8 surrounding cards. Hitting another bomb or arrow triggers it too.",
   },
   {
     type: "joker",
     name: "Joker",
-    earn: "Clear Flush, Full House, or Straight Flush",
-    effect: "Swipe into a 5-card hand — counts as any rank or suit",
+    earn: "Clear Flush, Straight Flush, or Royal Flush",
+    effect: "Swipe into a 5-card hand — it counts as any rank or suit.",
   },
   {
     type: "rainbow",
     name: "Rainbow suit",
     earn: "Clear a Royal Flush only",
-    effect: "Drag onto any card to clear every card of that suit (+55 pts each)",
+    effect: "Drag onto any card to clear every card of that suit.",
   },
 ];
 
 export const SPECIALS_EARN_BY_HAND: { hand: HandLabel; types: SpecialType[] }[] = [
-  { hand: "three_of_a_kind", types: ["arrow_h", "arrow_v"] },
-  { hand: "straight", types: ["arrow_h", "arrow_v"] },
+  { hand: "three_of_a_kind", types: ["arrow_h"] },
+  { hand: "straight", types: ["arrow_v"] },
   { hand: "four_of_a_kind", types: ["bomb"] },
   { hand: "flush", types: ["joker"] },
-  { hand: "full_house", types: ["arrow_h", "arrow_v", "joker"] },
-  { hand: "straight_flush", types: ["joker", "bomb"] },
-  { hand: "royal_flush", types: ["rainbow"] },
+  { hand: "full_house", types: ["arrow_h", "arrow_v"] },
+  { hand: "straight_flush", types: ["arrow_h", "arrow_v", "bomb", "joker"] },
+  { hand: "royal_flush", types: ["arrow_h", "arrow_v", "bomb", "joker", "rainbow"] },
 ];
+
+export type PowerBuyKind = "arrow" | "bomb" | "joker" | "rainbow";
+
+export const POWER_BUY_OPTIONS: {
+  kind: PowerBuyKind;
+  name: string;
+  cost: number;
+  art: SpecialType;
+  description: string;
+}[] = [
+  {
+    kind: "arrow",
+    name: "Random arrow",
+    cost: 1,
+    art: "arrow_h",
+    description: "Adds a row or column arrow at random.",
+  },
+  {
+    kind: "bomb",
+    name: "Bomb",
+    cost: 2,
+    art: "bomb",
+    description: "Adds a bomb that clears its surrounding cards.",
+  },
+  {
+    kind: "joker",
+    name: "Joker",
+    cost: 10,
+    art: "joker",
+    description: "Adds a wild card for your next poker hand.",
+  },
+  {
+    kind: "rainbow",
+    name: "Rainbow suit",
+    cost: 20,
+    art: "rainbow",
+    description: "Adds a suit-clearing rainbow power.",
+  },
+];
+
+export function powerBuySpecial(kind: PowerBuyKind): SpecialType {
+  if (kind === "arrow") return Math.random() < 0.5 ? "arrow_h" : "arrow_v";
+  return kind;
+}
 
 // ── Plain evaluator (rank/suit only, ignores special field) ──────────────────
 

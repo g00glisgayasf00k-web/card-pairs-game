@@ -48,9 +48,6 @@ import { SpecialArt } from "./SpecialArt";
 
 const ROWS = 8;
 const COLS = 8;
-const BOMB_PTS_PER_CARD = 50;
-const LINE_PTS_PER_CARD = 45;
-const RAINBOW_PTS_PER_CARD = 55;
 
 /** Match .grid gap/padding in CSS */
 const GRID_GAP = 3;
@@ -117,6 +114,7 @@ export interface GameBoardHandle {
   shuffle: () => void;
   revealHint: (goals?: JokerGoalPrefer[]) => HintPath | null;
   clearHint: () => void;
+  buyPower: (type: SpecialType) => boolean;
 }
 
 interface Props {
@@ -167,7 +165,6 @@ function applyGravity(
   blockers: BlockerGrid,
   clearedKeys: Set<string>,
   earned: SpecialType[],
-  spawnPath: { row: number; col: number }[],
   cardRng?: Rng
 ): {
   newBoard: (Card | null)[][];
@@ -233,25 +230,25 @@ function applyGravity(
   }
 
   if (earned.length > 0) {
-    const used = new Set<string>();
+    const eligible: string[] = [];
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const cell = newBoard[r]?.[c];
+        if (cell && !cell.special && !isFixedBlocker(newBlockers[r]?.[c])) {
+          eligible.push(`${r},${c}`);
+        }
+      }
+    }
+    const random = cardRng ?? Math.random;
+    for (let i = eligible.length - 1; i > 0; i--) {
+      const j = Math.floor(random() * (i + 1));
+      [eligible[i], eligible[j]] = [eligible[j]!, eligible[i]!];
+    }
     earned.forEach((sp, i) => {
-      // Spawn on swipe path cells — first reward on first card selected, then along the path
-      let key: string | undefined;
-      if (i < spawnPath.length) {
-        const { row, col } = spawnPath[i]!;
-        if (newBoard[row]?.[col]) key = `${row},${col}`;
-      }
-      if (!key || used.has(key)) {
-        key = [...newKeys].find((k) => !used.has(k));
-      }
+      const key = eligible[i];
       if (!key) return;
-      used.add(key);
       const [rr, cc] = key.split(",").map(Number) as [number, number];
-      if (sp === "arrow_h" || sp === "arrow_v") {
-        newBoard[rr]![cc] = { rank: "A", suit: "spades", special: sp };
-      } else {
-        newBoard[rr]![cc] = { ...newBoard[rr]![cc]!, special: sp };
-      }
+      newBoard[rr]![cc] = { rank: "A", suit: "spades", special: sp };
     });
   }
 
@@ -459,6 +456,27 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
         return result;
       },
       clearHint: () => setHintCell(null),
+      buyPower: (type) => {
+        if (busy || locked) return false;
+        const eligible: { row: number; col: number }[] = [];
+        for (let row = 0; row < ROWS; row++) {
+          for (let col = 0; col < COLS; col++) {
+            const cell = board[row]?.[col];
+            if (cell && !cell.special && !isFixedBlocker(blockers[row]?.[col])) {
+              eligible.push({ row, col });
+            }
+          }
+        }
+        if (eligible.length === 0) return false;
+        const target = eligible[Math.floor(Math.random() * eligible.length)]!;
+        setBoard((prev) => {
+          const next = prev.map((row) => [...row]);
+          next[target.row]![target.col] = { rank: "A", suit: "spades", special: type };
+          return next;
+        });
+        setHintCell(null);
+        return true;
+      },
     }), [busy, locked, board, blockers]);
 
     // ── Shared gravity commit ─────────────────────────────────────────────────
@@ -484,7 +502,6 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
           currentBlockers,
           allCleared,
           earnedSpecials,
-          [],
           refillRngRef.current ?? undefined
         );
         setBoard(gravity.newBoard);
@@ -613,8 +630,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
         }
 
         const count = cleared.size;
-        const ptsPer = anyBomb ? BOMB_PTS_PER_CARD : LINE_PTS_PER_CARD;
-        const pts = count * ptsPer;
+        const pts = 0;
         const colsHit = new Set<number>();
         cleared.forEach((k) => {
           const col = Number(k.split(",")[1]);
@@ -639,11 +655,11 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
           chainCount > 0 ? ` · ${chainCount} chain reaction!` : "";
         let toastMsg: string;
         if (start.kind === "bomb") {
-          toastMsg = `💣 BOOM! ${count} cards cleared! +${pts}${chainNote}`;
+          toastMsg = `💣 BOOM! ${count} cards cleared!${chainNote}`;
         } else {
           const label = start.axis === "row" ? "row" : "column";
           const icon = start.axis === "row" ? "↔" : "↕";
-          toastMsg = `${icon} Cleared the ${label}! ${count} cards +${pts}${chainNote}`;
+          toastMsg = `${icon} Cleared the ${label}! ${count} cards${chainNote}`;
         }
 
         await commitClear(
@@ -697,7 +713,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
         }
 
         const count = cleared.size;
-        const pts = count * RAINBOW_PTS_PER_CARD;
+        const pts = 0;
         setPopping(cleared);
         setPopOrder(order);
 
@@ -716,7 +732,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
           cleared,
           [],
           new Set(Array.from({ length: COLS }, (_, idx) => idx)),
-          `🌈 Cleared all ${suitLabel}! ${count} cards +${pts}`,
+          `🌈 Cleared all ${suitLabel}! ${count} cards`,
           pts,
           null,
           count
@@ -769,7 +785,6 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
               blockersSnapshot,
               allCleared,
               earned,
-              validPath,
               refillRngRef.current ?? undefined
             );
             setBoard(gravity.newBoard);

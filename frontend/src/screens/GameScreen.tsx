@@ -14,6 +14,7 @@ import {
   type FullHandResult,
   type HandLabel,
   type PowerBuyKind,
+  type SpecialType,
 } from "../lib/pokerHands";
 import { campaignLeaderboardPoints, campaignLeaderboardPointsFromProgress, computeLevelStars, challengeKey, challengeProgress, formatChallenge, formatChallengeLabel, applyHandToChallengeCounts, buildChallengeMissionConfig, getLevelConfig, levelPointsMet, levelRequirementsMet, movesRemaining, MAX_LEVEL, outOfMoves, type HandCounts } from "../lib/levels";
 import {
@@ -290,6 +291,12 @@ export function GameScreen({
   const [boardFeedback, setBoardFeedback] = useState<{ text: string; hint?: boolean } | null>(null);
   const [blockerIntro, setBlockerIntro] = useState<BlockerIntroKind | null>(null);
   const [confirmSpend, setConfirmSpend] = useState<"hint" | "shuffle" | "restart" | null>(null);
+  const [confirmPowerBuy, setConfirmPowerBuy] = useState<{
+    kind: PowerBuyKind;
+    cost: number;
+    name: string;
+    art: SpecialType;
+  } | null>(null);
   const [confirmExit, setConfirmExit] = useState(false);
   const [exitBusy, setExitBusy] = useState(false);
   const levelScoreRef = useRef(levelScore);
@@ -993,6 +1000,13 @@ export function GameScreen({
     [boardLocked, credits, handleBoardFeedback, refreshWallet]
   );
 
+  const confirmBuyPower = useCallback(() => {
+    if (!confirmPowerBuy) return;
+    const { kind, cost, name } = confirmPowerBuy;
+    setConfirmPowerBuy(null);
+    handleBuyPower(kind, cost, name);
+  }, [confirmPowerBuy, handleBuyPower]);
+
   const waitDeadlineAt =
     challengeResult?.finish_deadline_at ??
     (challengeResult?.status === "active" ? playDeadlineAt : null) ??
@@ -1105,6 +1119,14 @@ export function GameScreen({
         setConfirmSpend(null);
         return true;
       }
+      if (confirmPowerBuy) {
+        setConfirmPowerBuy(null);
+        return true;
+      }
+      if (showSpecials) {
+        setShowSpecials(false);
+        return true;
+      }
       if (phase === "round_complete" || phase === "moves_failed" || phase === "campaign_complete") {
         handleExit();
         return true;
@@ -1118,6 +1140,8 @@ export function GameScreen({
     showProfile,
     confirmExit,
     confirmSpend,
+    confirmPowerBuy,
+    showSpecials,
     phase,
     handleExit,
   ]);
@@ -2078,6 +2102,44 @@ export function GameScreen({
           })()
         )}
 
+      {confirmPowerBuy &&
+        gamePortal(
+          <div
+            className="modal-overlay scores-overlay powers-confirm-overlay"
+            onClick={() => setConfirmPowerBuy(null)}
+            role="presentation"
+          >
+            <div
+              className="modal scores-modal spend-confirm-modal"
+              onClick={(e) => e.stopPropagation()}
+              role="dialog"
+              aria-labelledby="power-confirm-title"
+            >
+              <div className="spend-confirm__icon powers-confirm__art" aria-hidden>
+                <SpecialArt type={confirmPowerBuy.art} className="special-art--tile" />
+              </div>
+              <h2 id="power-confirm-title">Buy {confirmPowerBuy.name}?</h2>
+              <p className="scores-note spend-confirm__note">
+                This will cost <strong>💎 {confirmPowerBuy.cost} gems</strong> and be randomly added
+                to your gameboard.
+              </p>
+              <p className="spend-confirm__balance">You have 💎 {credits} gems</p>
+              <div className="spend-confirm__actions">
+                <button
+                  type="button"
+                  className="btn ghost"
+                  onClick={() => setConfirmPowerBuy(null)}
+                >
+                  Cancel
+                </button>
+                <button type="button" className="btn" onClick={confirmBuyPower}>
+                  Use 💎 {confirmPowerBuy.cost}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
       {blockerIntro &&
         gamePortal(
         <div
@@ -2295,7 +2357,14 @@ export function GameScreen({
                       type="button"
                       className="powers-shop-card__buy"
                       disabled={boardLocked || credits < power.cost}
-                      onClick={() => handleBuyPower(power.kind, power.cost, power.name)}
+                      onClick={() =>
+                        setConfirmPowerBuy({
+                          kind: power.kind,
+                          cost: power.cost,
+                          name: power.name,
+                          art: power.art,
+                        })
+                      }
                     >
                       <img src={HOME_ASSETS.header.gems} alt="" />
                       {power.cost}

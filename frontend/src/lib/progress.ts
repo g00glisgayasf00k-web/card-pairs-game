@@ -190,8 +190,12 @@ function parseProgress(raw: string | null): SavedProgress | null {
     );
 
     const fourColorDeckOwned = data.fourColorDeckOwned === true;
-    const cardSuitStyle: "classic" | "four_color" =
-      fourColorDeckOwned && data.cardSuitStyle === "four_color" ? "four_color" : "classic";
+    // Owned decks default to equipped — missing style must not become classic and clobber local equip.
+    const cardSuitStyle: "classic" | "four_color" = !fourColorDeckOwned
+      ? "classic"
+      : data.cardSuitStyle === "classic"
+        ? "classic"
+        : "four_color";
 
     let elo: number | undefined;
     if (typeof data.elo === "number" && Number.isFinite(data.elo)) {
@@ -251,11 +255,11 @@ export function saveProgress(
   const styleFromInput = rest.cardSuitStyle;
   const cardSuitStyle: "classic" | "four_color" = !fourColorDeckOwned
     ? "classic"
-    : styleFromInput === "four_color" || styleFromInput === "classic"
-      ? styleFromInput
-      : previous?.cardSuitStyle === "four_color"
+    : styleFromInput === "classic"
+      ? "classic"
+      : styleFromInput === "four_color" || previous?.cardSuitStyle === "four_color"
         ? "four_color"
-        : "classic";
+        : "four_color"; // owned + unspecified → stay / auto-equip
   const elo =
     typeof rest.elo === "number" && Number.isFinite(rest.elo)
       ? Math.max(100, Math.floor(rest.elo))
@@ -291,20 +295,13 @@ export function applyImportedProgress(data: unknown): boolean {
  */
 export function mergeProgressUnlocks(base: SavedProgress, other: SavedProgress): SavedProgress {
   const fourColorDeckOwned = Boolean(base.fourColorDeckOwned || other.fourColorDeckOwned);
-  const styleSource =
-    base.updatedAt >= other.updatedAt
-      ? base.fourColorDeckOwned
-        ? base
-        : other.fourColorDeckOwned
-          ? other
-          : base
-      : other.fourColorDeckOwned
-        ? other
-        : base.fourColorDeckOwned
-          ? base
-          : other;
-  const cardSuitStyle: "classic" | "four_color" =
-    fourColorDeckOwned && styleSource.cardSuitStyle === "four_color" ? "four_color" : "classic";
+  // Sticky equip: keep four-color if either side has it on. Classic only when both are classic
+  // (player turned it off). Prevents a cloud pull from snapping back to 2-colour mid-session.
+  const cardSuitStyle: "classic" | "four_color" = !fourColorDeckOwned
+    ? "classic"
+    : base.cardSuitStyle === "four_color" || other.cardSuitStyle === "four_color"
+      ? "four_color"
+      : "classic";
 
   const completedLevels = Array.from(
     new Set([...(base.completedLevels ?? []), ...(other.completedLevels ?? [])])

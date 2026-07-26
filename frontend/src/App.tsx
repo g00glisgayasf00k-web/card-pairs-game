@@ -74,7 +74,9 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    if (!loggedIn || screen === "onboard") return;
+    // Don't pull cloud progress when entering a match — a stale classic deck style
+    // on the server was snapping the four-colour cosmetic back to 2-colour.
+    if (!loggedIn || screen === "onboard" || screen === "game") return;
     void pullRemoteProgress();
   }, [screen, loggedIn]);
 

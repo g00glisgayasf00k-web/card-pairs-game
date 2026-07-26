@@ -47,6 +47,7 @@ import {
   PROGRESS_IMPORTED_EVENT,
   saveProgress,
 } from "../lib/progress";
+import { applyCardSuitStyleToDocument } from "../lib/cardStyle";
 import {
   getLevel1SeedBoard,
   getTutorialStepConfig,
@@ -242,6 +243,11 @@ export function GameScreen({
     initRunState(tournamentMatch?.level ?? challengeMatch?.level ?? startLevel)
   );
   const { level, levelScore, levelHands, levelHandCounts, handsCleared, bestHand, credits, bonusMoves, tutorialStep } = run;
+
+  // Keep four-colour (or classic) deck CSS in sync whenever a match mounts.
+  useEffect(() => {
+    applyCardSuitStyleToDocument();
+  }, []);
 
   const [phase, setPhase] = useState<Phase>("playing");
   const [completedLevel, setCompletedLevel] = useState<number | null>(null);

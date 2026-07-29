@@ -1,6 +1,6 @@
 # Solo Campaign Levels
 
-Full list of all **500** Solo levels: goals, point targets, and hand budgets for 3★ / 2★ / 1★.
+Full list of all **1000** Solo levels: goals, point targets, and hand budgets for 3★ / 2★ / 1★.
 
 **Source of truth:** `frontend/src/lib/levels.ts`
 
@@ -9,7 +9,7 @@ Full list of all **500** Solo levels: goals, point targets, and hand budgets for
 - **Target pts** — total score required to clear (plus all milestone goals).
 - **3★ / 2★ / 1★ hands** — maximum hands used for each star tier. The **1★** column is the fail limit (`moveLimit`).
 - **Goals** — milestone hands required. From level 40+ these often need specific ranks/suits.
-- **Avg pts/hand** (pacing math): ~120 early → ~200 late worlds.
+- **Avg pts/hand** (pacing math): ~120 early → ~230 late worlds.
 - Solo hands pay **base poker values only** (no Quick Play ×10 goal bonus).
 
 ## All levels
@@ -516,6 +516,506 @@ Full list of all **500** Solo levels: goals, point targets, and hand budgets for
 | 498 | Elite 5 8 | 6439 | 28 | 38 | 48 | 2× TT+33; 1× AAA33; 1× ♥ 89TJQ; 1× Royal Flush |
 | 499 | Elite 5 9 | 6439 | 28 | 38 | 48 | 2× QQQ; 1× 23456; 1× 7777 |
 | 500 | Elite 5 10 | 6439 | 28 | 38 | 48 | 5× Pair of 9's; 2× TT+99; 1× ♥ Flush |
+| 501 | Beginner 6 1 | 6472 | 28 | 38 | 48 | 2× 555; 1× 33355; 1× 4444 |
+| 502 | Beginner 6 2 | 6472 | 28 | 38 | 48 | 4× Pair of 2's; 2× JJ+99; 2× ♥ Flush |
+| 503 | Beginner 6 3 | 6472 | 28 | 38 | 48 | 2× JJJ; 2× 23456; 1× KKKK |
+| 504 | Beginner 6 4 | 6472 | 28 | 38 | 48 | 5× Pair of 7's; 3× 99+44; 1× ♠ Flush; 1× QQQ22 |
+| 505 | Beginner 6 5 | 6472 | 28 | 38 | 48 | 2× 444; 1× A2345; 1× ♠ 6789T; 1× Royal Flush |
+| 506 | Beginner 6 6 | 6472 | 28 | 38 | 48 | 3× KK+88; 1× ♠ Flush; 1× AAA44 |
+| 507 | Beginner 6 7 | 6472 | 28 | 38 | 48 | 5× Pair of 10's; 2× 222; 1× 5555 |
+| 508 | Beginner 6 8 | 6472 | 28 | 38 | 48 | 2× 99+66; 1× 9TJQK; 1× ♦ Flush; 1× Royal Flush |
+| 509 | Beginner 6 9 | 6472 | 28 | 38 | 48 | 4× Pair of 3's; 1× 222; 1× 222JJ; 1× ♥ A2345 |
+| 510 | Beginner 6 10 | 6472 | 28 | 38 | 48 | 2× QQ+88; 1× 56789; 1× ♣ Flush |
+| 511 | Amateur 6 1 | 6472 | 28 | 38 | 48 | 1× 888; 1× 222QQ; 1× Royal Flush |
+| 512 | Amateur 6 2 | 6472 | 28 | 38 | 48 | 4× Pair of 5's; 1× 6789T; 2× ♥ Flush |
+| 513 | Amateur 6 3 | 6472 | 28 | 38 | 48 | 3× AA+22; 2× 777; 1× TTTT |
+| 514 | Amateur 6 4 | 6472 | 28 | 38 | 48 | 5× Pair of J's; 1× ♣ Flush; 2× QQQJJ |
+| 515 | Amateur 6 5 | 6472 | 28 | 38 | 48 | 2× AA+77; 2× 777; 2× A2345; 1× Royal Flush |
+| 516 | Amateur 6 6 | 6472 | 28 | 38 | 48 | 4× Pair of 4's; 1× ♦ Flush; 2× 99977; 1× ♣ 23456 |
+| 517 | Amateur 6 7 | 6472 | 28 | 38 | 48 | 3× AA+KK; 1× TJQKA; 1× 9999 |
+| 518 | Amateur 6 8 | 6472 | 28 | 38 | 48 | 5× Pair of 10's; 1× 888; 1× 77766 |
+| 519 | Amateur 6 9 | 6472 | 28 | 38 | 48 | 1× ♦ Flush; 1× AAAA; 1× ♦ 789TJ; 1× Royal Flush |
+| 520 | Amateur 6 10 | 6472 | 28 | 38 | 48 | 4× Pair of 2's; 1× 777; 1× A2345; 1× 777AA |
+| 521 | Regular 6 1 | 6504 | 28 | 38 | 48 | 2× AA+QQ; 1× ♣ Flush; 1× 3333 |
+| 522 | Regular 6 2 | 6504 | 28 | 38 | 48 | 4× Pair of 8's; 1× 777; 1× Royal Flush |
+| 523 | Regular 6 3 | 6504 | 28 | 38 | 48 | 2× AA+55; 1× 45678; 1× ♠ Flush; 2× JJJ77 |
+| 524 | Regular 6 4 | 6504 | 28 | 38 | 48 | 4× Pair of A's; 2× 777; 1× ♦ 56789 |
+| 525 | Regular 6 5 | 6504 | 28 | 38 | 48 | 3× KK+JJ; 1× TJQKA; 2× ♥ Flush |
+| 526 | Regular 6 6 | 6504 | 28 | 38 | 48 | 4× Pair of 7's; 2× 777; 1× 66633; 1× ♥ 9TJQK |
+| 527 | Regular 6 7 | 6504 | 28 | 38 | 48 | 3× KK+33; 1× 789TJ; 2× ♥ Flush; 1× TTTT |
+| 528 | Regular 6 8 | 6504 | 28 | 38 | 48 | 1× KKK; 1× 66622; 1× ♦ 34567 |
+| 529 | Regular 6 9 | 6504 | 28 | 38 | 48 | 5× Pair of 9's; 2× KK+66; 2× 9TJQK |
+| 530 | Regular 6 10 | 6504 | 28 | 38 | 48 | 1× 666; 1× ♦ Flush; 1× KKKTT; 1× ♠ 89TJQ |
+| 531 | Pro 6 1 | 6504 | 28 | 38 | 48 | 4× Pair of 2's; 2× KK+33; 1× 789TJ |
+| 532 | Pro 6 2 | 6504 | 28 | 38 | 48 | 2× QQQ; 1× ♦ Flush; 1× ♠ 6789T |
+| 533 | Pro 6 3 | 6504 | 28 | 38 | 48 | 5× Pair of 8's; 2× KK+QQ; 2× 77755; 1× 8888 |
+| 534 | Pro 6 4 | 6504 | 28 | 38 | 48 | 1× 555; 1× 45678; 1× ♦ Flush; 1× ♦ 9TJQK |
+| 535 | Pro 6 5 | 6504 | 28 | 38 | 48 | 5× Pair of A's; 2× QQ+99; 1× Royal Flush |
+| 536 | Pro 6 6 | 6504 | 28 | 38 | 48 | 2× TTT; 1× 45678; 1× AAA22 |
+| 537 | Pro 6 7 | 6504 | 28 | 38 | 48 | 4× Pair of 7's; 2× QQ+77; 1× ♠ Flush; 1× ♠ A2345 |
+| 538 | Pro 6 8 | 6504 | 28 | 38 | 48 | 2× 333; 1× 34567; 1× JJJAA; 1× JJJJ |
+| 539 | Pro 6 9 | 6504 | 28 | 38 | 48 | 4× Pair of K's; 3× QQ+33; 2× ♥ Flush |
+| 540 | Pro 6 10 | 6504 | 28 | 38 | 48 | 1× 9999; 1× ♣ 34567; 1× Royal Flush |
+| 541 | Shark 6 1 | 6536 | 28 | 38 | 48 | 5× Pair of 6's; 2× JJJ; 1× ♠ Flush |
+| 542 | Shark 6 2 | 6536 | 28 | 38 | 48 | 2× 66+22; 1× 23456; 2× QQQTT |
+| 543 | Shark 6 3 | 6536 | 28 | 38 | 48 | 1× QQQ; 1× ♣ Flush; 1× ♥ 6789T |
+| 544 | Shark 6 4 | 6536 | 28 | 38 | 48 | 4× Pair of 8's; 2× KK+55; 2× KKKTT; 1× 5555 |
+| 545 | Shark 6 5 | 6536 | 28 | 38 | 48 | 2× 444; 1× 89TJQ; 1× ♦ Flush; 1× ♣ 34567 |
+| 546 | Shark 6 6 | 6536 | 28 | 38 | 48 | 4× Pair of A's; 2× TT+44; 2× TTT55 |
+| 547 | Shark 6 7 | 6536 | 28 | 38 | 48 | 1× TTT; 2× 89TJQ; 1× Royal Flush |
+| 548 | Shark 6 8 | 6536 | 28 | 38 | 48 | 4× Pair of 7's; 3× 88+44; 1× ♦ Flush; 1× ♦ 23456 |
+| 549 | Shark 6 9 | 6536 | 28 | 38 | 48 | 1× 333; 2× 789TJ; 1× JJJJ; 1× Royal Flush |
+| 550 | Shark 6 10 | 6536 | 28 | 38 | 48 | 4× Pair of K's; 2× 55+44; 1× ♠ 34567 |
+| 551 | High Roller 6 1 | 6568 | 28 | 38 | 48 | 1× 999; 1× ♣ Flush; 1× 77733 |
+| 552 | High Roller 6 2 | 6568 | 28 | 38 | 48 | 4× Pair of 5's; 2× 44+22; 1× A2345 |
+| 553 | High Roller 6 3 | 6568 | 28 | 38 | 48 | 1× ♥ Flush; 1× ♥ 6789T; 1× Royal Flush |
+| 554 | High Roller 6 4 | 6568 | 28 | 38 | 48 | 4× Pair of J's; 3× JJ+33; 1× 444 |
+| 555 | High Roller 6 5 | 6568 | 28 | 38 | 48 | 1× 56789; 1× ♣ Flush; 1× ♣ A2345; 1× Royal Flush |
+| 556 | High Roller 6 6 | 6568 | 28 | 38 | 48 | 5× Pair of 4's; 2× 77+33; 1× 555; 1× 8888 |
+| 557 | High Roller 6 7 | 6568 | 28 | 38 | 48 | 1× TJQKA; 1× TTTJJ; 1× ♠ 89TJQ |
+| 558 | High Roller 6 8 | 6568 | 28 | 38 | 48 | 5× Pair of 10's; 2× 33+22; 1× QQQ |
+| 559 | High Roller 6 9 | 6568 | 28 | 38 | 48 | 1× 45678; 1× ♣ Flush; 1× 99955; 1× 8888 |
+| 560 | High Roller 6 10 | 6568 | 28 | 38 | 48 | 4× Pair of 3's; 3× QQ+33; 1× TTT; 1× Royal Flush |
+| 561 | Ace 6 1 | 6568 | 28 | 38 | 48 | 1× 9TJQK; 1× 99955; 1× 7777 |
+| 562 | Ace 6 2 | 6568 | 28 | 38 | 48 | 4× Pair of 9's; 3× TT+22; 1× 777 |
+| 563 | Ace 6 3 | 6568 | 28 | 38 | 48 | 2× 34567; 1× ♣ Flush; 1× AAAA; 1× ♠ 56789 |
+| 564 | Ace 6 4 | 6568 | 28 | 38 | 48 | 5× Pair of 2's; 2× 77+22; 1× 99966 |
+| 565 | Ace 6 5 | 6568 | 28 | 38 | 48 | 1× JJJ; 2× 6789T; 1× TTTT |
+| 566 | Ace 6 6 | 6568 | 28 | 38 | 48 | 5× Pair of 8's; 2× AA+22; 1× TTTAA; 1× ♥ 89TJQ |
+| 567 | Ace 6 7 | 6568 | 28 | 38 | 48 | 1× 444; 1× 6789T; 1× ♦ Flush; 1× Royal Flush |
+| 568 | Ace 6 8 | 6568 | 28 | 38 | 48 | 2× KK+22; 2× JJJ77; 1× TTTT |
+| 569 | Ace 6 9 | 6568 | 28 | 38 | 48 | 5× Pair of 10's; 2× 888; 1× ♥ Flush |
+| 570 | Ace 6 10 | 6568 | 28 | 38 | 48 | 2× 66+22; 1× 6789T; 1× 44433; 1× ♠ 9TJQK |
+| 571 | Veteran 6 1 | 6600 | 28 | 38 | 48 | 5× Pair of 3's; 1× 888; 1× ♠ Flush |
+| 572 | Veteran 6 2 | 6600 | 28 | 38 | 48 | 2× AA+QQ; 1× 666AA; 1× ♠ 9TJQK |
+| 573 | Veteran 6 3 | 6600 | 28 | 38 | 48 | 2× 999; 1× ♦ Flush; 1× 9999 |
+| 574 | Veteran 6 4 | 6600 | 28 | 38 | 48 | 2× AA+55; 2× 333QQ; 1× ♣ 89TJQ; 1× Royal Flush |
+| 575 | Veteran 6 5 | 6600 | 28 | 38 | 48 | 5× Pair of 2's; 1× 777; 1× 45678 |
+| 576 | Veteran 6 6 | 6600 | 28 | 38 | 48 | 3× AA+JJ; 1× ♠ Flush; 1× AAAA |
+| 577 | Veteran 6 7 | 6600 | 28 | 38 | 48 | 5× Pair of 7's; 1× 777; 1× 23456; 1× Royal Flush |
+| 578 | Veteran 6 8 | 6600 | 28 | 38 | 48 | 2× AA+44; 1× ♦ Flush; 1× 2222; 1× ♦ 9TJQK |
+| 579 | Veteran 6 9 | 6600 | 28 | 38 | 48 | 4× Pair of K's; 2× 777; 2× QQQ33 |
+| 580 | Veteran 6 10 | 6600 | 28 | 38 | 48 | 1× 789TJ; 1× ♠ Flush; 1× 3333 |
+| 581 | Expert 6 1 | 6600 | 28 | 38 | 48 | 5× Pair of 6's; 2× 777; 1× JJJ99 |
+| 582 | Expert 6 2 | 6600 | 28 | 38 | 48 | 1× A2345; 1× KKKK; 1× ♠ 9TJQK |
+| 583 | Expert 6 3 | 6600 | 28 | 38 | 48 | 4× Pair of Q's; 2× 777; 1× Royal Flush |
+| 584 | Expert 6 4 | 6600 | 28 | 38 | 48 | 2× KK+99; 1× 89TJQ; 1× JJJJ; 1× ♥ 34567 |
+| 585 | Expert 6 5 | 6600 | 28 | 38 | 48 | 4× Pair of 5's; 2× 666; 1× ♥ Flush; 1× KKK22 |
+| 586 | Expert 6 6 | 6600 | 28 | 38 | 48 | 2× AA+QQ; 1× 6666; 1× ♥ 45678 |
+| 587 | Expert 6 7 | 6600 | 28 | 38 | 48 | 5× Pair of J's; 2× 666; 1× Royal Flush |
+| 588 | Expert 6 8 | 6600 | 28 | 38 | 48 | 2× KK+77; 1× A2345; 1× ♣ Flush; 1× 88855 |
+| 589 | Expert 6 9 | 6600 | 28 | 38 | 48 | 5× Pair of 4's; 2× 666; 1× 8888; 1× ♠ 89TJQ |
+| 590 | Expert 6 10 | 6600 | 28 | 38 | 48 | 1× 9TJQK; 1× ♠ Flush; 1× QQQ55 |
+| 591 | Elite 6 1 | 6633 | 28 | 38 | 48 | 5× Pair of 10's; 3× 66+55; 2× 999 |
+| 592 | Elite 6 2 | 6633 | 28 | 38 | 48 | 2× 45678; 1× ♠ Flush; 1× TTTT |
+| 593 | Elite 6 3 | 6633 | 28 | 38 | 48 | 5× Pair of 2's; 3× AA+55; 1× TTT; 1× 777TT |
+| 594 | Elite 6 4 | 6633 | 28 | 38 | 48 | 1× 89TJQ; 1× ♠ Flush; 1× 7777 |
+| 595 | Elite 6 5 | 6633 | 28 | 38 | 48 | 4× Pair of 8's; 1× 555; 1× TTTQQ; 1× Royal Flush |
+| 596 | Elite 6 6 | 6633 | 28 | 38 | 48 | 2× QQ+55; 1× 34567; 1× ♣ Flush; 1× ♥ 9TJQK |
+| 597 | Elite 6 7 | 6633 | 28 | 38 | 48 | 5× Pair of A's; 1× 555; 1× Royal Flush |
+| 598 | Elite 6 8 | 6633 | 28 | 38 | 48 | 2× 89TJQ; 1× ♠ Flush; 2× KKKJJ |
+| 599 | Elite 6 9 | 6633 | 28 | 38 | 48 | 5× Pair of 7's; 2× 55+44; 1× 666; 1× ♣ 45678 |
+| 600 | Elite 6 10 | 6633 | 28 | 38 | 48 | 1× 23456; 1× ♣ Flush; 1× 999AA; 1× KKKK |
+| 601 | Beginner 7 1 | 6665 | 28 | 38 | 48 | 4× Pair of K's; 2× KK+44; 1× 888 |
+| 602 | Beginner 7 2 | 6665 | 28 | 38 | 48 | 1× 789TJ; 1× JJJ44; 1× 2222 |
+| 603 | Beginner 7 3 | 6665 | 28 | 38 | 48 | 2× 66+44; 1× ♠ Flush; 1× ♠ 9TJQK; 1× Royal Flush |
+| 604 | Beginner 7 4 | 6665 | 28 | 38 | 48 | 5× Pair of 2's; 2× JJJ; 2× 34567; 1× AAA55 |
+| 605 | Beginner 7 5 | 6665 | 28 | 38 | 48 | 3× QQ+44; 2× ♦ Flush; 1× ♠ A2345 |
+| 606 | Beginner 7 6 | 6665 | 28 | 38 | 48 | 5× Pair of 8's; 1× TTT; 1× 6789T; 1× 555QQ |
+| 607 | Beginner 7 7 | 6665 | 28 | 38 | 48 | 2× 55+44; 1× ♥ Flush; 1× 4444; 1× ♣ 789TJ |
+| 608 | Beginner 7 8 | 6665 | 28 | 38 | 48 | 5× Pair of A's; 2× TTT; 1× 888JJ |
+| 609 | Beginner 7 9 | 6665 | 28 | 38 | 48 | 2× TT+33; 2× 9TJQK; 1× ♣ 34567 |
+| 610 | Beginner 7 10 | 6665 | 28 | 38 | 48 | 4× Pair of 7's; 1× TTT; 1× ♦ Flush; 1× 4444 |
+| 611 | Amateur 7 1 | 6665 | 28 | 38 | 48 | 1× 23456; 1× 333TT; 1× ♦ A2345 |
+| 612 | Amateur 7 2 | 6665 | 28 | 38 | 48 | 5× Pair of K's; 3× TT+22; 1× ♦ Flush |
+| 613 | Amateur 7 3 | 6665 | 28 | 38 | 48 | 1× 999; 1× 23456; 1× ♦ 45678 |
+| 614 | Amateur 7 4 | 6665 | 28 | 38 | 48 | 5× Pair of 6's; 3× JJ+99; 2× ♦ Flush; 1× Royal Flush |
+| 615 | Amateur 7 5 | 6665 | 28 | 38 | 48 | 1× 222; 1× 23456; 1× 55599; 1× AAAA |
+| 616 | Amateur 7 6 | 6665 | 28 | 38 | 48 | 4× Pair of Q's; 2× 99+88; 1× Royal Flush |
+| 617 | Amateur 7 7 | 6665 | 28 | 38 | 48 | 2× 888; 1× A2345; 1× AAAQQ; 1× JJJJ |
+| 618 | Amateur 7 8 | 6665 | 28 | 38 | 48 | 5× Pair of 4's; 2× 99+44; 1× ♥ Flush; 1× ♦ 6789T |
+| 619 | Amateur 7 9 | 6665 | 28 | 38 | 48 | 1× TJQKA; 1× 22299; 1× 6666 |
+| 620 | Amateur 7 10 | 6665 | 28 | 38 | 48 | 4× Pair of 10's; 2× 999; 1× ♠ Flush |
+| 621 | Regular 7 1 | 6697 | 28 | 38 | 48 | 3× 77+22; 1× 6666; 1× ♠ 23456 |
+| 622 | Regular 7 2 | 6697 | 28 | 38 | 48 | 2× 333; 2× 6789T; 1× ♣ Flush |
+| 623 | Regular 7 3 | 6697 | 28 | 38 | 48 | 4× Pair of K's; 2× 44+22; 2× AAA66 |
+| 624 | Regular 7 4 | 6697 | 28 | 38 | 48 | 1× 999; 1× 8888; 1× ♦ 34567 |
+| 625 | Regular 7 5 | 6697 | 28 | 38 | 48 | 4× Pair of 6's; 3× KK+22; 1× 789TJ; 1× Royal Flush |
+| 626 | Regular 7 6 | 6697 | 28 | 38 | 48 | 1× 222; 1× ♣ Flush; 1× 3333 |
+| 627 | Regular 7 7 | 6697 | 28 | 38 | 48 | 2× AA+JJ; 1× 6789T; 1× QQQJJ |
+| 628 | Regular 7 8 | 6697 | 28 | 38 | 48 | 1× 888; 1× ♦ Flush; 1× ♠ 9TJQK; 1× Royal Flush |
+| 629 | Regular 7 9 | 6697 | 28 | 38 | 48 | 2× AA+44; 1× 34567; 1× AAA33; 1× TTTT |
+| 630 | Regular 7 10 | 6697 | 28 | 38 | 48 | 1× AAA; 1× ♦ Flush; 1× ♥ 6789T |
+| 631 | Pro 7 1 | 6697 | 28 | 38 | 48 | 4× Pair of 10's; 2× AA+KK; 1× 222AA |
+| 632 | Pro 7 2 | 6697 | 28 | 38 | 48 | 1× 7777; 1× ♦ 56789; 1× Royal Flush |
+| 633 | Pro 7 3 | 6697 | 28 | 38 | 48 | 5× Pair of 3's; 3× AA+TT; 1× QQQ; 1× 89TJQ |
+| 634 | Pro 7 4 | 6697 | 28 | 38 | 48 | 1× ♠ Flush; 1× 77733; 1× TTTT |
+| 635 | Pro 7 5 | 6697 | 28 | 38 | 48 | 3× AA+99; 1× 888; 1× ♦ 6789T |
+| 636 | Pro 7 6 | 6697 | 28 | 38 | 48 | 5× Pair of 5's; 1× 9TJQK; 2× ♣ Flush; 1× 5555 |
+| 637 | Pro 7 7 | 6697 | 28 | 38 | 48 | 2× 44+22; 1× QQQ55; 1× ♦ 789TJ |
+| 638 | Pro 7 8 | 6697 | 28 | 38 | 48 | 4× Pair of J's; 2× 777; 1× 6789T |
+| 639 | Pro 7 9 | 6697 | 28 | 38 | 48 | 2× TT+88; 1× ♦ Flush; 1× 33399; 1× QQQQ |
+| 640 | Pro 7 10 | 6697 | 28 | 38 | 48 | 4× Pair of 4's; 2× KKK; 2× A2345; 1× ♠ 789TJ |
+| 641 | Shark 7 1 | 6729 | 28 | 38 | 48 | 3× AA+33; 1× ♦ Flush; 1× 44488 |
+| 642 | Shark 7 2 | 6729 | 28 | 38 | 48 | 4× Pair of 10's; 2× 666; 1× ♦ A2345 |
+| 643 | Shark 7 3 | 6729 | 28 | 38 | 48 | 1× 45678; 2× ♣ Flush; 2× TTT66; 1× 8888 |
+| 644 | Shark 7 4 | 6729 | 28 | 38 | 48 | 4× Pair of 3's; 3× AA+QQ; 2× KKK; 1× ♥ 23456 |
+| 645 | Shark 7 5 | 6729 | 28 | 38 | 48 | 1× 9TJQK; 1× ♥ Flush; 1× KKKK |
+| 646 | Shark 7 6 | 6729 | 28 | 38 | 48 | 2× 99+55; 1× 777JJ; 1× Royal Flush |
+| 647 | Shark 7 7 | 6729 | 28 | 38 | 48 | 4× Pair of 5's; 2× 999; 1× 34567; 1× AAAA |
+| 648 | Shark 7 8 | 6729 | 28 | 38 | 48 | 2× QQ+22; 1× 555TT; 1× ♠ 45678 |
+| 649 | Shark 7 9 | 6729 | 28 | 38 | 48 | 4× Pair of J's; 1× 222; 1× 4444 |
+| 650 | Shark 7 10 | 6729 | 28 | 38 | 48 | 2× 77+55; 1× A2345; 2× ♦ Flush; 2× 222QQ |
+| 651 | High Roller 7 1 | 6761 | 28 | 38 | 48 | 4× Pair of 4's; 1× 888; 1× ♠ 789TJ |
+| 652 | High Roller 7 2 | 6761 | 28 | 38 | 48 | 3× KK+JJ; 1× 9TJQK; 1× TTT33 |
+| 653 | High Roller 7 3 | 6761 | 28 | 38 | 48 | 4× Pair of 10's; 1× 222; 1× QQQQ |
+| 654 | High Roller 7 4 | 6761 | 28 | 38 | 48 | 2× 66+55; 2× ♣ Flush; 1× KKK22; 1× ♣ 45678 |
+| 655 | High Roller 7 5 | 6761 | 28 | 38 | 48 | 4× Pair of 3's; 1× 888; 1× 789TJ; 1× AAAA |
+| 656 | High Roller 7 6 | 6761 | 28 | 38 | 48 | 1× ♠ Flush; 1× JJJKK; 1× ♣ 34567 |
+| 657 | High Roller 7 7 | 6761 | 28 | 38 | 48 | 4× Pair of 9's; 2× AA+33; 1× 34567; 1× Royal Flush |
+| 658 | High Roller 7 8 | 6761 | 28 | 38 | 48 | 1× 555; 2× ♥ Flush; 1× AAAA; 1× ♦ A2345 |
+| 659 | High Roller 7 9 | 6761 | 28 | 38 | 48 | 4× Pair of A's; 3× QQ+77; 1× 56789 |
+| 660 | High Roller 7 10 | 6761 | 28 | 38 | 48 | 2× JJJ; 1× ♣ Flush; 1× 66655 |
+| 661 | Ace 7 1 | 6761 | 28 | 38 | 48 | 5× Pair of 7's; 1× AAAA; 1× ♠ 789TJ |
+| 662 | Ace 7 2 | 6761 | 28 | 38 | 48 | 2× 55+44; 1× 777; 1× TJQKA |
+| 663 | Ace 7 3 | 6761 | 28 | 38 | 48 | 4× Pair of K's; 1× ♦ Flush; 1× Royal Flush |
+| 664 | Ace 7 4 | 6761 | 28 | 38 | 48 | 1× 789TJ; 2× TTTKK; 1× ♠ 89TJQ |
+| 665 | Ace 7 5 | 6761 | 28 | 38 | 48 | 4× Pair of 6's; 2× KKK; 1× ♦ Flush; 1× 7777 |
+| 666 | Ace 7 6 | 6761 | 28 | 38 | 48 | 2× 44+22; 1× 9TJQK; 1× KKK66; 1× ♣ 45678 |
+| 667 | Ace 7 7 | 6761 | 28 | 38 | 48 | 4× Pair of Q's; 1× 666; 2× ♣ Flush |
+| 668 | Ace 7 8 | 6761 | 28 | 38 | 48 | 2× TT+88; 2× 34567; 1× 33377; 1× KKKK |
+| 669 | Ace 7 9 | 6761 | 28 | 38 | 48 | 4× Pair of 5's; 2× KKK; 1× ♣ Flush; 1× ♥ 23456 |
+| 670 | Ace 7 10 | 6761 | 28 | 38 | 48 | 3× AA+33; 1× 56789; 2× 55588 |
+| 671 | Veteran 7 1 | 6794 | 28 | 38 | 48 | 5× Pair of J's; 1× 666; 1× ♦ A2345 |
+| 672 | Veteran 7 2 | 6794 | 28 | 38 | 48 | 1× 56789; 2× ♣ Flush; 1× QQQQ |
+| 673 | Veteran 7 3 | 6794 | 28 | 38 | 48 | 4× Pair of 4's; 2× QQ+33; 1× 333; 1× 444TT |
+| 674 | Veteran 7 4 | 6794 | 28 | 38 | 48 | 2× 9TJQK; 1× 2222; 1× Royal Flush |
+| 675 | Veteran 7 5 | 6794 | 28 | 38 | 48 | 4× Pair of 9's; 3× TT+55; 1× AAA |
+| 676 | Veteran 7 6 | 6794 | 28 | 38 | 48 | 2× 45678; 1× ♣ Flush; 2× 444KK; 1× QQQQ |
+| 677 | Veteran 7 7 | 6794 | 28 | 38 | 48 | 5× Pair of 2's; 2× QQ+88; 1× AAA; 1× ♦ 45678 |
+| 678 | Veteran 7 8 | 6794 | 28 | 38 | 48 | 1× 89TJQ; 1× ♥ Flush; 1× 6666 |
+| 679 | Veteran 7 9 | 6794 | 28 | 38 | 48 | 4× Pair of 8's; 2× AA+55; 2× 444; 1× ♠ 9TJQK |
+| 680 | Veteran 7 10 | 6794 | 28 | 38 | 48 | 1× 34567; 1× ♣ Flush; 1× JJJ77; 1× 5555 |
+| 681 | Expert 7 1 | 6794 | 28 | 38 | 48 | 5× Pair of A's; 2× JJ+22; 1× KKK |
+| 682 | Expert 7 2 | 6794 | 28 | 38 | 48 | 1× 789TJ; 2× ♠ Flush; 1× JJJJ |
+| 683 | Expert 7 3 | 6794 | 28 | 38 | 48 | 5× Pair of 7's; 2× 99+55; 2× QQQ; 1× KKK22 |
+| 684 | Expert 7 4 | 6794 | 28 | 38 | 48 | 1× ♥ Flush; 1× 8888; 1× ♦ 23456; 1× Royal Flush |
+| 685 | Expert 7 5 | 6794 | 28 | 38 | 48 | 2× KK+TT; 1× 999; 2× 45678 |
+| 686 | Expert 7 6 | 6794 | 28 | 38 | 48 | 4× Pair of 9's; 1× AAAA; 1× Royal Flush |
+| 687 | Expert 7 7 | 6794 | 28 | 38 | 48 | 2× 66+44; 2× 9TJQK; 1× ♥ Flush; 1× KKKAA |
+| 688 | Expert 7 8 | 6794 | 28 | 38 | 48 | 5× Pair of 2's; 1× 777; 1× 3333; 1× Royal Flush |
+| 689 | Expert 7 9 | 6794 | 28 | 38 | 48 | 3× QQ+TT; 1× ♥ Flush; 1× ♣ 45678 |
+| 690 | Expert 7 10 | 6794 | 28 | 38 | 48 | 4× Pair of 8's; 2× AAA; 2× 789TJ; 1× JJJJ |
+| 691 | Elite 7 1 | 6826 | 28 | 38 | 48 | 2× 44+33; 1× ♦ Flush; 1× 99955 |
+| 692 | Elite 7 2 | 6826 | 28 | 38 | 48 | 4× Pair of A's; 1× 777; 1× 6789T |
+| 693 | Elite 7 3 | 6826 | 28 | 38 | 48 | 3× TT+99; 2× ♦ Flush; 1× 99944 |
+| 694 | Elite 7 4 | 6826 | 28 | 38 | 48 | 4× Pair of 7's; 2× KKK; 1× 34567; 1× ♥ 45678 |
+| 695 | Elite 7 5 | 6826 | 28 | 38 | 48 | 3× 44+33; 1× ♠ Flush; 2× 88877; 1× QQQQ |
+| 696 | Elite 7 6 | 6826 | 28 | 38 | 48 | 1× KKK; 2× 45678; 1× Royal Flush |
+| 697 | Elite 7 7 | 6826 | 28 | 38 | 48 | 4× Pair of 9's; 3× AA+TT; 1× ♥ Flush |
+| 698 | Elite 7 8 | 6826 | 28 | 38 | 48 | 1× 45678; 2× KKKJJ; 1× 8888; 1× ♣ 45678 |
+| 699 | Elite 7 9 | 6826 | 28 | 38 | 48 | 5× Pair of 2's; 2× TT+33; 2× ♠ Flush |
+| 700 | Elite 7 10 | 6826 | 28 | 38 | 48 | 2× 89TJQ; 1× ♥ 34567; 1× Royal Flush |
+| 701 | Beginner 8 1 | 6858 | 28 | 38 | 48 | 2× 888; 1× ♣ Flush; 1× 6666 |
+| 702 | Beginner 8 2 | 6858 | 28 | 38 | 48 | 4× Pair of 4's; 1× 9TJQK; 2× 333JJ |
+| 703 | Beginner 8 3 | 6858 | 28 | 38 | 48 | 2× AA+22; 1× 222; 1× 3333 |
+| 704 | Beginner 8 4 | 6858 | 28 | 38 | 48 | 1× 789TJ; 1× ♦ Flush; 1× 888AA |
+| 705 | Beginner 8 5 | 6858 | 28 | 38 | 48 | 5× Pair of 7's; 3× KK+99; 1× 222; 1× 7777 |
+| 706 | Beginner 8 6 | 6858 | 28 | 38 | 48 | 1× 23456; 1× ♠ Flush; 2× 222JJ; 1× ♣ 34567 |
+| 707 | Beginner 8 7 | 6858 | 28 | 38 | 48 | 4× Pair of Q's; 2× 66+22; 1× TTT |
+| 708 | Beginner 8 8 | 6858 | 28 | 38 | 48 | 2× 6789T; 2× 55533; 1× ♦ 56789 |
+| 709 | Beginner 8 9 | 6858 | 28 | 38 | 48 | 2× 99+55; 1× 888; 1× ♣ Flush; 1× 8888 |
+| 710 | Beginner 8 10 | 6858 | 28 | 38 | 48 | 4× Pair of 2's; 1× JJJ44; 1× Royal Flush |
+| 711 | Amateur 8 1 | 6858 | 28 | 38 | 48 | 2× AA+JJ; 1× KKK; 1× ♦ Flush |
+| 712 | Amateur 8 2 | 6858 | 28 | 38 | 48 | 4× Pair of 8's; 2× 34567; 1× ♣ 56789 |
+| 713 | Amateur 8 3 | 6858 | 28 | 38 | 48 | 3× 88+44; 1× QQQ; 1× ♠ Flush; 1× 77755 |
+| 714 | Amateur 8 4 | 6858 | 28 | 38 | 48 | 1× TJQKA; 1× JJJJ; 1× Royal Flush |
+| 715 | Amateur 8 5 | 6858 | 28 | 38 | 48 | 4× Pair of 10's; 3× AA+44; 1× ♣ 56789 |
+| 716 | Amateur 8 6 | 6858 | 28 | 38 | 48 | 1× 666; 1× 23456; 1× 22266; 1× TTTT |
+| 717 | Amateur 8 7 | 6858 | 28 | 38 | 48 | 4× Pair of 3's; 3× 77+55; 1× ♣ Flush; 1× ♥ 45678 |
+| 718 | Amateur 8 8 | 6858 | 28 | 38 | 48 | 1× QQQ; 1× TTT33; 1× KKKK |
+| 719 | Amateur 8 9 | 6858 | 28 | 38 | 48 | 5× Pair of 9's; 3× KK+JJ; 1× ♥ A2345 |
+| 720 | Amateur 8 10 | 6858 | 28 | 38 | 48 | 2× 555; 1× 23456; 1× ♦ Flush; 1× 99933 |
+| 721 | Regular 8 1 | 6890 | 28 | 38 | 48 | 5× Pair of 2's; 2× JJ+77; 1× ♠ 34567 |
+| 722 | Regular 8 2 | 6890 | 28 | 38 | 48 | 1× JJJ; 2× ♣ Flush; 1× 999AA |
+| 723 | Regular 8 3 | 6890 | 28 | 38 | 48 | 5× Pair of 8's; 2× KK+33; 2× 9TJQK; 1× QQQQ |
+| 724 | Regular 8 4 | 6890 | 28 | 38 | 48 | 2× 444; 2× 333AA; 1× ♣ 6789T; 1× Royal Flush |
+| 725 | Regular 8 5 | 6890 | 28 | 38 | 48 | 4× Pair of K's; 2× 66+44; 1× 789TJ |
+| 726 | Regular 8 6 | 6890 | 28 | 38 | 48 | 1× TTT99; 1× KKKK; 1× Royal Flush |
+| 727 | Regular 8 7 | 6890 | 28 | 38 | 48 | 2× KK+66; 2× JJJ; 1× 56789; 1× ♦ Flush |
+| 728 | Regular 8 8 | 6890 | 28 | 38 | 48 | 4× Pair of 3's; 1× 222KK; 1× ♥ 23456; 1× Royal Flush |
+| 729 | Regular 8 9 | 6890 | 28 | 38 | 48 | 3× QQ+66; 1× QQQ; 1× A2345 |
+| 730 | Regular 8 10 | 6890 | 28 | 38 | 48 | 1× 99988; 1× 8888; 1× Royal Flush |
+| 731 | Pro 8 1 | 6890 | 28 | 38 | 48 | 1× 34567; 1× ♠ Flush; 1× ♣ A2345 |
+| 732 | Pro 8 2 | 6890 | 28 | 38 | 48 | 4× Pair of A's; 3× 55+22; 1× AAAA |
+| 733 | Pro 8 3 | 6890 | 28 | 38 | 48 | 2× JJJ; 1× 34567; 1× ♥ 34567 |
+| 734 | Pro 8 4 | 6890 | 28 | 38 | 48 | 5× Pair of 7's; 3× KK+88; 1× AAAQQ; 1× 7777 |
+| 735 | Pro 8 5 | 6890 | 28 | 38 | 48 | 2× 444; 1× 89TJQ; 1× ♣ Flush; 1× Royal Flush |
+| 736 | Pro 8 6 | 6890 | 28 | 38 | 48 | 4× Pair of K's; 2× QQ+22; 1× ♠ 23456 |
+| 737 | Pro 8 7 | 6890 | 28 | 38 | 48 | 1× TTT; 1× 34567; 1× 9999 |
+| 738 | Pro 8 8 | 6890 | 28 | 38 | 48 | 4× Pair of 6's; 3× 88+66; 1× ♠ Flush; 2× TTTAA |
+| 739 | Pro 8 9 | 6890 | 28 | 38 | 48 | 1× 333; 1× 89TJQ; 1× 9999; 1× Royal Flush |
+| 740 | Pro 8 10 | 6890 | 28 | 38 | 48 | 4× Pair of Q's; 1× ♠ Flush; 1× ♥ 89TJQ |
+| 741 | Shark 8 1 | 6922 | 28 | 38 | 48 | 2× 88+44; 1× 23456; 1× Royal Flush |
+| 742 | Shark 8 2 | 6922 | 28 | 38 | 48 | 2× 555; 1× 777AA; 1× 3333 |
+| 743 | Shark 8 3 | 6922 | 28 | 38 | 48 | 3× AA+TT; 1× 89TJQ; 1× ♥ A2345 |
+| 744 | Shark 8 4 | 6922 | 28 | 38 | 48 | 4× Pair of J's; 1× AAA66; 1× QQQQ |
+| 745 | Shark 8 5 | 6922 | 28 | 38 | 48 | 2× 77+44; 2× JJJ; 2× ♦ Flush; 1× Royal Flush |
+| 746 | Shark 8 6 | 6922 | 28 | 38 | 48 | 4× Pair of 4's; 1× 56789; 1× 66677; 1× ♦ 789TJ |
+| 747 | Shark 8 7 | 6922 | 28 | 38 | 48 | 2× KK+99; 1× 222; 2× ♥ Flush |
+| 748 | Shark 8 8 | 6922 | 28 | 38 | 48 | 2× 999KK; 1× JJJJ; 1× ♠ A2345 |
+| 749 | Shark 8 9 | 6922 | 28 | 38 | 48 | 5× Pair of 6's; 2× 44+33; 1× TTT; 1× Royal Flush |
+| 750 | Shark 8 10 | 6922 | 28 | 38 | 48 | 1× A2345; 1× ♦ Flush; 1× QQQ33; 1× JJJJ |
+| 751 | High Roller 8 1 | 6955 | 28 | 38 | 48 | 4× Pair of Q's; 2× TT+77; 1× KKK |
+| 752 | High Roller 8 2 | 6955 | 28 | 38 | 48 | 1× 6789T; 1× KKKK; 1× Royal Flush |
+| 753 | High Roller 8 3 | 6955 | 28 | 38 | 48 | 5× Pair of 5's; 2× JJ+33; 1× TTT; 1× ♥ Flush |
+| 754 | High Roller 8 4 | 6955 | 28 | 38 | 48 | 1× TJQKA; 1× 66677; 1× TTTT |
+| 755 | High Roller 8 5 | 6955 | 28 | 38 | 48 | 2× JJ+99; 2× 222; 1× ♦ Flush |
+| 756 | High Roller 8 6 | 6955 | 28 | 38 | 48 | 4× Pair of 7's; 1× 9TJQK; 1× TTT66; 1× 3333 |
+| 757 | High Roller 8 7 | 6955 | 28 | 38 | 48 | 3× 33+22; 1× 222; 1× ♠ Flush; 1× ♠ 89TJQ |
+| 758 | High Roller 8 8 | 6955 | 28 | 38 | 48 | 4× Pair of K's; 1× 45678; 1× JJJ44 |
+| 759 | High Roller 8 9 | 6955 | 28 | 38 | 48 | 2× 99+88; 2× 777; 1× TTTT |
+| 760 | High Roller 8 10 | 6955 | 28 | 38 | 48 | 5× Pair of 6's; 1× 89TJQ; 1× ♥ Flush; 2× AAA88 |
+| 761 | Ace 8 1 | 6955 | 28 | 38 | 48 | 2× 33+22; 2× 888; 1× QQQQ |
+| 762 | Ace 8 2 | 6955 | 28 | 38 | 48 | 4× Pair of Q's; 2× 34567; 1× ♦ Flush |
+| 763 | Ace 8 3 | 6955 | 28 | 38 | 48 | 2× 99+88; 1× AAA; 1× 555TT; 1× Royal Flush |
+| 764 | Ace 8 4 | 6955 | 28 | 38 | 48 | 4× Pair of 4's; 1× 89TJQ; 1× ♣ Flush; 1× ♠ 9TJQK |
+| 765 | Ace 8 5 | 6955 | 28 | 38 | 48 | 2× AA+22; 1× AAA; 1× TTTT |
+| 766 | Ace 8 6 | 6955 | 28 | 38 | 48 | 5× Pair of 10's; 1× 34567; 1× JJJ88 |
+| 767 | Ace 8 7 | 6955 | 28 | 38 | 48 | 3× 88+77; 1× 666; 1× ♦ Flush; 1× Royal Flush |
+| 768 | Ace 8 8 | 6955 | 28 | 38 | 48 | 4× Pair of 3's; 1× 89TJQ; 2× 333QQ; 1× AAAA |
+| 769 | Ace 8 9 | 6955 | 28 | 38 | 48 | 2× AA+KK; 1× 888; 1× Royal Flush |
+| 770 | Ace 8 10 | 6955 | 28 | 38 | 48 | 4× Pair of 9's; 1× ♥ Flush; 1× 3333 |
+| 771 | Veteran 8 1 | 6987 | 28 | 38 | 48 | 1× 666; 1× 56789; 1× KKK22 |
+| 772 | Veteran 8 2 | 6987 | 28 | 38 | 48 | 3× JJ+22; 1× ♥ Flush; 1× QQQQ |
+| 773 | Veteran 8 3 | 6987 | 28 | 38 | 48 | 5× Pair of J's; 1× AAAKK; 1× ♦ 23456 |
+| 774 | Veteran 8 4 | 6987 | 28 | 38 | 48 | 2× 88+44; 2× TTT; 1× 45678; 1× ♦ Flush |
+| 775 | Veteran 8 5 | 6987 | 28 | 38 | 48 | 4× Pair of 4's; 1× 77766; 1× 3333; 1× Royal Flush |
+| 776 | Veteran 8 6 | 6987 | 28 | 38 | 48 | 3× AA+99; 2× 6789T; 1× ♠ 89TJQ |
+| 777 | Veteran 8 7 | 6987 | 28 | 38 | 48 | 1× TTT; 1× KKKK; 1× Royal Flush |
+| 778 | Veteran 8 8 | 6987 | 28 | 38 | 48 | 4× Pair of 7's; 2× 33+22; 1× 6789T; 1× TTT77 |
+| 779 | Veteran 8 9 | 6987 | 28 | 38 | 48 | 2× 333; 1× ♦ Flush; 1× QQQQ; 1× ♠ 89TJQ |
+| 780 | Veteran 8 10 | 6987 | 28 | 38 | 48 | 4× Pair of K's; 2× 99+88; 2× 789TJ |
+| 781 | Expert 8 1 | 6987 | 28 | 38 | 48 | 1× 999; 1× ♠ Flush; 1× ♠ 89TJQ |
+| 782 | Expert 8 2 | 6987 | 28 | 38 | 48 | 4× Pair of 5's; 3× TT+33; 1× TTTKK |
+| 783 | Expert 8 3 | 6987 | 28 | 38 | 48 | 1× 222; 1× 45678; 2× ♣ Flush |
+| 784 | Expert 8 4 | 6987 | 28 | 38 | 48 | 5× Pair of J's; 3× 99+22; 1× ♥ 45678 |
+| 785 | Expert 8 5 | 6987 | 28 | 38 | 48 | 1× 888; 1× 9TJQK; 2× ♦ Flush; 1× 88855 |
+| 786 | Expert 8 6 | 6987 | 28 | 38 | 48 | 4× Pair of 4's; 3× 33+22; 1× 8888; 1× ♠ 56789 |
+| 787 | Expert 8 7 | 6987 | 28 | 38 | 48 | 1× AAA; 2× 45678; 2× ♥ Flush |
+| 788 | Expert 8 8 | 6987 | 28 | 38 | 48 | 5× Pair of 10's; 3× 99+88; 1× AAA33 |
+| 789 | Expert 8 9 | 6987 | 28 | 38 | 48 | 2× 666; 1× 89TJQ; 1× ♠ Flush; 1× 2222 |
+| 790 | Expert 8 10 | 6987 | 28 | 38 | 48 | 4× Pair of 3's; 2× AA+22; 2× 33366; 1× ♣ 45678 |
+| 791 | Elite 8 1 | 7019 | 28 | 38 | 48 | 2× QQQ; 2× 34567; 1× ♥ Flush |
+| 792 | Elite 8 2 | 7019 | 28 | 38 | 48 | 5× Pair of 9's; 1× 888AA; 1× AAAA |
+| 793 | Elite 8 3 | 7019 | 28 | 38 | 48 | 3× QQ+55; 1× 555; 1× ♦ Flush; 1× Royal Flush |
+| 794 | Elite 8 4 | 7019 | 28 | 38 | 48 | 4× Pair of 2's; 1× TJQKA; 1× ♦ 23456 |
+| 795 | Elite 8 5 | 7019 | 28 | 38 | 48 | 3× JJ+44; 1× JJJ; 1× ♣ Flush |
+| 796 | Elite 8 6 | 7019 | 28 | 38 | 48 | 4× Pair of 8's; 1× 56789; 2× 888QQ; 1× ♣ 56789 |
+| 797 | Elite 8 7 | 7019 | 28 | 38 | 48 | 2× JJ+44; 1× JJJ; 1× ♦ Flush; 1× 3333 |
+| 798 | Elite 8 8 | 7019 | 28 | 38 | 48 | 4× Pair of K's; 2× TJQKA; 1× Royal Flush |
+| 799 | Elite 8 9 | 7019 | 28 | 38 | 48 | 3× TT+44; 1× 555; 1× ♥ Flush |
+| 800 | Elite 8 10 | 7019 | 28 | 38 | 48 | 5× Pair of 6's; 1× 56789; 1× KKK22; 1× ♣ 56789 |
+| 801 | Beginner 9 1 | 7051 | 28 | 38 | 48 | 2× JJ+33; 1× 555; 1× ♥ Flush |
+| 802 | Beginner 9 2 | 7051 | 28 | 38 | 48 | 4× Pair of Q's; 1× KKKK; 1× ♠ A2345 |
+| 803 | Beginner 9 3 | 7051 | 28 | 38 | 48 | 3× 99+33; 2× 789TJ; 1× Royal Flush |
+| 804 | Beginner 9 4 | 7051 | 28 | 38 | 48 | 4× Pair of 5's; 2× 777; 1× ♦ Flush; 1× 999KK |
+| 805 | Beginner 9 5 | 7051 | 28 | 38 | 48 | 2× AA+99; 1× TJQKA; 1× 2222 |
+| 806 | Beginner 9 6 | 7051 | 28 | 38 | 48 | 1× JJJ; 1× ♠ Flush; 1× ♥ 45678 |
+| 807 | Beginner 9 7 | 7051 | 28 | 38 | 48 | 4× Pair of 7's; 2× 55+33; 1× 666QQ; 1× Royal Flush |
+| 808 | Beginner 9 8 | 7051 | 28 | 38 | 48 | 1× 444; 1× 45678; 1× ♠ Flush; 1× TTTT |
+| 809 | Beginner 9 9 | 7051 | 28 | 38 | 48 | 4× Pair of K's; 3× TT+33; 1× ♦ 9TJQK |
+| 810 | Beginner 9 10 | 7051 | 28 | 38 | 48 | 2× TTT; 1× ♠ Flush; 1× AAAA |
+| 811 | Amateur 9 1 | 7051 | 28 | 38 | 48 | 4× Pair of 6's; 2× A2345; 2× 99988 |
+| 812 | Amateur 9 2 | 7051 | 28 | 38 | 48 | 2× 66+33; 2× QQQ; 2× ♣ Flush |
+| 813 | Amateur 9 3 | 7051 | 28 | 38 | 48 | 4× Pair of Q's; 1× 6789T; 2× JJJ77 |
+| 814 | Amateur 9 4 | 7051 | 28 | 38 | 48 | 2× 888; 2× ♠ Flush; 1× 6666; 1× ♥ 45678 |
+| 815 | Amateur 9 5 | 7051 | 28 | 38 | 48 | 4× Pair of 5's; 3× 44+22; 2× 23456; 2× 44466 |
+| 816 | Amateur 9 6 | 7051 | 28 | 38 | 48 | 1× AAA; 1× 5555; 1× ♦ 23456 |
+| 817 | Amateur 9 7 | 7051 | 28 | 38 | 48 | 5× Pair of J's; 2× 99+22; 1× 89TJQ |
+| 818 | Amateur 9 8 | 7051 | 28 | 38 | 48 | 1× 777; 1× ♠ Flush; 1× KKK22; 1× 2222 |
+| 819 | Amateur 9 9 | 7051 | 28 | 38 | 48 | 5× Pair of 4's; 2× TT+22; 1× A2345; 1× ♠ 6789T |
+| 820 | Amateur 9 10 | 7051 | 28 | 38 | 48 | 1× KKK; 1× ♥ Flush; 1× JJJ77 |
+| 821 | Regular 9 1 | 7083 | 28 | 38 | 48 | 4× Pair of 10's; 1× 6789T; 1× Royal Flush |
+| 822 | Regular 9 2 | 7083 | 28 | 38 | 48 | 3× JJ+66; 1× ♥ Flush; 1× 44499 |
+| 823 | Regular 9 3 | 7083 | 28 | 38 | 48 | 1× 222; 1× TJQKA; 1× ♣ 56789; 1× Royal Flush |
+| 824 | Regular 9 4 | 7083 | 28 | 38 | 48 | 4× Pair of Q's; 1× ♥ Flush; 1× JJJ33 |
+| 825 | Regular 9 5 | 7083 | 28 | 38 | 48 | 2× 88+77; 1× 222; 1× 6789T; 1× TTTT |
+| 826 | Regular 9 6 | 7083 | 28 | 38 | 48 | 5× Pair of 5's; 2× ♣ Flush; 1× QQQJJ; 1× ♠ A2345 |
+| 827 | Regular 9 7 | 7083 | 28 | 38 | 48 | 2× AA+KK; 2× JJJ; 1× 4444 |
+| 828 | Regular 9 8 | 7083 | 28 | 38 | 48 | 4× Pair of J's; 2× 23456; 1× ♥ 23456 |
+| 829 | Regular 9 9 | 7083 | 28 | 38 | 48 | 3× 88+77; 2× 999; 1× 333JJ; 1× 9999 |
+| 830 | Regular 9 10 | 7083 | 28 | 38 | 48 | 4× Pair of 3's; 1× 789TJ; 1× ♦ Flush; 1× Royal Flush |
+| 831 | Pro 9 1 | 7083 | 28 | 38 | 48 | 2× KK+QQ; 1× AAAA; 1× ♠ 789TJ |
+| 832 | Pro 9 2 | 7083 | 28 | 38 | 48 | 4× Pair of 9's; 2× 333; 2× ♠ Flush |
+| 833 | Pro 9 3 | 7083 | 28 | 38 | 48 | 2× 45678; 2× 77733; 1× ♥ 789TJ; 1× Royal Flush |
+| 834 | Pro 9 4 | 7083 | 28 | 38 | 48 | 4× Pair of 2's; 2× AA+TT; 1× TTT; 1× ♠ Flush |
+| 835 | Pro 9 5 | 7083 | 28 | 38 | 48 | 1× 89TJQ; 1× KKKK; 1× ♥ 45678 |
+| 836 | Pro 9 6 | 7083 | 28 | 38 | 48 | 5× Pair of 8's; 2× 77+33; 1× TTT; 1× ♥ Flush |
+| 837 | Pro 9 7 | 7083 | 28 | 38 | 48 | 1× 34567; 1× 66699; 1× AAAA; 1× ♠ 34567 |
+| 838 | Pro 9 8 | 7083 | 28 | 38 | 48 | 4× Pair of A's; 2× 99+77; 2× TTT |
+| 839 | Pro 9 9 | 7083 | 28 | 38 | 48 | 1× TTTKK; 1× KKKK; 1× Royal Flush |
+| 840 | Pro 9 10 | 7083 | 28 | 38 | 48 | 4× Pair of 7's; 3× JJ+22; 2× KKK; 2× A2345 |
+| 841 | Shark 9 1 | 7116 | 28 | 38 | 48 | 2× ♥ Flush; 1× 666AA; 1× Royal Flush |
+| 842 | Shark 9 2 | 7116 | 28 | 38 | 48 | 3× KK+88; 1× TTT; 2× 56789 |
+| 843 | Shark 9 3 | 7116 | 28 | 38 | 48 | 5× Pair of 9's; 1× QQQQ; 1× ♣ 56789 |
+| 844 | Shark 9 4 | 7116 | 28 | 38 | 48 | 2× 66+22; 1× 222; 1× ♥ Flush; 2× KKKTT |
+| 845 | Shark 9 5 | 7116 | 28 | 38 | 48 | 5× Pair of 2's; 1× 5555; 1× Royal Flush |
+| 846 | Shark 9 6 | 7116 | 28 | 38 | 48 | 2× JJ+88; 1× 34567; 2× 22255 |
+| 847 | Shark 9 7 | 7116 | 28 | 38 | 48 | 1× 888; 2× ♠ Flush; 1× 2222; 1× ♦ 34567 |
+| 848 | Shark 9 8 | 7116 | 28 | 38 | 48 | 4× Pair of 4's; 3× AA+99; 2× 789TJ; 1× 33388 |
+| 849 | Shark 9 9 | 7116 | 28 | 38 | 48 | 1× AAA; 1× ♦ Flush; 1× ♣ 9TJQK |
+| 850 | Shark 9 10 | 7116 | 28 | 38 | 48 | 2× TT+77; 1× 6789T; 1× 5555 |
+| 851 | High Roller 9 1 | 7148 | 28 | 38 | 48 | 4× Pair of 7's; 2× ♣ Flush; 1× 77799 |
+| 852 | High Roller 9 2 | 7148 | 28 | 38 | 48 | 1× 333; 1× AAAA; 1× Royal Flush |
+| 853 | High Roller 9 3 | 7148 | 28 | 38 | 48 | 4× Pair of K's; 3× 88+44; 1× ♥ Flush |
+| 854 | High Roller 9 4 | 7148 | 28 | 38 | 48 | 1× 6789T; 1× 7777; 1× ♠ 23456 |
+| 855 | High Roller 9 5 | 7148 | 28 | 38 | 48 | 4× Pair of 5's; 2× JJ+TT; 1× JJJ; 1× ♠ Flush |
+| 856 | High Roller 9 6 | 7148 | 28 | 38 | 48 | 1× A2345; 2× AAA22; 1× ♥ 23456 |
+| 857 | High Roller 9 7 | 7148 | 28 | 38 | 48 | 2× JJ+44; 1× ♠ Flush; 1× Royal Flush |
+| 858 | High Roller 9 8 | 7148 | 28 | 38 | 48 | 2× 888; 1× 56789; 1× 88822; 1× ♥ 56789 |
+| 859 | High Roller 9 9 | 7148 | 28 | 38 | 48 | 4× Pair of 4's; 2× TT+55; 1× ♦ Flush; 1× 5555 |
+| 860 | High Roller 9 10 | 7148 | 28 | 38 | 48 | 1× AAA; 1× ♦ 89TJQ; 1× Royal Flush |
+| 861 | Ace 9 1 | 7148 | 28 | 38 | 48 | 4× Pair of 10's; 2× 66+33; 1× 66644 |
+| 862 | Ace 9 2 | 7148 | 28 | 38 | 48 | 1× 45678; 1× 6666; 1× Royal Flush |
+| 863 | Ace 9 3 | 7148 | 28 | 38 | 48 | 4× Pair of 3's; 2× TT+44; 2× 666; 1× ♠ Flush |
+| 864 | Ace 9 4 | 7148 | 28 | 38 | 48 | 1× 9TJQK; 1× KKKK; 1× ♠ 56789 |
+| 865 | Ace 9 5 | 7148 | 28 | 38 | 48 | 4× Pair of 9's; 3× KK+33; 1× ♦ Flush |
+| 866 | Ace 9 6 | 7148 | 28 | 38 | 48 | 1× 555; 1× 45678; 2× 777KK; 1× KKKK |
+| 867 | Ace 9 7 | 7148 | 28 | 38 | 48 | 4× Pair of 2's; 2× 99+88; 1× ♠ Flush |
+| 868 | Ace 9 8 | 7148 | 28 | 38 | 48 | 1× 89TJQ; 1× QQQ22; 1× 7777 |
+| 869 | Ace 9 9 | 7148 | 28 | 38 | 48 | 5× Pair of 8's; 3× 55+33; 1× 999; 1× ♠ Flush |
+| 870 | Ace 9 10 | 7148 | 28 | 38 | 48 | 1× 23456; 2× 66622; 1× 7777; 1× ♦ 89TJQ |
+| 871 | Veteran 9 1 | 7180 | 28 | 38 | 48 | 2× KK+88; 1× 444; 2× ♥ Flush |
+| 872 | Veteran 9 2 | 7180 | 28 | 38 | 48 | 4× Pair of 10's; 1× 89TJQ; 1× 7777 |
+| 873 | Veteran 9 3 | 7180 | 28 | 38 | 48 | 2× 66+22; 1× QQQ; 1× ♥ Flush; 1× 555KK |
+| 874 | Veteran 9 4 | 7180 | 28 | 38 | 48 | 4× Pair of 3's; 1× 34567; 1× KKKK; 1× Royal Flush |
+| 875 | Veteran 9 5 | 7180 | 28 | 38 | 48 | 2× QQ+88; 1× 444; 1× 44488 |
+| 876 | Veteran 9 6 | 7180 | 28 | 38 | 48 | 4× Pair of 9's; 1× ♣ Flush; 1× AAAA |
+| 877 | Veteran 9 7 | 7180 | 28 | 38 | 48 | 2× 55+22; 1× 666; 1× JJJ55; 1× Royal Flush |
+| 878 | Veteran 9 8 | 7180 | 28 | 38 | 48 | 4× Pair of 2's; 2× 34567; 1× 3333 |
+| 879 | Veteran 9 9 | 7180 | 28 | 38 | 48 | 2× JJJ; 2× ♦ Flush; 1× JJJ88 |
+| 880 | Veteran 9 10 | 7180 | 28 | 38 | 48 | 4× Pair of 7's; 2× JJ+55; 1× 56789; 1× QQQQ |
+| 881 | Expert 9 1 | 7180 | 28 | 38 | 48 | 1× ♥ Flush; 1× AAATT; 1× Royal Flush |
+| 882 | Expert 9 2 | 7180 | 28 | 38 | 48 | 4× Pair of K's; 2× 77+44; 2× 444 |
+| 883 | Expert 9 3 | 7180 | 28 | 38 | 48 | 2× ♣ Flush; 1× 77733; 1× Royal Flush |
+| 884 | Expert 9 4 | 7180 | 28 | 38 | 48 | 2× JJ+66; 2× KKK; 2× A2345; 1× TTTT |
+| 885 | Expert 9 5 | 7180 | 28 | 38 | 48 | 4× Pair of 3's; 1× ♠ Flush; 1× 444KK; 1× ♥ 23456 |
+| 886 | Expert 9 6 | 7180 | 28 | 38 | 48 | 3× QQ+44; 2× 9TJQK; 1× 3333 |
+| 887 | Expert 9 7 | 7180 | 28 | 38 | 48 | 4× Pair of 8's; 1× 777; 1× ♣ Flush; 1× ♠ 45678 |
+| 888 | Expert 9 8 | 7180 | 28 | 38 | 48 | 2× TT+55; 2× 34567; 1× 55533; 1× JJJJ |
+| 889 | Expert 9 9 | 7180 | 28 | 38 | 48 | 2× AAA; 1× ♠ Flush; 1× ♠ 6789T |
+| 890 | Expert 9 10 | 7180 | 28 | 38 | 48 | 4× Pair of J's; 3× 88+33; 1× TTT88 |
+| 891 | Elite 9 1 | 7212 | 28 | 38 | 48 | 1× 56789; 1× 6666; 1× ♣ A2345 |
+| 892 | Elite 9 2 | 7212 | 28 | 38 | 48 | 2× TT+44; 1× QQQ; 1× KKK99 |
+| 893 | Elite 9 3 | 7212 | 28 | 38 | 48 | 4× Pair of K's; 1× 9TJQK; 1× 3333 |
+| 894 | Elite 9 4 | 7212 | 28 | 38 | 48 | 2× TT+33; 2× QQQ; 2× 666JJ |
+| 895 | Elite 9 5 | 7212 | 28 | 38 | 48 | 4× Pair of 6's; 1× 45678; 2× ♣ Flush; 1× 4444 |
+| 896 | Elite 9 6 | 7212 | 28 | 38 | 48 | 2× 99+22; 2× JJJ; 2× KKK22; 1× Royal Flush |
+| 897 | Elite 9 7 | 7212 | 28 | 38 | 48 | 5× Pair of Q's; 1× 9TJQK; 1× TTTT |
+| 898 | Elite 9 8 | 7212 | 28 | 38 | 48 | 2× 88+22; 1× 666AA; 1× ♦ 23456; 1× Royal Flush |
+| 899 | Elite 9 9 | 7212 | 28 | 38 | 48 | 4× Pair of 5's; 1× 555; 2× TJQKA; 1× ♦ Flush |
+| 900 | Elite 9 10 | 7212 | 28 | 38 | 48 | 2× AA+88; 2× 444KK; 1× 7777 |
+| 901 | Beginner 10 1 | 7245 | 28 | 38 | 48 | 4× Pair of J's; 1× QQQ; 1× ♥ Flush |
+| 902 | Beginner 10 2 | 7245 | 28 | 38 | 48 | 3× 77+22; 1× 89TJQ; 1× 3333 |
+| 903 | Beginner 10 3 | 7245 | 28 | 38 | 48 | 1× 333; 2× ♦ Flush; 1× 888AA; 1× ♣ 6789T |
+| 904 | Beginner 10 4 | 7245 | 28 | 38 | 48 | 5× Pair of K's; 2× TT+88; 1× TJQKA |
+| 905 | Beginner 10 5 | 7245 | 28 | 38 | 48 | 1× ♣ Flush; 1× JJJJ; 1× ♠ 56789 |
+| 906 | Beginner 10 6 | 7245 | 28 | 38 | 48 | 4× Pair of 6's; 3× AA+55; 1× TTT; 2× 23456 |
+| 907 | Beginner 10 7 | 7245 | 28 | 38 | 48 | 2× ♥ Flush; 1× 44488; 1× ♥ 9TJQK; 1× Royal Flush |
+| 908 | Beginner 10 8 | 7245 | 28 | 38 | 48 | 4× Pair of Q's; 2× JJ+77; 1× 888 |
+| 909 | Beginner 10 9 | 7245 | 28 | 38 | 48 | 1× ♣ Flush; 1× JJJKK; 1× 4444; 1× ♣ 56789 |
+| 910 | Beginner 10 10 | 7245 | 28 | 38 | 48 | 5× Pair of 5's; 3× AA+JJ; 1× TTT; 1× 23456 |
+| 911 | Amateur 10 1 | 7245 | 28 | 38 | 48 | 1× ♠ Flush; 1× 444JJ; 1× KKKK |
+| 912 | Amateur 10 2 | 7245 | 28 | 38 | 48 | 5× Pair of 10's; 2× 77+55; 2× 333 |
+| 913 | Amateur 10 3 | 7245 | 28 | 38 | 48 | 1× 56789; 1× ♣ Flush; 1× TTT44; 1× 7777 |
+| 914 | Amateur 10 4 | 7245 | 28 | 38 | 48 | 4× Pair of 3's; 2× KK+44; 1× 999; 1× ♠ 9TJQK |
+| 915 | Amateur 10 5 | 7245 | 28 | 38 | 48 | 2× 9TJQK; 1× ♥ Flush; 1× KKKK |
+| 916 | Amateur 10 6 | 7245 | 28 | 38 | 48 | 4× Pair of 9's; 3× TT+77; 1× 666JJ |
+| 917 | Amateur 10 7 | 7245 | 28 | 38 | 48 | 1× 666; 2× ♣ Flush; 1× AAAA; 1× ♠ 45678 |
+| 918 | Amateur 10 8 | 7245 | 28 | 38 | 48 | 5× Pair of 2's; 3× KK+QQ; 2× 6789T; 1× 44466 |
+| 919 | Amateur 10 9 | 7245 | 28 | 38 | 48 | 1× QQQ; 1× ♥ Flush; 1× 6666 |
+| 920 | Amateur 10 10 | 7245 | 28 | 38 | 48 | 4× Pair of 8's; 3× AA+66; 1× 88833; 1× Royal Flush |
+| 921 | Regular 10 1 | 7277 | 28 | 38 | 48 | 1× 444; 2× 789TJ; 1× ♦ Flush |
+| 922 | Regular 10 2 | 7277 | 28 | 38 | 48 | 4× Pair of A's; 2× QQ+66; 1× ♣ A2345 |
+| 923 | Regular 10 3 | 7277 | 28 | 38 | 48 | 1× TTT; 2× 333AA; 1× TTTT |
+| 924 | Regular 10 4 | 7277 | 28 | 38 | 48 | 5× Pair of 7's; 2× 99+66; 1× 23456; 2× ♥ Flush |
+| 925 | Regular 10 5 | 7277 | 28 | 38 | 48 | 1× 333; 1× 999KK; 1× 4444; 1× ♠ 23456 |
+| 926 | Regular 10 6 | 7277 | 28 | 38 | 48 | 5× Pair of K's; 2× QQ+99; 1× ♠ Flush |
+| 927 | Regular 10 7 | 7277 | 28 | 38 | 48 | 2× 999; 2× A2345; 1× 5555 |
+| 928 | Regular 10 8 | 7277 | 28 | 38 | 48 | 5× Pair of 5's; 2× 55+33; 1× ♣ Flush; 1× 222JJ |
+| 929 | Regular 10 9 | 7277 | 28 | 38 | 48 | 1× 222; 1× 6789T; 1× 6666 |
+| 930 | Regular 10 10 | 7277 | 28 | 38 | 48 | 3× QQ+JJ; 2× 222JJ; 1× ♣ 9TJQK |
+| 931 | Pro 10 1 | 7277 | 28 | 38 | 48 | 4× Pair of 8's; 1× A2345; 1× KKKK |
+| 932 | Pro 10 2 | 7277 | 28 | 38 | 48 | 2× 55+44; 1× 999; 1× ♣ Flush |
+| 933 | Pro 10 3 | 7277 | 28 | 38 | 48 | 1× TJQKA; 1× 8888; 1× ♥ 89TJQ |
+| 934 | Pro 10 4 | 7277 | 28 | 38 | 48 | 2× JJ+TT; 2× TTT; 1× ♦ Flush |
+| 935 | Pro 10 5 | 7277 | 28 | 38 | 48 | 5× Pair of 7's; 1× TJQKA; 1× 444JJ; 1× Royal Flush |
+| 936 | Pro 10 6 | 7277 | 28 | 38 | 48 | 3× 55+33; 1× 888; 1× JJJJ; 1× ♠ 45678 |
+| 937 | Pro 10 7 | 7277 | 28 | 38 | 48 | 4× Pair of Q's; 1× 56789; 1× ♦ Flush |
+| 938 | Pro 10 8 | 7277 | 28 | 38 | 48 | 1× 999JJ; 1× AAAA; 1× ♥ 56789 |
+| 939 | Pro 10 9 | 7277 | 28 | 38 | 48 | 5× Pair of 5's; 3× AA+JJ; 1× 555; 2× ♠ Flush |
+| 940 | Pro 10 10 | 7277 | 28 | 38 | 48 | 2× A2345; 1× 444AA; 1× ♠ 56789 |
+| 941 | Shark 10 1 | 7309 | 28 | 38 | 48 | 5× Pair of J's; 1× 777; 1× ♠ Flush |
+| 942 | Shark 10 2 | 7309 | 28 | 38 | 48 | 2× 888TT; 1× 9999; 1× ♦ 23456 |
+| 943 | Shark 10 3 | 7309 | 28 | 38 | 48 | 5× Pair of 4's; 2× KK+55; 1× 23456; 1× ♦ Flush |
+| 944 | Shark 10 4 | 7309 | 28 | 38 | 48 | 1× KKK; 1× 33377; 1× ♠ 56789 |
+| 945 | Shark 10 5 | 7309 | 28 | 38 | 48 | 4× Pair of 10's; 3× 77+66; 1× ♦ Flush |
+| 946 | Shark 10 6 | 7309 | 28 | 38 | 48 | 1× 45678; 1× TTTAA; 1× ♣ 45678; 1× Royal Flush |
+| 947 | Shark 10 7 | 7309 | 28 | 38 | 48 | 2× KK+33; 1× 444; 2× ♠ Flush; 1× 8888 |
+| 948 | Shark 10 8 | 7309 | 28 | 38 | 48 | 5× Pair of Q's; 1× A2345; 1× 777JJ |
+| 949 | Shark 10 9 | 7309 | 28 | 38 | 48 | 2× 99+66; 2× TTT; 1× ♠ 6789T |
+| 950 | Shark 10 10 | 7309 | 28 | 38 | 48 | 1× 34567; 1× ♣ Flush; 1× 888AA; 1× TTTT |
+| 951 | High Roller 10 1 | 7341 | 28 | 38 | 48 | 5× Pair of 2's; 3× QQ+77; 1× 999 |
+| 952 | High Roller 10 2 | 7341 | 28 | 38 | 48 | 1× 89TJQ; 2× ♥ Flush; 1× ♣ 89TJQ |
+| 953 | High Roller 10 3 | 7341 | 28 | 38 | 48 | 4× Pair of 7's; 2× 66+55; 2× 444; 1× 666AA |
+| 954 | High Roller 10 4 | 7341 | 28 | 38 | 48 | 1× 23456; 1× ♣ Flush; 1× ♣ 9TJQK; 1× Royal Flush |
+| 955 | High Roller 10 5 | 7341 | 28 | 38 | 48 | 5× Pair of K's; 3× QQ+33; 1× TTT55 |
+| 956 | High Roller 10 6 | 7341 | 28 | 38 | 48 | 1× TTT; 2× A2345; 1× ♦ Flush |
+| 957 | High Roller 10 7 | 7341 | 28 | 38 | 48 | 4× Pair of 6's; 3× KK+55; 1× QQQJJ; 1× ♠ 45678 |
+| 958 | High Roller 10 8 | 7341 | 28 | 38 | 48 | 1× 333; 2× 6789T; 1× ♠ Flush; 1× AAAA |
+| 959 | High Roller 10 9 | 7341 | 28 | 38 | 48 | 4× Pair of Q's; 1× JJJ33; 1× ♣ 45678 |
+| 960 | High Roller 10 10 | 7341 | 28 | 38 | 48 | 3× AA+99; 1× QQQ; 1× ♦ Flush; 1× AAAA |
+| 961 | Ace 10 1 | 7341 | 28 | 38 | 48 | 4× Pair of 5's; 1× 34567; 1× 44422 |
+| 962 | Ace 10 2 | 7341 | 28 | 38 | 48 | 1× AAA; 1× ♦ Flush; 1× ♣ A2345 |
+| 963 | Ace 10 3 | 7341 | 28 | 38 | 48 | 4× Pair of J's; 2× JJ+88; 2× 34567 |
+| 964 | Ace 10 4 | 7341 | 28 | 38 | 48 | 2× 777; 2× ♠ Flush; 1× 777AA; 1× Royal Flush |
+| 965 | Ace 10 5 | 7341 | 28 | 38 | 48 | 4× Pair of 4's; 3× TT+44; 2× TJQKA; 1× 5555 |
+| 966 | Ace 10 6 | 7341 | 28 | 38 | 48 | 2× KKK; 1× ♦ Flush; 1× 66699 |
+| 967 | Ace 10 7 | 7341 | 28 | 38 | 48 | 1× 789TJ; 1× TTTT; 1× ♠ 23456 |
+| 968 | Ace 10 8 | 7341 | 28 | 38 | 48 | 2× AA+66; 1× JJJ; 1× ♥ Flush; 1× TTTJJ |
+| 969 | Ace 10 9 | 7341 | 28 | 38 | 48 | 5× Pair of 2's; 1× 23456; 1× 3333; 1× ♣ 89TJQ |
+| 970 | Ace 10 10 | 7341 | 28 | 38 | 48 | 2× QQQ; 2× 777QQ; 1× Royal Flush |
+| 971 | Veteran 10 1 | 7373 | 28 | 38 | 48 | 3× TT+88; 1× 6789T; 1× ♥ A2345 |
+| 972 | Veteran 10 2 | 7373 | 28 | 38 | 48 | 4× Pair of 5's; 1× KKK55; 1× QQQQ |
+| 973 | Veteran 10 3 | 7373 | 28 | 38 | 48 | 2× AA+33; 1× TTT; 1× 34567 |
+| 974 | Veteran 10 4 | 7373 | 28 | 38 | 48 | 5× Pair of J's; 2× ♦ Flush; 1× 55577 |
+| 975 | Veteran 10 5 | 7373 | 28 | 38 | 48 | 2× 777; 1× 789TJ; 1× 3333; 1× ♥ 6789T |
+| 976 | Veteran 10 6 | 7373 | 28 | 38 | 48 | 5× Pair of 4's; 2× KK+JJ; 1× ♦ Flush; 1× 99922 |
+| 977 | Veteran 10 7 | 7373 | 28 | 38 | 48 | 2× KKK; 1× 23456; 1× Royal Flush |
+| 978 | Veteran 10 8 | 7373 | 28 | 38 | 48 | 3× 99+66; 1× KKKAA; 1× ♣ 34567 |
+| 979 | Veteran 10 9 | 7373 | 28 | 38 | 48 | 4× Pair of 6's; 1× 999; 2× 56789; 1× KKKK |
+| 980 | Veteran 10 10 | 7373 | 28 | 38 | 48 | 3× QQ+22; 2× ♣ Flush; 1× 666QQ; 1× ♠ A2345 |
+| 981 | Expert 10 1 | 7373 | 28 | 38 | 48 | 4× Pair of Q's; 2× 222; 1× 789TJ |
+| 982 | Expert 10 2 | 7373 | 28 | 38 | 48 | 3× 88+55; 1× 4444; 1× Royal Flush |
+| 983 | Expert 10 3 | 7373 | 28 | 38 | 48 | 5× Pair of 5's; 1× 6789T; 1× ♥ Flush; 2× 77766 |
+| 984 | Expert 10 4 | 7373 | 28 | 38 | 48 | 2× AA+JJ; 1× 333; 1× 4444 |
+| 985 | Expert 10 5 | 7373 | 28 | 38 | 48 | 4× Pair of 10's; 2× ♥ Flush; 1× Royal Flush |
+| 986 | Expert 10 6 | 7373 | 28 | 38 | 48 | 2× 77+55; 1× 89TJQ; 1× JJJ99; 1× ♥ A2345 |
+| 987 | Expert 10 7 | 7373 | 28 | 38 | 48 | 4× Pair of 3's; 1× 888; 1× ♦ Flush; 1× 5555 |
+| 988 | Expert 10 8 | 7373 | 28 | 38 | 48 | 3× KK+TT; 1× 444AA; 1× ♥ 789TJ |
+| 989 | Expert 10 9 | 7373 | 28 | 38 | 48 | 4× Pair of 9's; 1× 222; 1× 6789T |
+| 990 | Expert 10 10 | 7373 | 28 | 38 | 48 | 3× 66+44; 1× ♥ Flush; 1× AAA22; 1× Royal Flush |
+| 991 | Elite 10 1 | 7406 | 28 | 38 | 48 | 2× 222; 1× 56789; 1× 6666 |
+| 992 | Elite 10 2 | 7406 | 28 | 38 | 48 | 4× Pair of Q's; 3× JJ+99; 1× JJJTT |
+| 993 | Elite 10 3 | 7406 | 28 | 38 | 48 | 1× 888; 1× TJQKA; 1× ♣ 89TJQ; 1× Royal Flush |
+| 994 | Elite 10 4 | 7406 | 28 | 38 | 48 | 4× Pair of 4's; 3× JJ+44; 2× ♣ Flush; 1× 22233 |
+| 995 | Elite 10 5 | 7406 | 28 | 38 | 48 | 1× AAA; 2× 56789; 1× ♦ 89TJQ |
+| 996 | Elite 10 6 | 7406 | 28 | 38 | 48 | 3× JJ+TT; 1× ♥ Flush; 1× Royal Flush |
+| 997 | Elite 10 7 | 7406 | 28 | 38 | 48 | 4× Pair of 7's; 2× AAA; 1× 56789; 1× ♠ 34567 |
+| 998 | Elite 10 8 | 7406 | 28 | 38 | 48 | 2× 44+33; 2× ♥ Flush; 1× 8888; 1× Royal Flush |
+| 999 | Elite 10 9 | 7406 | 28 | 38 | 48 | 1× KKK; 1× 777KK; 1× ♣ A2345 |
+| 1000 | Elite 10 10 | 7406 | 28 | 38 | 48 | 2× TT+99; 1× 789TJ; 1× ♦ Flush |
 
 ---
 

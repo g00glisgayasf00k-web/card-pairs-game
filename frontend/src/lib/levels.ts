@@ -50,7 +50,7 @@ export interface LevelConfig {
   estimatedMoves: number;
   /** Max hands before game over — 1★ budget. */
   moveLimit: number;
-  /** Glass / crate overlays from level 31+. */
+  /** Glass / crate / vault overlays from level 31+. */
   blockers: BlockerSpawnConfig | null;
   /** Permanent pillars from level 101+ — cannot be moved or destroyed. */
   fixedObstacles: FixedObstacle[];
@@ -59,7 +59,7 @@ export interface LevelConfig {
 /** Level progress keys may be hand labels or specific challenge keys (e.g. pair:A). */
 export type HandCounts = Partial<Record<string, number>>;
 
-export const MAX_LEVEL = 500;
+export const MAX_LEVEL = 1000;
 /** From this level, milestone hands require exact ranks / suits for variety. */
 export const SPECIFIC_CHALLENGE_FROM_LEVEL = 40;
 
@@ -382,7 +382,9 @@ export function campaignAvgPtsForLevel(level: number): number {
   if (world <= 2) return 120;
   if (world <= 5) return 135;
   if (world <= 12) return 165;
-  return 200;
+  if (world <= 50) return 200;
+  // Worlds 51–100: climb gently toward ~230 so late budgets stay honest.
+  return Math.min(230, 200 + Math.round((world - 50) * 0.6));
 }
 
 /** Hand budgets from point target ÷ realistic avg pts/hand. */
@@ -428,6 +430,9 @@ function targetPointsForLevel(level: number): number {
   let pts = Math.round(scaled * TARGET_POINT_BOOST);
   if (level > 50) {
     pts = Math.round(pts * (1 + (level - 50) * 0.002));
+  }
+  if (level > 500) {
+    pts = Math.round(pts * (1 + (level - 500) * 0.0015));
   }
   return pts;
 }

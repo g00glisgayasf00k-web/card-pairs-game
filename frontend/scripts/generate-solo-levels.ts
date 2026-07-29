@@ -38,7 +38,7 @@ lines.push(
   `- **Goals** — milestone hands required. From level ${SPECIFIC_CHALLENGE_FROM_LEVEL}+ these often need specific ranks/suits.`
 );
 lines.push(
-  `- **Avg pts/hand** (pacing math): ~${campaignAvgPtsForLevel(1)} early → ~${campaignAvgPtsForLevel(500)} late worlds.`
+  `- **Avg pts/hand** (pacing math): ~${campaignAvgPtsForLevel(1)} early → ~${campaignAvgPtsForLevel(MAX_LEVEL)} late worlds.`
 );
 lines.push(
   "- Solo hands pay **base poker values only** (no Quick Play ×10 goal bonus)."

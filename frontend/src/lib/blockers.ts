@@ -1,4 +1,4 @@
-export type BlockerKind = "glass" | "crate" | "fixed";
+export type BlockerKind = "glass" | "crate" | "vault" | "fixed";
 
 export interface Blocker {
   kind: BlockerKind;
@@ -9,8 +9,12 @@ export interface Blocker {
 export interface BlockerSpawnConfig {
   /** Share of cells that start with a blocker (0–1). */
   density: number;
-  /** 0 = glass only, 1 = crates only, values in between mix both. */
+  /** Of non-vault blockers: 0 = glass only, 1 = crates only. */
   crateRatio: number;
+  /** Share of blockers that are vaults (0–1). */
+  vaultRatio: number;
+  /** Of vaults, share that spawn as iron vaults (HP 4). */
+  ironVaultRatio: number;
 }
 
 export interface FixedObstacle {
@@ -20,9 +24,12 @@ export interface FixedObstacle {
 
 export type BlockerGrid = (Blocker | null)[][];
 
-export function blockerMaxHp(kind: BlockerKind): number {
+export function blockerMaxHp(kind: BlockerKind, iron = false): number {
   if (kind === "fixed") return 999;
-  return kind === "glass" ? 1 : 2;
+  if (kind === "glass") return 1;
+  if (kind === "crate") return 2;
+  if (kind === "vault") return iron ? 4 : 3;
+  return 1;
 }
 
 export function isFixedBlocker(blocker: Blocker | null | undefined): boolean {
@@ -41,14 +48,19 @@ export const GLASS_INTRO_LEVEL = 31;
 export const CRATE_INTRO_LEVEL = 51;
 /** Permanent pillars that cannot be cleared or moved (UI world "11-1"). */
 export const FIXED_INTRO_LEVEL = 101;
+/** Hard vault overlays (3–4 hits) from the second campaign half. */
+export const VAULT_INTRO_LEVEL = 501;
+/** Share of vaults may spawn as iron (HP 4). */
+export const IRON_VAULT_INTRO_LEVEL = 701;
 
 /** Blocker rules scale in gently once glass is introduced mid-campaign. */
 export function blockersForLevel(level: number): BlockerSpawnConfig | null {
   if (level < GLASS_INTRO_LEVEL) return null;
 
   const sinceGlass = level - GLASS_INTRO_LEVEL;
+  const densityCap = level >= VAULT_INTRO_LEVEL ? 0.26 : 0.2;
   const density = Math.min(
-    0.2,
+    densityCap,
     0.05 + Math.floor(sinceGlass / 10) * 0.014 + (sinceGlass % 10) * 0.0025
   );
 
@@ -57,7 +69,17 @@ export function blockersForLevel(level: number): BlockerSpawnConfig | null {
       ? 0
       : Math.min(0.65, (Math.floor((level - CRATE_INTRO_LEVEL) / 10) + 1) * 0.12);
 
-  return { density, crateRatio };
+  const vaultRatio =
+    level < VAULT_INTRO_LEVEL
+      ? 0
+      : Math.min(0.45, 0.12 + Math.floor((level - VAULT_INTRO_LEVEL) / 20) * 0.04);
+
+  const ironVaultRatio =
+    level < IRON_VAULT_INTRO_LEVEL
+      ? 0
+      : Math.min(0.55, 0.15 + Math.floor((level - IRON_VAULT_INTRO_LEVEL) / 30) * 0.08);
+
+  return { density, crateRatio, vaultRatio, ironVaultRatio };
 }
 
 /** Deterministic seeded RNG for fixed board layouts. */
@@ -81,18 +103,12 @@ function canPlaceFixed(
   );
 }
 
-/** Procedural fixed pillars — permanent obstacles that shrink the playable board. */
-export function fixedObstaclesForLevel(level: number): FixedObstacle[] {
-  if (level < FIXED_INTRO_LEVEL) return [];
+/** Named maze layouts for late / boss stages — never seal a full row or column. */
+function namedFixedLayout(level: number): FixedObstacle[] | null {
+  const late = level >= VAULT_INTRO_LEVEL;
 
-  const rng = seededRandom(level, 17);
-  const since = level - FIXED_INTRO_LEVEL;
-  const count = Math.min(10, 2 + Math.floor(since / 35));
-  const minGap = since < 80 ? 3 : 2;
-  const placed: FixedObstacle[] = [];
-
-  // Named patterns on milestone levels for variety.
   if (level % 50 === 0) {
+    // Center block + corners
     return [
       { row: 3, col: 3 },
       { row: 3, col: 4 },
@@ -100,19 +116,127 @@ export function fixedObstaclesForLevel(level: number): FixedObstacle[] {
       { row: 4, col: 4 },
       { row: 1, col: 6 },
       { row: 6, col: 1 },
-    ];
-  }
-  if (level % 25 === 0) {
-    return [
-      { row: 2, col: 4 },
-      { row: 4, col: 2 },
-      { row: 4, col: 5 },
-      { row: 6, col: 4 },
+      ...(late
+        ? [
+            { row: 1, col: 1 },
+            { row: 6, col: 6 },
+            { row: 2, col: 5 },
+            { row: 5, col: 2 },
+          ]
+        : []),
     ];
   }
 
+  if (level % 25 === 0) {
+    if (!late) {
+      return [
+        { row: 2, col: 4 },
+        { row: 4, col: 2 },
+        { row: 4, col: 5 },
+        { row: 6, col: 4 },
+      ];
+    }
+    // Late cross maze
+    return [
+      { row: 2, col: 4 },
+      { row: 3, col: 4 },
+      { row: 4, col: 2 },
+      { row: 4, col: 3 },
+      { row: 4, col: 4 },
+      { row: 4, col: 5 },
+      { row: 5, col: 4 },
+      { row: 6, col: 4 },
+      { row: 1, col: 3 },
+      { row: 6, col: 5 },
+    ];
+  }
+
+  if (late && level % 10 === 0) {
+    const variant = Math.floor(level / 10) % 4;
+    if (variant === 0) {
+      // Vertical corridor walls
+      return [
+        { row: 1, col: 2 },
+        { row: 2, col: 2 },
+        { row: 3, col: 2 },
+        { row: 5, col: 2 },
+        { row: 6, col: 2 },
+        { row: 1, col: 5 },
+        { row: 2, col: 5 },
+        { row: 4, col: 5 },
+        { row: 5, col: 5 },
+        { row: 6, col: 5 },
+      ];
+    }
+    if (variant === 1) {
+      // Ring (hollow center)
+      return [
+        { row: 2, col: 2 },
+        { row: 2, col: 3 },
+        { row: 2, col: 4 },
+        { row: 2, col: 5 },
+        { row: 3, col: 2 },
+        { row: 3, col: 5 },
+        { row: 4, col: 2 },
+        { row: 4, col: 5 },
+        { row: 5, col: 2 },
+        { row: 5, col: 3 },
+        { row: 5, col: 4 },
+        { row: 5, col: 5 },
+      ];
+    }
+    if (variant === 2) {
+      // Split board (gap at mid)
+      return [
+        { row: 1, col: 3 },
+        { row: 2, col: 3 },
+        { row: 3, col: 3 },
+        { row: 5, col: 3 },
+        { row: 6, col: 3 },
+        { row: 1, col: 4 },
+        { row: 2, col: 4 },
+        { row: 4, col: 4 },
+        { row: 5, col: 4 },
+        { row: 6, col: 4 },
+      ];
+    }
+    // Diagonal stagger
+    return [
+      { row: 1, col: 1 },
+      { row: 2, col: 2 },
+      { row: 3, col: 3 },
+      { row: 5, col: 5 },
+      { row: 6, col: 6 },
+      { row: 1, col: 6 },
+      { row: 2, col: 5 },
+      { row: 5, col: 2 },
+      { row: 6, col: 1 },
+      { row: 4, col: 1 },
+      { row: 4, col: 6 },
+    ];
+  }
+
+  return null;
+}
+
+/** Procedural fixed pillars — permanent obstacles that shrink the playable board. */
+export function fixedObstaclesForLevel(level: number): FixedObstacle[] {
+  if (level < FIXED_INTRO_LEVEL) return [];
+
+  const named = namedFixedLayout(level);
+  if (named) return named;
+
+  const rng = seededRandom(level, 17);
+  const since = level - FIXED_INTRO_LEVEL;
+  const late = level >= VAULT_INTRO_LEVEL;
+  const count = late
+    ? Math.min(14, 6 + Math.floor((level - VAULT_INTRO_LEVEL) / 40))
+    : Math.min(10, 2 + Math.floor(since / 35));
+  const minGap = late ? (level >= IRON_VAULT_INTRO_LEVEL ? 1 : 2) : since < 80 ? 3 : 2;
+  const placed: FixedObstacle[] = [];
+
   let attempts = 0;
-  while (placed.length < count && attempts < 80) {
+  while (placed.length < count && attempts < 120) {
     attempts++;
     const row = 1 + Math.floor(rng() * 6);
     const col = 1 + Math.floor(rng() * 6);
@@ -134,9 +258,19 @@ export function spawnBlockers(
   rng: () => number = Math.random
 ): BlockerGrid {
   const grid = emptyBlockerGrid(rows, cols);
+  const vaultRatio = config.vaultRatio ?? 0;
+  const ironVaultRatio = config.ironVaultRatio ?? 0;
+
   for (let r = 0; r < rows; r++) {
     for (let c = 0; c < cols; c++) {
       if (rng() >= config.density) continue;
+
+      if (vaultRatio > 0 && rng() < vaultRatio) {
+        const iron = ironVaultRatio > 0 && rng() < ironVaultRatio;
+        grid[r]![c] = { kind: "vault", hp: blockerMaxHp("vault", iron) };
+        continue;
+      }
+
       const kind: BlockerKind = rng() < config.crateRatio ? "crate" : "glass";
       grid[r]![c] = { kind, hp: blockerMaxHp(kind) };
     }
@@ -183,7 +317,7 @@ function neighbors(r: number, c: number, rows: number, cols: number): [number, n
   return out;
 }
 
-/** Glass / crates lose HP when orthogonally adjacent to a cleared cell; fixed pillars never break. */
+/** Glass / crates / vaults lose HP when orthogonally adjacent to a cleared cell; fixed pillars never break. */
 export function applyBlockerDamage(
   blockers: BlockerGrid,
   clearedKeys: Set<string>,
@@ -211,22 +345,24 @@ export function applyBlockerDamage(
 export function blockerLabel(kind: BlockerKind): string {
   if (kind === "glass") return "Glass";
   if (kind === "crate") return "Crate";
+  if (kind === "vault") return "Vault";
   return "Pillar";
 }
 
 export function blockersGuideText(hasFixed: boolean): string {
   const base =
-    "Glass breaks in one hit from a neighboring hand. Crates need two — or one bomb blast.";
+    "Glass breaks in one hit from a neighboring hand. Crates need two — or one bomb blast. Vaults need three (iron vaults four).";
   if (!hasFixed) return base;
   return `${base} Stone pillars are permanent — plan routes around them.`;
 }
 
-export type BlockerIntroKind = "glass" | "crate" | "fixed";
+export type BlockerIntroKind = "glass" | "crate" | "fixed" | "vault";
 
 const INTRO_SEEN_KEY: Record<BlockerIntroKind, string> = {
   glass: "royalMatchSeenGlassIntro",
   crate: "royalMatchSeenCrateIntro",
   fixed: "royalMatchSeenFixedIntro",
+  vault: "royalMatchSeenVaultIntro",
 };
 
 /** Which new obstacle (if any) this level introduces that the player hasn't been shown yet. */
@@ -237,6 +373,7 @@ export function pendingBlockerIntro(
   if (typeof localStorage === "undefined") return null;
   if (fixed.length > 0 && !localStorage.getItem(INTRO_SEEN_KEY.fixed)) return "fixed";
   if (!config) return null;
+  if ((config.vaultRatio ?? 0) > 0 && !localStorage.getItem(INTRO_SEEN_KEY.vault)) return "vault";
   if (config.crateRatio < 1 && !localStorage.getItem(INTRO_SEEN_KEY.glass)) return "glass";
   if (config.crateRatio > 0 && !localStorage.getItem(INTRO_SEEN_KEY.crate)) return "crate";
   return null;
@@ -272,6 +409,18 @@ export function blockerIntroContent(kind: BlockerIntroKind): {
         "Crates are tougher than glass.",
         "They take two hits from neighbouring hands to break open.",
         "Or blow one apart instantly with a bomb power-up.",
+      ],
+    };
+  }
+  if (kind === "vault") {
+    return {
+      icon: "🔐",
+      title: "New: Steel Vaults",
+      lines: [
+        "Vaults seal cards behind heavy plating.",
+        "They take three neighbouring hits to crack — later worlds add iron vaults that need four.",
+        "A bomb still clears the vault sitting on the blast cell.",
+        "Pillar mazes get tighter from here — route carefully.",
       ],
     };
   }

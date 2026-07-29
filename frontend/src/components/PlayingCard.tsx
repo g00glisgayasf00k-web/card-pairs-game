@@ -55,15 +55,14 @@ export function PlayingCard({ card, blocker, selected, guided, hinted, popping }
             className={[
               "blocker-overlay",
               `blocker-overlay--${blocker.kind}`,
-              blocker.kind === "crate" && blocker.hp === 1 ? "blocker-overlay--damaged" : "",
+              blocker.kind === "vault" && blocker.hp >= 4 ? "blocker-overlay--iron" : "",
+              blockerDamagedClass(blocker),
             ]
               .filter(Boolean)
               .join(" ")}
             aria-hidden
           >
-            <span className="blocker-overlay__icon">
-              {blocker.kind === "glass" ? "🧊" : blocker.kind === "crate" ? "📦" : "🪨"}
-            </span>
+            <span className="blocker-overlay__icon">{blockerIcon(blocker)}</span>
           </div>
         )}
       </div>
@@ -105,17 +104,30 @@ export function PlayingCard({ card, blocker, selected, guided, hinted, popping }
           className={[
             "blocker-overlay",
             `blocker-overlay--${blocker.kind}`,
-            blocker.kind === "crate" && blocker.hp === 1 ? "blocker-overlay--damaged" : "",
+            blocker.kind === "vault" && blocker.hp >= 4 ? "blocker-overlay--iron" : "",
+            blockerDamagedClass(blocker),
           ]
             .filter(Boolean)
             .join(" ")}
           aria-hidden
         >
-          <span className="blocker-overlay__icon">
-            {blocker.kind === "glass" ? "🧊" : blocker.kind === "crate" ? "📦" : "🪨"}
-          </span>
+          <span className="blocker-overlay__icon">{blockerIcon(blocker)}</span>
         </div>
       )}
     </div>
   );
+}
+
+function blockerIcon(blocker: Blocker): string {
+  if (blocker.kind === "glass") return "🧊";
+  if (blocker.kind === "crate") return "📦";
+  if (blocker.kind === "vault") return blocker.hp >= 4 ? "🛡️" : "🔐";
+  return "🪨";
+}
+
+function blockerDamagedClass(blocker: Blocker): string {
+  if (blocker.kind === "crate" && blocker.hp === 1) return "blocker-overlay--damaged";
+  if (blocker.kind === "vault" && blocker.hp === 1) return "blocker-overlay--damaged";
+  if (blocker.kind === "vault" && blocker.hp === 2) return "blocker-overlay--cracked";
+  return "";
 }

@@ -118,7 +118,7 @@ export function WelcomeOnboarding({ onAuthSuccess }: Props) {
                 <div className="welcome-mode__body">
                   <img className="welcome-mode__label" src={HOME_ASSETS.cards.purple.label} alt="Solo" />
                   <strong>Enter table</strong>
-                  <span>500 campaign levels, stars &amp; energy</span>
+                  <span>1000 campaign levels, stars &amp; energy</span>
                 </div>
                 <span className="welcome-mode__icon-wrap">
                   <img src={HOME_ASSETS.cards.purple.circle} alt="" aria-hidden />

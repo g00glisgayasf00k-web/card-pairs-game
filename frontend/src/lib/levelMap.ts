@@ -2,7 +2,7 @@ import { MAX_LEVEL } from "./levels";
 
 export type LevelNodeState = "locked" | "unlocked" | "completed";
 
-export const WORLDS = 50;
+export const WORLDS = 100;
 export const STAGES_PER_WORLD = 10;
 export const TOTAL_LEVELS = MAX_LEVEL;
 

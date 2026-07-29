@@ -827,7 +827,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
         if (isBlocked(blockers[row]?.[col])) {
           const msg = isFixedBlocker(blockers[row]?.[col])
             ? "Stone pillars can't be cleared — route around them"
-            : "Break the glass or crate first";
+            : "Break the glass, crate, or vault first";
           if (embedded) showFeedback(msg, true);
           else setMessage(msg);
           clear();
@@ -860,7 +860,7 @@ export const GameBoard = forwardRef<GameBoardHandle, Props>(
         const hitsFixed = swipePath.some((p) => isFixedBlocker(blockers[p.row]?.[p.col]));
         const msg = hitsFixed
           ? "Can't swipe through stone pillars"
-          : "Clear the glass or crate blocking that card";
+          : "Clear the glass, crate, or vault blocking that card";
         if (embedded) showFeedback(msg, true);
         else setMessage(msg);
         clear();

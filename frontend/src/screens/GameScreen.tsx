@@ -6,14 +6,11 @@ import {
   HAND_DISPLAY,
   HAND_RANK_ORDER,
   HAND_SCORE_LIST,
-  POWER_BUY_OPTIONS,
   SPECIALS_EARN_BY_HAND,
   SPECIALS_GUIDE,
   findMatchingGoal,
-  powerBuySpecial,
   type FullHandResult,
   type HandLabel,
-  type PowerBuyKind,
 } from "../lib/pokerHands";
 import { campaignLeaderboardPoints, campaignLeaderboardPointsFromProgress, computeLevelStars, challengeKey, challengeProgress, formatChallenge, formatChallengeLabel, applyHandToChallengeCounts, buildChallengeMissionConfig, getLevelConfig, levelPointsMet, levelRequirementsMet, movesRemaining, MAX_LEVEL, outOfMoves, type HandCounts } from "../lib/levels";
 import {
@@ -65,7 +62,6 @@ import {
 } from "../lib/levelProgress";
 import { formatLevelId } from "../lib/levelMap";
 import { GameBoard, type GameBoardHandle } from "../components/GameBoard";
-import { HOME_ASSETS, HomeKitShell } from "../components/home";
 import { ProfileModal } from "../components/ProfileModal";
 import { GemShopModal } from "../components/GemShopModal";
 import { OutOfEnergyModal } from "../components/OutOfEnergyModal";
@@ -966,32 +962,6 @@ export function GameScreen({
   const energyState = syncEnergyState();
   const energy = energyState.energy;
   void walletTick;
-
-  const handleBuyPower = useCallback(
-    (kind: PowerBuyKind, cost: number, name: string) => {
-      if (boardLocked) {
-        handleBoardFeedback("Power-ups can only be added while the board is active.", true);
-        return;
-      }
-      if (credits < cost) {
-        handleBoardFeedback(`You need ${cost} gems to buy ${name}.`, true);
-        return;
-      }
-      const special = powerBuySpecial(kind);
-      if (!boardRef.current?.buyPower(special)) {
-        handleBoardFeedback("No regular card is available for that power-up.", true);
-        return;
-      }
-
-      const nextCredits = credits - cost;
-      setRun((prev) => ({ ...prev, credits: nextCredits }));
-      const saved = loadProgress();
-      if (saved) saveProgress({ ...saved, credits: nextCredits });
-      refreshWallet();
-      handleBoardFeedback(`${name} added to a random card.`);
-    },
-    [boardLocked, credits, handleBoardFeedback, refreshWallet]
-  );
 
   const waitDeadlineAt =
     challengeResult?.finish_deadline_at ??
@@ -2259,66 +2229,49 @@ export function GameScreen({
       )}
 
       {showSpecials && (
-        <HomeKitShell
-          tone="shop"
-          title="Powers"
-          lead="Earn powers from poker hands or add one to a random card."
-          brandIcon={HOME_ASSETS.nav.shop}
-          onClose={() => setShowSpecials(false)}
-          chip={
-            <span className="hk-kit__chip">
-              <img src={HOME_ASSETS.header.gems} alt="" />
-              {credits.toLocaleString()}
-            </span>
-          }
+        <div
+          className="modal-overlay scores-overlay powers-overlay"
+          onClick={() => setShowSpecials(false)}
+          role="presentation"
         >
-          <div className="powers-shop">
+          <div
+            className="modal powers-modal"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-labelledby="specials-title"
+          >
+            <header className="powers-modal__hero">
+              <div className="powers-modal__hero-art" aria-hidden>
+                <SpecialArt type="bomb" className="special-art--hero" />
+                <SpecialArt type="joker" className="special-art--hero special-art--hero-main" />
+                <SpecialArt type="rainbow" className="special-art--hero" />
+              </div>
+              <h2 id="specials-title">Power-ups</h2>
+              <p className="powers-modal__lead">
+                Earn them on big hands — they spawn where your swipe started
+              </p>
+            </header>
+
             {(cfg.blockers || cfg.fixedObstacles.length > 0) && (
-              <p className="powers-shop__tip">
+              <p className="powers-modal__tip">
                 Glass breaks in one hit. Crates need two — or one bomb blast.
               </p>
             )}
 
-            <section className="powers-shop__section" aria-labelledby="buy-powers-title">
-              <h3 id="buy-powers-title">Buy now</h3>
-              <ul className="powers-shop__list">
-                {POWER_BUY_OPTIONS.map((power) => (
-                  <li key={power.kind} className="powers-shop-card">
-                    <div className="powers-shop-card__art">
-                      <SpecialArt type={power.art} className="special-art--tile" />
-                    </div>
-                    <div className="powers-shop-card__copy">
-                      <strong>{power.name}</strong>
-                      <span>{power.description}</span>
-                    </div>
-                    <button
-                      type="button"
-                      className="powers-shop-card__buy"
-                      disabled={boardLocked || credits < power.cost}
-                      onClick={() => handleBuyPower(power.kind, power.cost, power.name)}
-                    >
-                      <img src={HOME_ASSETS.header.gems} alt="" />
-                      {power.cost}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            </section>
-
-            <section className="powers-shop__section" aria-labelledby="power-guide-title">
-              <h3 id="power-guide-title">How powers work</h3>
-              <ul className="powers-guide-list">
-                {SPECIALS_GUIDE.map((sp) => (
-                  <li key={sp.type}>
-                    <SpecialArt type={sp.type} className="special-art--tiny" />
-                    <span>
-                      <strong>{sp.name}</strong>
-                      <small>{sp.effect}</small>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </section>
+            <ul className="powers-grid">
+              {SPECIALS_GUIDE.map((sp) => (
+                <li key={sp.name} className={`powers-tile powers-tile--${sp.type}`}>
+                  <div className="powers-tile__art">
+                    <SpecialArt type={sp.type} className="special-art--tile" />
+                  </div>
+                  <div className="powers-tile__body">
+                    <h3 className="powers-tile__name">{sp.name}</h3>
+                    <p className="powers-tile__earn">{sp.earn}</p>
+                    <p className="powers-tile__effect">{sp.effect}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
 
             <section className="powers-rewards" aria-label="Rewards by hand">
               <h3 className="powers-rewards__title">Rewards by hand</h3>
@@ -2327,16 +2280,24 @@ export function GameScreen({
                   <li key={hand} className="powers-rewards__row">
                     <span className="powers-rewards__hand">{HAND_DISPLAY[hand]}</span>
                     <span className="powers-rewards__icons">
-                      {types.map((type, index) => (
-                        <SpecialArt key={`${hand}-${index}`} type={type} className="special-art--tiny" />
+                      {types.map((t, i) => (
+                        <SpecialArt key={`${hand}-${i}`} type={t} className="special-art--tiny" />
                       ))}
                     </span>
                   </li>
                 ))}
               </ul>
             </section>
+
+            <button
+              type="button"
+              className="btn scores-close powers-modal__close"
+              onClick={() => setShowSpecials(false)}
+            >
+              Close
+            </button>
           </div>
-        </HomeKitShell>
+        </div>
       )}
 
       {showProfile && (

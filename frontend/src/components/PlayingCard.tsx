@@ -26,29 +26,23 @@ interface Props {
 export function PlayingCard({ card, blocker, selected, guided, hinted, popping }: Props) {
   const suit = SUIT_SYMBOL[card.suit];
   const sp   = card.special;
+  const isArrowOnly = sp === "arrow_h" || sp === "arrow_v";
 
-  if (sp) {
-    const powerLabel: Record<SpecialType, string> = {
-      arrow_h: "Row arrow — tap to clear row",
-      arrow_v: "Column arrow — tap to clear column",
-      bomb: "Bomb — tap to clear surrounding cards",
-      joker: "Joker — swipe as a wild card",
-      rainbow: "Rainbow — drag onto a suit to clear it",
-    };
+  if (isArrowOnly) {
     return (
       <div
         className={[
           "playing-card",
-          "power-card",
+          "arrow-power",
           SPECIAL_CLASS[sp],
           selected && !popping ? "selected" : "",
           guided && !popping && !hinted ? "guided" : "",
           hinted && !popping ? "hinted" : "",
           popping ? "pop" : "",
         ].filter(Boolean).join(" ")}
-        aria-label={powerLabel[sp]}
+        aria-label={sp === "arrow_h" ? "Row arrow — tap to clear row" : "Column arrow — tap to clear column"}
       >
-        <SpecialArt type={sp} className="special-art--power-card" />
+        <SpecialArt type={sp} className="special-art--arrow" />
 
         {blocker && isBlocked(blocker) && (
           <div

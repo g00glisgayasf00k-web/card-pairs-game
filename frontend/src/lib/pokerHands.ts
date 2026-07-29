@@ -217,7 +217,7 @@ export const SPECIALS_GUIDE: {
   {
     type: "bomb",
     name: "Bomb",
-    earn: "Clear Four of a Kind, Straight Flush, or Royal Flush",
+    earn: "Clear Four of a Kind or Straight Flush",
     effect: "Tap to blast all 8 surrounding cards. Hitting another bomb or arrow triggers it too.",
   },
   {

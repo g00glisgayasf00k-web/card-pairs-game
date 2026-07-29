@@ -1711,6 +1711,23 @@ html.native-shell .app.app--levels {
   font-size: 0.8rem;
 }
 
+/* Sits above the powers panel, which shares the 150 stacking level. */
+.powers-confirm-overlay {
+  z-index: 200;
+}
+
+.powers-confirm__art {
+  display: grid;
+  place-items: center;
+  margin-bottom: 0.45rem;
+}
+
+.powers-confirm__art .special-art--tile {
+  width: 4rem;
+  height: 4rem;
+  object-fit: contain;
+}
+
 .powers-guide-list small {
   color: rgba(255, 255, 255, 0.72);
   font-size: 0.67rem;

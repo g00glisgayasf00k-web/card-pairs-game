@@ -275,6 +275,8 @@ export function GameScreen({
     gems: number;
     opened: boolean;
     opening: boolean;
+    /** Swap to open-crate art mid-animation. */
+    revealOpen?: boolean;
   } | null>(null);
   const [showScores, setShowScores] = useState(false);
   const [showSpecials, setShowSpecials] = useState(false);
@@ -557,19 +559,29 @@ export function GameScreen({
       if (!prev || prev.opened || prev.opening) return prev;
       return { ...prev, opening: true };
     });
+    // Mid-shake: swap to the open crate so the lid lifts as gems appear.
     window.setTimeout(() => {
-      setChestReward((prev) =>
-        prev && prev.opening ? { ...prev, opening: false, opened: true } : prev
+      setChestReward((cur) =>
+        cur && cur.opening && !cur.opened ? { ...cur, revealOpen: true } : cur
       );
+    }, 420);
+    // End of open animation: award gems into the wallet.
+    window.setTimeout(() => {
+      setChestReward((cur) => {
+        if (!cur || !cur.opening) return cur;
+        const nextCredits = claimMilestoneChest(cur.level, cur.gems);
+        window.setTimeout(() => {
+          setRun((run) => ({ ...run, credits: nextCredits }));
+          savedSnapshot.current = loadProgress();
+        }, 0);
+        return { ...cur, opening: false, opened: true, revealOpen: true };
+      });
     }, 850);
   }, []);
 
-  const claimMilestoneChestReward = useCallback(() => {
-    if (!chestReward) return;
-    const nextCredits = claimMilestoneChest(chestReward.level, chestReward.gems);
-    setRun((prev) => ({ ...prev, credits: nextCredits }));
+  const finishMilestoneChest = useCallback(() => {
+    if (!chestReward?.opened) return;
     setChestReward(null);
-    savedSnapshot.current = loadProgress();
     if (isReplaySession.current || levelRef.current >= MAX_LEVEL) {
       if (isReplaySession.current) onMenu();
       return;
@@ -1824,7 +1836,7 @@ export function GameScreen({
                     : chestReward.opening
                       ? " milestone-chest--opening"
                       : ""
-                }`}
+                }${chestReward.revealOpen ? " milestone-chest--revealed" : ""}`}
                 onClick={() => {
                   if (!chestReward.opened && !chestReward.opening) openMilestoneChest();
                 }}
@@ -1834,12 +1846,19 @@ export function GameScreen({
                 <span className="milestone-chest__burst" aria-hidden>
                   <span /><span /><span /><span /><span /><span />
                 </span>
-                <img
-                  src="/assets/pixellab/star-chest.png"
-                  alt=""
-                  className="milestone-chest__art"
-                />
-                {chestReward.opened && (
+                <span className="milestone-chest__art-wrap">
+                  <img
+                    src="/assets/pixellab/star-chest.png"
+                    alt=""
+                    className="milestone-chest__art milestone-chest__art--closed"
+                  />
+                  <img
+                    src="/assets/pixellab/star-chest-open.png"
+                    alt=""
+                    className="milestone-chest__art milestone-chest__art--open"
+                  />
+                </span>
+                {(chestReward.opened || chestReward.revealOpen) && (
                   <span className="milestone-chest__gems">
                     <img src="/assets/header/icon_gems.svg" alt="" width={22} height={22} />
                     +{chestReward.gems}
@@ -1847,8 +1866,8 @@ export function GameScreen({
                 )}
               </button>
               {chestReward.opened ? (
-                <button type="button" className="btn" onClick={claimMilestoneChestReward}>
-                  Collect &amp; continue
+                <button type="button" className="btn" onClick={finishMilestoneChest}>
+                  Continue
                 </button>
               ) : (
                 <button

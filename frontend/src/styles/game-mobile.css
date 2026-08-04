@@ -2571,23 +2571,49 @@ html.native-shell .app.app--levels {
   position: relative;
 }
 
+.milestone-chest__art-wrap {
+  position: relative;
+  width: 7.5rem;
+  height: 7.5rem;
+  display: grid;
+  place-items: center;
+}
+
 .milestone-chest__art {
   width: 7.5rem;
   height: auto;
   filter: drop-shadow(0 8px 16px rgba(0, 0, 0, 0.45));
-  transition: transform 0.25s ease;
+  transition: transform 0.25s ease, opacity 0.2s ease;
   transform-origin: 50% 80%;
 }
 
-.milestone-chest:not(.milestone-chest--open):not(.milestone-chest--opening):active .milestone-chest__art {
+.milestone-chest__art--closed,
+.milestone-chest__art--open {
+  grid-area: 1 / 1;
+}
+
+.milestone-chest__art--open {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.milestone-chest--revealed .milestone-chest__art--closed {
+  opacity: 0;
+}
+
+.milestone-chest--revealed .milestone-chest__art--open {
+  opacity: 1;
+}
+
+.milestone-chest:not(.milestone-chest--open):not(.milestone-chest--opening):active .milestone-chest__art-wrap {
   transform: scale(0.96);
 }
 
-.milestone-chest--opening .milestone-chest__art {
+.milestone-chest--opening .milestone-chest__art-wrap {
   animation: milestone-chest-open 0.85s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
-.milestone-chest--open .milestone-chest__art {
+.milestone-chest--open .milestone-chest__art-wrap {
   transform: scale(1.05) rotate(-2deg);
   filter:
     drop-shadow(0 8px 16px rgba(0, 0, 0, 0.45))

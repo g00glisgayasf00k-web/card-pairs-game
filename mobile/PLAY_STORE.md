@@ -195,13 +195,17 @@ Confirm the game loads, login works, and talks to https://royal-match-poker.onre
 
 ## Phase 5 — Store listing assets (required before production)
 
+**Ready-made pack:** [`docs/play-store/`](../docs/play-store/) — phone, 7″ / 10″ tablet shots, feature graphic, and promo video files. See that folder’s README for upload order.
+
 Prepare these (can use Canva / your existing brand art):
 
 | Asset | Spec |
 |-------|------|
 | App icon | **512×512** PNG (no alpha for Play high-res icon) |
-| Feature graphic | **1024×500** PNG |
-| Phone screenshots | At least **2** (usually 1080×1920 or similar portrait) |
+| Feature graphic | **1024×500** PNG → `docs/play-store/feature-graphic.png` |
+| Phone screenshots | At least **2** → `docs/play-store/phone/` (6 ready) |
+| 7″ / 10″ tablets | Optional but recommended → `docs/play-store/tablet-7/` + `tablet-10/` |
+| Promo video | YouTube URL from `docs/play-store/video/play-promo-landscape.mp4` |
 | Short description | ≤ 80 characters |
 | Full description | Longer pitch (you already wrote a Reddit blurb) |
 
